@@ -20,6 +20,7 @@ import SettingsPage from "./pages/admin/SettingsPage";
 import TeamPage from "./pages/admin/TeamPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import ProductsPage from "./pages/admin/ProductsPage";
+import AdminLogin from "./pages/admin/AdminLogin";
 
 import KitchenSink from "./pages/KitchenSink";
 import DevModulesPage from "./pages/admin/DevModulesPage";
@@ -36,6 +37,9 @@ const App = () => (
         <div className="dark">
           <BrowserRouter>
             <Routes>
+              {/* Login admin */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+
               {/* Dashboard (admin) */}
               <Route
                 path="/"

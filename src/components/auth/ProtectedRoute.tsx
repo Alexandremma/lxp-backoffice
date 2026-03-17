@@ -19,13 +19,11 @@ export const ProtectedRoute = ({ element, requiredRole }: ProtectedRouteProps) =
   }
 
   if (!session) {
-    // No backoffice ainda não temos tela específica de login admin,
-    // então podemos redirecionar para "/" (ou futura rota /admin/login).
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   if (requiredRole && profile && profile.role !== requiredRole) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   return element;
