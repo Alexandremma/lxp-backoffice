@@ -39,23 +39,8 @@ export default function AdminLogin() {
       return;
     }
 
-    const currentUser = session.user;
-
-    const { data: profile, error: profileError } = await supabase
-      .from("lxp_profiles")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .maybeSingle();
-
-    if (profileError || !profile || profile.role !== "admin") {
-      setError(
-        "Seu usuário não possui permissão de administrador. Entre em contato com o responsável pela plataforma.",
-      );
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
+    // A validação de role é feita via ProtectedRoute/useAuth nas rotas.
+    // Aqui o foco é apenas autenticar e redirecionar.
     setLoading(false);
     navigate("/", { replace: true });
   };

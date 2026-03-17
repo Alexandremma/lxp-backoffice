@@ -9,7 +9,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
 import DashboardMock from "./pages/admin/DashboardMock";
-import CoursesPage from "./pages/admin/CoursesPage";
 import CourseDetailsPage from "./pages/admin/CourseDetailsPage";
 import StudentsPage from "./pages/admin/StudentsPage";
 import FinancePage from "./pages/admin/FinancePage";
@@ -21,6 +20,8 @@ import TeamPage from "./pages/admin/TeamPage";
 import TicketsPage from "./pages/admin/TicketsPage";
 import ProductsPage from "./pages/admin/ProductsPage";
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminCoursesV1 from "./pages/admin/AdminCoursesV1";
+import AdminEnrollmentsV1 from "./pages/admin/AdminEnrollmentsV1";
 
 import KitchenSink from "./pages/KitchenSink";
 import DevModulesPage from "./pages/admin/DevModulesPage";
@@ -63,13 +64,17 @@ const App = () => (
               {/* Acadêmico */}
               <Route
                 path="/admin/cursos"
-                element={<ProtectedRoute element={<CoursesPage />} requiredRole="admin" />}
+                element={<ProtectedRoute element={<AdminCoursesV1 />} requiredRole="admin" />}
               />
               <Route
                 path="/admin/cursos/:courseId"
                 element={
                   <ProtectedRoute element={<CourseDetailsPage />} requiredRole="admin" />
                 }
+              />
+              <Route
+                path="/admin/matriculas"
+                element={<ProtectedRoute element={<AdminEnrollmentsV1 />} requiredRole="admin" />}
               />
 
               {/* E-commerce */}
