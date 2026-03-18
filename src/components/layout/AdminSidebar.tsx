@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { NavLink } from "@/components/NavLink"
 import { useModuleVisibility } from "@/hooks/useModuleVisibility"
+import { useLogout } from "@/hooks/use-logout"
 
 interface NavItem {
   title: string
@@ -57,6 +58,7 @@ const AdminSidebar = ({
 }: AdminSidebarProps) => {
   const location = useLocation()
   const { isModuleVisible } = useModuleVisibility()
+  const { logout } = useLogout()
 
   // Filtrar itens baseado na visibilidade (manter rota atual visível para não travar)
   const visibleItems = navigationItems.filter(
@@ -142,6 +144,9 @@ const AdminSidebar = ({
             "text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10",
             collapsed && "justify-center px-2"
           )}
+          onClick={() => {
+            void logout()
+          }}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
           {!collapsed && <span>Sair</span>}

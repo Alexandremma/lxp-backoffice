@@ -39,8 +39,35 @@ export default function AdminLogin() {
       return;
     }
 
-    // A validação de role é feita via ProtectedRoute/useAuth nas rotas.
-    // Aqui o foco é apenas autenticar e redirecionar.
+    const currentUser = session.user;
+
+    // Garante que exista um registro em backoffice_team_members para o usuário autenticado.
+    // Segue a mesma ideia do LXP Alunos: tenta criar, mas não bloqueia o login se der erro.
+    try {
+      const { data: existingMember, error: memberError } = await supabase
+        .from("backoffice_team_members")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (memberError) {
+        console.warn("[AdminLogin] Erro ao carregar membro da equipe:", memberError.message);
+      } else if (!existingMember) {
+        const { error: insertError } = await supabase.from("backoffice_team_members").insert({
+          user_id: currentUser.id,
+          email: currentUser.email,
+          name: currentUser.user_metadata?.full_name ?? currentUser.email,
+          role: "admin",
+        });
+
+        if (insertError) {
+          console.warn("[AdminLogin] Erro ao criar membro da equipe:", insertError.message);
+        }
+      }
+    } catch (e) {
+      console.warn("[AdminLogin] Erro inesperado ao garantir membro da equipe:", e);
+    }
+
     setLoading(false);
     navigate("/", { replace: true });
   };
