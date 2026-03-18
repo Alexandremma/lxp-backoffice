@@ -22,6 +22,7 @@ import ProductsPage from "./pages/admin/ProductsPage";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminCoursesV1 from "./pages/admin/AdminCoursesV1";
 import AdminEnrollmentsV1 from "./pages/admin/AdminEnrollmentsV1";
+import CoursesPage from "./pages/admin/CoursesPage";
 
 import KitchenSink from "./pages/KitchenSink";
 import DevModulesPage from "./pages/admin/DevModulesPage";
@@ -64,6 +65,11 @@ const App = () => (
               {/* Acadêmico */}
               <Route
                 path="/admin/cursos"
+                element={<ProtectedRoute element={<CoursesPage />} requiredRole="admin" />}
+              />
+              {/* (opcional) V1 mínimo preservado como fallback */}
+              <Route
+                path="/admin/cursos-v1"
                 element={<ProtectedRoute element={<AdminCoursesV1 />} requiredRole="admin" />}
               />
               <Route
