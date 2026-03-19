@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -40,17 +40,15 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react"
-import { type Student } from "@/lib/mock-data"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
-import { EnrollStudentDialog } from "./EnrollStudentDialog"
+import { EnrollStudentDialog, type StudentOption } from "./EnrollStudentDialog"
+import { supabase } from "@/lib/supabaseClient"
 
 interface CourseStudentsTabProps {
   courseId: string
   courseName: string
-  students: Student[]
-  allStudents: Student[]
 }
 
 const statusConfig = {
@@ -59,8 +57,28 @@ const statusConfig = {
   blocked: { label: "Bloqueado", variant: "destructive" as const },
 }
 
-export function CourseStudentsTab({ courseId, courseName, students, allStudents }: CourseStudentsTabProps) {
-  const [enrolledStudents, setEnrolledStudents] = useState<Student[]>(students)
+type CourseEnrollment = {
+  courseId: string
+  courseName: string
+  enrollmentDate: string
+  progress: number
+  status: "active" | "inactive" | "completed" | "cancelled"
+}
+
+type CourseStudentRow = {
+  id: string // lxp_profiles.id
+  name: string
+  email: string
+  avatar?: string
+  status: "active" | "inactive" | "blocked"
+  lastAccess?: string | null
+  enrollments: CourseEnrollment[]
+}
+
+export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabProps) {
+  const [loading, setLoading] = useState(true)
+  const [enrolledStudents, setEnrolledStudents] = useState<CourseStudentRow[]>([])
+  const [allStudents, setAllStudents] = useState<StudentOption[]>([])
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -73,40 +91,157 @@ export function CourseStudentsTab({ courseId, courseName, students, allStudents 
     return matchesSearch && matchesStatus
   })
 
-  const avgProgress = enrolledStudents.length > 0
-    ? Math.round(enrolledStudents.reduce((sum, s) => {
-        const enrollment = s.enrollments.find(e => e.courseId === courseId)
-        return sum + (enrollment?.progress || 0)
-      }, 0) / enrolledStudents.length)
-    : 0
+  const avgProgress =
+    enrolledStudents.length > 0
+      ? Math.round(
+        enrolledStudents.reduce((sum, s) => {
+          const enrollment = s.enrollments.find((e) => e.courseId === courseId)
+          return sum + (enrollment?.progress || 0)
+        }, 0) / enrolledStudents.length,
+      )
+      : 0
 
   const activeCount = enrolledStudents.filter((s) => s.status === "active").length
 
-  const handleEnrollStudents = (studentIds: string[]) => {
-    const newStudents = allStudents
-      .filter((s) => studentIds.includes(s.id))
-      .map((student) => ({
-        ...student,
+  const enrolledStudentIds = enrolledStudents.map((s) => s.id)
+
+  const fetchData = async () => {
+    // 1) Buscar enrollments do curso
+    const { data: enr, error: enrError } = await supabase
+      .from("lxp_enrollments")
+      .select("student_profile_id,status,created_at")
+      .eq("course_id", courseId)
+
+    if (enrError) throw enrError
+
+    const enrolledProfileIds = Array.from(
+      new Set((enr ?? []).map((e: { student_profile_id: string }) => e.student_profile_id)),
+    )
+
+    // 2) Buscar perfis (alunos) matriculados
+    let enrolledProfiles: Array<{ id: string; name: string | null; email: string | null }> = []
+    if (enrolledProfileIds.length > 0) {
+      const { data: prof, error: profError } = await supabase
+        .from("lxp_profiles")
+        .select("id,name,email")
+        .in("id", enrolledProfileIds)
+
+      if (profError) throw profError
+      enrolledProfiles = (prof ?? []) as typeof enrolledProfiles
+    }
+
+    const enrMap = new Map<string, { created_at: string; status: string }>()
+      ; (enr ?? []).forEach((e: { student_profile_id: string; created_at: string; status: string }) =>
+        enrMap.set(e.student_profile_id, { created_at: e.created_at, status: e.status }),
+      )
+
+    const enrolledRows: CourseStudentRow[] = enrolledProfiles.map((p) => {
+      const enrInfo = enrMap.get(p.id)
+      return {
+        id: p.id,
+        name: p.name ?? p.email ?? p.id,
+        email: p.email ?? "",
+        avatar: "/placeholder.svg",
+        status: "active",
+        lastAccess: null,
         enrollments: [
-          ...student.enrollments,
           {
             courseId,
             courseName,
-            enrollmentDate: new Date().toISOString(),
+            enrollmentDate: enrInfo?.created_at ?? new Date().toISOString(),
             progress: 0,
-            status: "active" as const,
+            status: (enrInfo?.status as CourseEnrollment["status"]) ?? "active",
           },
         ],
-      }))
-
-    setEnrolledStudents((prev) => [...prev, ...newStudents])
-    toast({
-      title: "Alunos matriculados",
-      description: `${studentIds.length} aluno(s) matriculado(s) com sucesso.`,
+      }
     })
+
+    // 3) Buscar todos os students (para o modal), com contagem de matrículas
+    const { data: all, error: allError } = await supabase
+      .from("lxp_profiles")
+      .select("id,name,email")
+      .eq("role", "student")
+      .order("created_at", { ascending: false })
+
+    if (allError) throw allError
+
+    const { data: allEnr, error: allEnrError } = await supabase
+      .from("lxp_enrollments")
+      .select("student_profile_id")
+
+    if (allEnrError) throw allEnrError
+
+    const counts = new Map<string, number>()
+      ; (allEnr ?? []).forEach((e: { student_profile_id: string }) => {
+        counts.set(e.student_profile_id, (counts.get(e.student_profile_id) ?? 0) + 1)
+      })
+
+    const options: StudentOption[] = (all ?? []).map((p: { id: string; name: string | null; email: string | null }) => ({
+      id: p.id,
+      name: p.name ?? p.email ?? p.id,
+      email: p.email ?? "",
+      avatar: "/placeholder.svg",
+      status: "active",
+      enrollmentCount: counts.get(p.id) ?? 0,
+    }))
+
+    setEnrolledStudents(enrolledRows)
+    setAllStudents(options)
   }
 
-  const enrolledStudentIds = enrolledStudents.map((s) => s.id)
+  useEffect(() => {
+    let isMounted = true
+
+      ; (async () => {
+        try {
+          setLoading(true)
+          await fetchData()
+        } catch (e: unknown) {
+          toast({
+            title: "Erro ao carregar alunos do curso",
+            description: e instanceof Error ? e.message : "Tente novamente.",
+            variant: "destructive",
+          })
+        } finally {
+          if (isMounted) setLoading(false)
+        }
+      })()
+
+    return () => {
+      isMounted = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId])
+
+  const handleEnrollStudents = async (studentIds: string[]) => {
+    const toInsert = studentIds
+      .filter((id) => !enrolledStudentIds.includes(id))
+      .map((id) => ({
+        student_profile_id: id,
+        course_id: courseId,
+        status: "active",
+      }))
+
+    if (toInsert.length === 0) return
+
+    const { error } = await supabase.from("lxp_enrollments").insert(toInsert)
+
+    if (error) {
+      toast({
+        title: "Erro ao matricular aluno(s)",
+        description: error.message,
+        variant: "destructive",
+      })
+      return
+    }
+
+    toast({
+      title: "Alunos matriculados",
+      description: `${toInsert.length} aluno(s) matriculado(s) com sucesso.`,
+    })
+
+    await fetchData()
+  }
 
   return (
     <div className="space-y-6">
@@ -213,7 +348,13 @@ export function CourseStudentsTab({ courseId, courseName, students, allStudents 
       {/* Students Table */}
       <Card>
         <CardContent className="p-0">
-          {filteredStudents.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="font-medium mb-1">Carregando alunos...</p>
+              <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+            </div>
+          ) : filteredStudents.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -267,10 +408,12 @@ export function CourseStudentsTab({ courseId, courseName, students, allStudents 
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(student.lastAccess), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
+                        {student.lastAccess
+                          ? formatDistanceToNow(new Date(student.lastAccess), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })
+                          : "—"}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -313,7 +456,7 @@ export function CourseStudentsTab({ courseId, courseName, students, allStudents 
                   : "Ainda não há alunos matriculados neste curso"}
               </p>
               {!search && statusFilter === "all" && (
-                <Button>
+                <Button onClick={() => setEnrollDialogOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
                   Matricular Primeiro Aluno
                 </Button>

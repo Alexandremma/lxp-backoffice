@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useMemo, useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, UserPlus, Users } from "lucide-react"
-import { type Student } from "@/lib/mock-data"
 
 interface EnrollStudentDialogProps {
   open: boolean
@@ -22,8 +21,17 @@ interface EnrollStudentDialogProps {
   courseId: string
   courseName: string
   enrolledStudentIds: string[]
-  allStudents: Student[]
+  allStudents: StudentOption[]
   onEnroll: (studentIds: string[]) => void
+}
+
+export type StudentOption = {
+  id: string
+  name: string
+  email: string
+  avatar?: string
+  status: "active" | "inactive" | "blocked"
+  enrollmentCount: number
 }
 
 const statusConfig = {
@@ -52,17 +60,19 @@ export function EnrollStudentDialog({
     }
   }, [open])
 
-  // Filter out already enrolled students
-  const availableStudents = allStudents.filter(
-    (student) => !enrolledStudentIds.includes(student.id)
+  const availableStudents = useMemo(
+    () => allStudents.filter((student) => !enrolledStudentIds.includes(student.id)),
+    [allStudents, enrolledStudentIds],
   )
 
-  // Filter by search
-  const filteredStudents = availableStudents.filter(
-    (student) =>
-      student.name.toLowerCase().includes(search.toLowerCase()) ||
-      student.email.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredStudents = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return availableStudents
+    return availableStudents.filter(
+      (student) =>
+        student.name.toLowerCase().includes(q) || student.email.toLowerCase().includes(q),
+    )
+  }, [availableStudents, search])
 
   const handleToggleStudent = (studentId: string) => {
     setSelectedStudentIds((prev) =>
@@ -158,7 +168,7 @@ export function EnrollStudentDialog({
                             {statusConfig[student.status].label}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            Matriculado em {student.enrollments.length} curso(s)
+                            Matriculado em {student.enrollmentCount} curso(s)
                           </span>
                         </div>
                       </div>

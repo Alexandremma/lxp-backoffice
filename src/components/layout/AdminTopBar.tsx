@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { mockCurrentUser } from "@/lib/mock-data"
+import { useLogout } from "@/hooks/use-logout"
 
 interface AdminTopBarProps {
   onMenuClick?: () => void
@@ -19,6 +20,8 @@ interface AdminTopBarProps {
 }
 
 const AdminTopBar = ({ onMenuClick, showMenuButton = false }: AdminTopBarProps) => {
+  const { logout } = useLogout()
+
   return (
     <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
@@ -106,7 +109,13 @@ const AdminTopBar = ({ onMenuClick, showMenuButton = false }: AdminTopBarProps) 
             <DropdownMenuItem>Configurações</DropdownMenuItem>
             <DropdownMenuItem>Logs de Atividade</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onSelect={(e) => {
+                e.preventDefault()
+                void logout()
+              }}
+            >
               Sair
             </DropdownMenuItem>
           </DropdownMenuContent>

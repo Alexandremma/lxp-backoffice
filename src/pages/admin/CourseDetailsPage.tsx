@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -14,12 +14,13 @@ import {
   Link2,
   GraduationCap,
 } from "lucide-react"
-import { mockCourses, mockStudents, mockCourseGrades, mockCourseLinkedContent, type Course } from "@/lib/mock-data"
+import { mockStudents, mockCourseGrades, mockCourseLinkedContent, type Course } from "@/lib/mock-data"
 import { CourseGradesTab } from "@/components/admin/CourseGradesTab"
 import { CourseContentTab } from "@/components/admin/CourseContentTab"
 import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { toast } from "@/hooks/use-toast"
+import { supabase } from "@/lib/supabaseClient"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -38,15 +39,85 @@ const CourseDetailsPage = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("overview")
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const initialCourse = mockCourses.find((c) => c.id === courseId)
-  const [course, setCourse] = useState<Course | undefined>(initialCourse)
-  
+  const [course, setCourse] = useState<Course | undefined>(undefined)
+
+  // Nesta fase, as abas ainda usam dados mock (persistência incremental).
+  // IMPORTANTE: hooks devem ser chamados sempre (não podem ficar após returns condicionais).
+  const courseStudents = useMemo(
+    () => mockStudents.filter((s) => s.enrollments.some((e) => e.courseId === courseId)),
+    [courseId],
+  )
+  const courseGrades = useMemo(
+    () => mockCourseGrades.filter((g) => g.courseId === courseId),
+    [courseId],
+  )
+  const linkedContent = useMemo(
+    () => mockCourseLinkedContent.filter((c) => c.courseId === courseId),
+    [courseId],
+  )
+
+  useEffect(() => {
+    let isMounted = true
+
+    const run = async () => {
+      if (!courseId) return
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from("lxp_courses")
+          .select("id,name,description,status,created_at")
+          .eq("id", courseId)
+          .maybeSingle()
+
+        if (error) throw error
+        if (!data) {
+          if (isMounted) setCourse(undefined)
+          return
+        }
+
+        // Mapeia para o tipo Course usado na UI (mock-data), mantendo visual.
+        const mapped: Course = {
+          id: data.id,
+          name: data.name,
+          description: data.description ?? "",
+          category: "graduation",
+          status: (data.status as Course["status"]) ?? "draft",
+          periods: 8,
+          totalStudents: 0,
+          createdAt: data.created_at,
+          externalLibraryId: undefined,
+        }
+
+        if (isMounted) setCourse(mapped)
+      } catch (e) {
+        // Mantém a UX do backoffice: mostra erro e volta para lista.
+        toast({
+          title: "Erro ao carregar curso",
+          description: "Não foi possível carregar os detalhes do curso.",
+          variant: "destructive",
+        })
+        navigate("/admin/cursos")
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    void run()
+
+    return () => {
+      isMounted = false
+    }
+  }, [courseId, navigate])
+
   if (!course) {
     return (
       <AdminLayout>
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-          <h2 className="text-2xl font-semibold">Curso não encontrado</h2>
+          <h2 className="text-2xl font-semibold">
+            {loading ? "Carregando..." : "Curso não encontrado"}
+          </h2>
           <Button variant="outline" onClick={() => navigate("/admin/cursos")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar para Cursos
@@ -56,12 +127,29 @@ const CourseDetailsPage = () => {
     )
   }
 
-  const courseStudents = mockStudents.filter((s) => s.enrollments.some(e => e.courseId === courseId))
-  const courseGrades = mockCourseGrades.filter((g) => g.courseId === courseId)
-  const linkedContent = mockCourseLinkedContent.filter((c) => c.courseId === courseId)
+  const handleSaveCourse = async (updatedData: Omit<Course, "id" | "totalStudents" | "createdAt">) => {
+    if (!courseId) return
 
-  const handleSaveCourse = (updatedData: Omit<Course, "id" | "totalStudents" | "createdAt">) => {
-    setCourse((prev) => prev ? { ...prev, ...updatedData } : prev)
+    // Persistência gradual: no schema atual (Semana 1) salvamos apenas name/description/status.
+    const { error } = await supabase
+      .from("lxp_courses")
+      .update({
+        name: updatedData.name,
+        description: updatedData.description,
+        status: updatedData.status,
+      })
+      .eq("id", courseId)
+
+    if (error) {
+      toast({
+        title: "Erro ao atualizar curso",
+        description: error.message,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setCourse((prev) => (prev ? { ...prev, ...updatedData } : prev))
     toast({
       title: "Curso atualizado",
       description: "As alterações foram salvas com sucesso.",
@@ -231,11 +319,9 @@ const CourseDetailsPage = () => {
 
         {/* Students Tab */}
         <TabsContent value="students">
-          <CourseStudentsTab 
-            courseId={courseId!} 
+          <CourseStudentsTab
+            courseId={courseId!}
             courseName={course.name}
-            students={courseStudents} 
-            allStudents={mockStudents}
           />
         </TabsContent>
       </Tabs>
