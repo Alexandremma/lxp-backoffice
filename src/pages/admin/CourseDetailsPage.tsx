@@ -21,6 +21,9 @@ import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { toast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabaseClient"
+import { useGetCourseDetail } from "@/hooks/queries/useGetCourseDetail"
+import { useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/consts/queryKeys"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -39,9 +42,8 @@ const CourseDetailsPage = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("overview")
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  const [course, setCourse] = useState<Course | undefined>(undefined)
+  const queryClient = useQueryClient()
+  const { data: course, isLoading, error } = useGetCourseDetail(courseId)
 
   // Nesta fase, as abas ainda usam dados mock (persistência incremental).
   // IMPORTANTE: hooks devem ser chamados sempre (não podem ficar após returns condicionais).
@@ -59,64 +61,22 @@ const CourseDetailsPage = () => {
   )
 
   useEffect(() => {
-    let isMounted = true
+    if (!error) return
 
-    const run = async () => {
-      if (!courseId) return
-      try {
-        setLoading(true)
-        const { data, error } = await supabase
-          .from("lxp_courses")
-          .select("id,name,description,status,created_at")
-          .eq("id", courseId)
-          .maybeSingle()
-
-        if (error) throw error
-        if (!data) {
-          if (isMounted) setCourse(undefined)
-          return
-        }
-
-        // Mapeia para o tipo Course usado na UI (mock-data), mantendo visual.
-        const mapped: Course = {
-          id: data.id,
-          name: data.name,
-          description: data.description ?? "",
-          category: "graduation",
-          status: (data.status as Course["status"]) ?? "draft",
-          periods: 8,
-          totalStudents: 0,
-          createdAt: data.created_at,
-          externalLibraryId: undefined,
-        }
-
-        if (isMounted) setCourse(mapped)
-      } catch (e) {
-        // Mantém a UX do backoffice: mostra erro e volta para lista.
-        toast({
-          title: "Erro ao carregar curso",
-          description: "Não foi possível carregar os detalhes do curso.",
-          variant: "destructive",
-        })
-        navigate("/admin/cursos")
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    }
-
-    void run()
-
-    return () => {
-      isMounted = false
-    }
-  }, [courseId, navigate])
+    toast({
+      title: "Erro ao carregar curso",
+      description: "Não foi possível carregar os detalhes do curso.",
+      variant: "destructive",
+    })
+    navigate("/admin/cursos")
+  }, [error, navigate, toast])
 
   if (!course) {
     return (
       <AdminLayout>
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
           <h2 className="text-2xl font-semibold">
-            {loading ? "Carregando..." : "Curso não encontrado"}
+            {isLoading ? "Carregando..." : "Curso não encontrado"}
           </h2>
           <Button variant="outline" onClick={() => navigate("/admin/cursos")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -148,12 +108,12 @@ const CourseDetailsPage = () => {
       })
       return
     }
-
-    setCourse((prev) => (prev ? { ...prev, ...updatedData } : prev))
     toast({
       title: "Curso atualizado",
       description: "As alterações foram salvas com sucesso.",
     })
+
+    await queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) })
   }
 
   return (
