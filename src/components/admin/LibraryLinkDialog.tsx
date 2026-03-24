@@ -28,7 +28,7 @@ interface LibraryLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   discipline?: Discipline | null
-  onConfirm: (libraryContentId: string) => void
+  onConfirm: (selectedContent: LibraryContent) => void
 }
 
 export function LibraryLinkDialog({
@@ -52,7 +52,7 @@ export function LibraryLinkDialog({
 
   const handleConfirm = () => {
     if (selectedContent) {
-      onConfirm(selectedContent.id)
+      onConfirm(selectedContent)
       setSelectedContent(null)
       setSearch("")
     }

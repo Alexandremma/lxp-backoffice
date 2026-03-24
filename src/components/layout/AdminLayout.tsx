@@ -15,10 +15,16 @@ const AdminLayout = ({ children, className }: AdminLayoutProps) => {
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
+      <div
+        className={cn(
+          "hidden lg:block flex-shrink-0",
+          sidebarCollapsed ? "w-16" : "w-64"
+        )}
+      >
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={setSidebarCollapsed}
+          className="fixed inset-y-0 left-0 z-30"
         />
       </div>
 

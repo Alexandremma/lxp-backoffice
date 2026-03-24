@@ -45,6 +45,9 @@ import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 import { CourseDialog } from "@/components/admin/CourseDialog"
+import { useGetCourses } from "@/hooks/queries/useGetCourses"
+import { useQueryClient } from "@tanstack/react-query"
+import { queryKeys } from "@/consts/queryKeys"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -58,18 +61,11 @@ const categoryConfig = {
   extension: { label: "Extensão", variant: "secondary" as const },
 }
 
-type CourseDbRow = {
-  id: string
-  name: string
-  description: string | null
-  status: "draft" | "active" | "archived" | string
-  created_at: string
-}
-
 const CoursesPage = () => {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [courses, setCourses] = useState<Course[]>([])
+  const queryClient = useQueryClient()
+  const { data: coursesData, isLoading, error } = useGetCourses()
+  const courses = useMemo(() => coursesData ?? [], [coursesData])
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -77,65 +73,9 @@ const CoursesPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
-  const fetchCourses = async () => {
-    const { data, error } = await supabase
-      .from("lxp_courses")
-      .select("id,name,description,status,created_at")
-      .order("created_at", { ascending: false })
-
-    if (error) throw error
-
-    // Total de alunos por curso (Semana 1: baseado em lxp_enrollments)
-    const { data: enr, error: enrError } = await supabase
-      .from("lxp_enrollments")
-      .select("course_id")
-
-    if (enrError) throw enrError
-
-    const counts = new Map<string, number>()
-      ; (enr ?? []).forEach((e: { course_id: string }) => {
-        counts.set(e.course_id, (counts.get(e.course_id) ?? 0) + 1)
-      })
-
-    const mapped: Course[] = (data ?? []).map((c) => {
-      const row = c as CourseDbRow
-      return {
-        id: row.id,
-        name: row.name,
-        description: row.description ?? "",
-        // Ainda não temos colunas no Supabase para category/periods/externalLibraryId.
-        // Mantemos valores default para preservar o visual; persistência vem nas próximas fases.
-        category: "graduation",
-        status: (row.status as Course["status"]) ?? "draft",
-        periods: 8,
-        totalStudents: counts.get(row.id) ?? 0,
-        createdAt: row.created_at,
-        externalLibraryId: undefined,
-      }
-    })
-
-    setCourses(mapped)
-  }
-
   useEffect(() => {
-    let isMounted = true
-
-      ; (async () => {
-        try {
-          setLoading(true)
-          await fetchCourses()
-        } catch (e) {
-          toast.error("Erro ao carregar cursos")
-        } finally {
-          if (isMounted) setLoading(false)
-        }
-      })()
-
-    return () => {
-      isMounted = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (error) toast.error("Erro ao carregar cursos")
+  }, [error])
 
   const filteredCourses = courses.filter((course) => {
     const matchesSearch = course.name.toLowerCase().includes(search.toLowerCase())
@@ -184,10 +124,29 @@ const CoursesPage = () => {
         if (error) throw error
         toast.success("Curso criado com sucesso")
       }
-
-      await fetchCourses()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
     } catch (e) {
       toast.error("Erro ao salvar curso")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteCourse = async (course: Course) => {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o curso "${course.name}"? Esta ação não pode ser desfeita.`,
+    )
+    if (!confirmed) return
+
+    setSubmitting(true)
+    try {
+      const { error } = await supabase.from("lxp_courses").delete().eq("id", course.id)
+      if (error) throw error
+
+      toast.success("Curso excluído com sucesso")
+      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+    } catch (e) {
+      toast.error("Erro ao excluir curso")
     } finally {
       setSubmitting(false)
     }
@@ -229,7 +188,7 @@ const CoursesPage = () => {
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{loading ? "—" : stats.totalCourses}</p>
+                <p className="text-2xl font-bold">{isLoading ? "—" : stats.totalCourses}</p>
                 <p className="text-sm text-muted-foreground">Total de Cursos</p>
               </div>
             </div>
@@ -243,7 +202,7 @@ const CoursesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {loading ? "—" : stats.activeCourses}
+                  {isLoading ? "—" : stats.activeCourses}
                 </p>
                 <p className="text-sm text-muted-foreground">Cursos Ativos</p>
               </div>
@@ -258,7 +217,7 @@ const CoursesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {loading ? "—" : stats.totalStudents.toLocaleString("pt-BR")}
+                  {isLoading ? "—" : stats.totalStudents.toLocaleString("pt-BR")}
                 </p>
                 <p className="text-sm text-muted-foreground">Total de Alunos</p>
               </div>
@@ -273,7 +232,7 @@ const CoursesPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {loading ? "—" : stats.linkedToLibrary}
+                  {isLoading ? "—" : stats.linkedToLibrary}
                 </p>
                 <p className="text-sm text-muted-foreground">Vinculados à Biblioteca</p>
               </div>
@@ -337,7 +296,7 @@ const CoursesPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="p-6 text-sm text-muted-foreground">
                     Carregando cursos...
@@ -420,7 +379,13 @@ const CoursesPage = () => {
                             Gerenciar períodos
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void handleDeleteCourse(course)
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Excluir
                           </DropdownMenuItem>
