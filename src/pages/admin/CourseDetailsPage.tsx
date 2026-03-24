@@ -14,7 +14,7 @@ import {
   Link2,
   GraduationCap,
 } from "lucide-react"
-import { mockStudents, mockCourseGrades, mockCourseLinkedContent, type Course } from "@/lib/mock-data"
+import { mockStudents, type Course } from "@/lib/mock-data"
 import { CourseGradesTab } from "@/components/admin/CourseGradesTab"
 import { CourseContentTab } from "@/components/admin/CourseContentTab"
 import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
@@ -51,14 +51,6 @@ const CourseDetailsPage = () => {
     () => mockStudents.filter((s) => s.enrollments.some((e) => e.courseId === courseId)),
     [courseId],
   )
-  const courseGrades = useMemo(
-    () => mockCourseGrades.filter((g) => g.courseId === courseId),
-    [courseId],
-  )
-  const linkedContent = useMemo(
-    () => mockCourseLinkedContent.filter((c) => c.courseId === courseId),
-    [courseId],
-  )
 
   useEffect(() => {
     if (!error) return
@@ -69,7 +61,7 @@ const CourseDetailsPage = () => {
       variant: "destructive",
     })
     navigate("/admin/cursos")
-  }, [error, navigate, toast])
+  }, [error, navigate])
 
   if (!course) {
     return (
@@ -220,7 +212,7 @@ const CourseDetailsPage = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        {linkedContent.length} trilhas/módulos vinculados às disciplinas
+                        Gerencie os vínculos na aba Conteúdo
                       </p>
                     </div>
                   </div>
@@ -269,12 +261,12 @@ const CourseDetailsPage = () => {
 
         {/* Grades Tab */}
         <TabsContent value="grades">
-          <CourseGradesTab courseId={courseId!} grades={courseGrades} />
+          <CourseGradesTab courseId={courseId!} />
         </TabsContent>
 
         {/* Content Tab */}
         <TabsContent value="content">
-          <CourseContentTab courseId={courseId!} linkedContent={linkedContent} />
+          <CourseContentTab courseId={courseId!} />
         </TabsContent>
 
         {/* Students Tab */}

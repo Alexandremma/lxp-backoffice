@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -29,22 +29,69 @@ import {
   Calendar,
   User,
 } from "lucide-react"
-import { type CourseLinkedContent } from "@/lib/mock-data"
+import { toast } from "sonner"
+import { useGetCourseContent } from "@/hooks/queries/useGetCourseContent"
+import { useUnlinkCourseContent } from "@/hooks/queries/useUnlinkCourseContent"
+import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
+import { useGetCourseGrades } from "@/hooks/queries/useGetCourseGrades"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
 
 interface CourseContentTabProps {
   courseId: string
-  linkedContent: CourseLinkedContent[]
 }
 
-export function CourseContentTab({ courseId, linkedContent }: CourseContentTabProps) {
+export function CourseContentTab({ courseId }: CourseContentTabProps) {
   const [search, setSearch] = useState("")
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [selectedDisciplineId, setSelectedDisciplineId] = useState<string>("")
+  const { data, isLoading, error } = useGetCourseContent(courseId)
+  const linkedContent = useMemo(() => data ?? [], [data])
+  const unlinkMutation = useUnlinkCourseContent(courseId)
+  const linkMutation = useLinkCourseContent(courseId)
+  const { data: gradesData } = useGetCourseGrades(courseId)
+
+  const disciplineOptions = useMemo(
+    () =>
+      (gradesData ?? []).flatMap((grade) =>
+        grade.disciplines.map((discipline) => ({
+          id: discipline.id,
+          label: `${grade.name} - ${discipline.name}`,
+        })),
+      ),
+    [gradesData],
+  )
+
+  useEffect(() => {
+    if (!selectedDisciplineId && disciplineOptions.length > 0) {
+      setSelectedDisciplineId(disciplineOptions[0].id)
+    }
+  }, [disciplineOptions, selectedDisciplineId])
+
+  useEffect(() => {
+    if (!error) return
+    toast.error(error instanceof Error ? error.message : "Erro ao carregar conteúdo do curso.")
+  }, [error])
 
   const filteredContent = linkedContent.filter((content) =>
     content.libraryContentName.toLowerCase().includes(search.toLowerCase()) ||
     content.disciplineName?.toLowerCase().includes(search.toLowerCase())
   )
+
+  const handleUnlink = async (linkId: string) => {
+    try {
+      await unlinkMutation.mutateAsync(linkId)
+      toast.success("Conteúdo desvinculado com sucesso.")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao desvincular conteúdo.")
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -56,10 +103,24 @@ export function CourseContentTab({ courseId, linkedContent }: CourseContentTabPr
             Trilhas e módulos da biblioteca externa vinculados às disciplinas
           </p>
         </div>
-        <Button onClick={() => setLinkDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Vincular Conteúdo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={selectedDisciplineId} onValueChange={setSelectedDisciplineId}>
+            <SelectTrigger className="w-[320px]">
+              <SelectValue placeholder="Selecione uma disciplina" />
+            </SelectTrigger>
+            <SelectContent>
+              {disciplineOptions.map((discipline) => (
+                <SelectItem key={discipline.id} value={discipline.id}>
+                  {discipline.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setLinkDialogOpen(true)} disabled={!selectedDisciplineId}>
+            <Plus className="h-4 w-4 mr-2" />
+            Vincular Conteúdo
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -126,7 +187,13 @@ export function CourseContentTab({ courseId, linkedContent }: CourseContentTabPr
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {filteredContent.length > 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="font-medium mb-1">Carregando conteúdos...</p>
+              <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+            </div>
+          ) : filteredContent.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -187,7 +254,10 @@ export function CourseContentTab({ courseId, linkedContent }: CourseContentTabPr
                             <ExternalLink className="h-4 w-4 mr-2" />
                             Ver na Biblioteca
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleUnlink(content.id)}
+                          >
                             <Unlink className="h-4 w-4 mr-2" />
                             Desvincular
                           </DropdownMenuItem>
@@ -218,9 +288,20 @@ export function CourseContentTab({ courseId, linkedContent }: CourseContentTabPr
       <LibraryLinkDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
-        onConfirm={(libraryContentId) => {
-          console.log("Linking content:", libraryContentId, "to course:", courseId)
-          setLinkDialogOpen(false)
+        onConfirm={async (selectedContent) => {
+          try {
+            if (!selectedDisciplineId) return
+            await linkMutation.mutateAsync({
+              disciplineId: selectedDisciplineId,
+              libraryContentType: selectedContent.type === "module" ? "module" : "trail",
+              libraryContentId: selectedContent.id,
+              libraryContentName: selectedContent.name,
+            })
+            toast.success("Conteúdo vinculado com sucesso.")
+            setLinkDialogOpen(false)
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Erro ao vincular conteúdo.")
+          }
         }}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -27,16 +27,22 @@ import {
   Circle,
   AlertCircle,
 } from "lucide-react"
-import { type CourseGrade, type Discipline } from "@/lib/mock-data"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
 import { GradeDialog } from "./GradeDialog"
 import { DisciplineDialog } from "./DisciplineDialog"
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 import { toast } from "sonner"
+import type { CourseDisciplineAdmin, CoursePeriodAdmin } from "@/services/coursesService"
+import { useGetCourseGrades } from "@/hooks/queries/useGetCourseGrades"
+import { useCreateCoursePeriod } from "@/hooks/queries/useCreateCoursePeriod"
+import { useUpdateCoursePeriod } from "@/hooks/queries/useUpdateCoursePeriod"
+import { useDeleteCoursePeriod } from "@/hooks/queries/useDeleteCoursePeriod"
+import { useCreateCourseDiscipline } from "@/hooks/queries/useCreateCourseDiscipline"
+import { useUpdateCourseDiscipline } from "@/hooks/queries/useUpdateCourseDiscipline"
+import { useDeleteCourseDiscipline } from "@/hooks/queries/useDeleteCourseDiscipline"
 
 interface CourseGradesTabProps {
   courseId: string
-  grades: CourseGrade[]
 }
 
 const gradeStatusConfig = {
@@ -45,27 +51,40 @@ const gradeStatusConfig = {
   upcoming: { label: "Próximo", variant: "secondary" as const, icon: Circle },
 }
 
-export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGradesTabProps) {
-  const [grades, setGrades] = useState<CourseGrade[]>(initialGrades)
-  
+export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
+  const { data, isLoading, error } = useGetCourseGrades(courseId)
+  const grades = useMemo(() => data ?? [], [data])
+
   // Grade dialog state
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false)
-  const [selectedGrade, setSelectedGrade] = useState<CourseGrade | null>(null)
-  
+  const [selectedGrade, setSelectedGrade] = useState<CoursePeriodAdmin | null>(null)
+
   // Discipline dialog state
   const [disciplineDialogOpen, setDisciplineDialogOpen] = useState(false)
-  const [selectedDiscipline, setSelectedDiscipline] = useState<Discipline | null>(null)
+  const [selectedDiscipline, setSelectedDiscipline] = useState<CourseDisciplineAdmin | null>(null)
   const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null)
-  
+
   // Library link dialog state
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
-  const [linkDiscipline, setLinkDiscipline] = useState<Discipline | null>(null)
-  
+  const [linkDiscipline, setLinkDiscipline] = useState<CourseDisciplineAdmin | null>(null)
+
   // Delete confirmation state
   const [deleteGradeOpen, setDeleteGradeOpen] = useState(false)
-  const [gradeToDelete, setGradeToDelete] = useState<CourseGrade | null>(null)
+  const [gradeToDelete, setGradeToDelete] = useState<CoursePeriodAdmin | null>(null)
   const [deleteDisciplineOpen, setDeleteDisciplineOpen] = useState(false)
-  const [disciplineToDelete, setDisciplineToDelete] = useState<{ discipline: Discipline; gradeId: string } | null>(null)
+  const [disciplineToDelete, setDisciplineToDelete] = useState<{ discipline: CourseDisciplineAdmin; gradeId: string } | null>(null)
+
+  const createPeriodMutation = useCreateCoursePeriod(courseId)
+  const updatePeriodMutation = useUpdateCoursePeriod(courseId)
+  const deletePeriodMutation = useDeleteCoursePeriod(courseId)
+  const createDisciplineMutation = useCreateCourseDiscipline(courseId)
+  const updateDisciplineMutation = useUpdateCourseDiscipline(courseId)
+  const deleteDisciplineMutation = useDeleteCourseDiscipline(courseId)
+
+  useEffect(() => {
+    if (!error) return
+    toast.error(error instanceof Error ? error.message : "Erro ao carregar grades.")
+  }, [error])
 
   // Grade handlers
   const handleNewGrade = () => {
@@ -73,45 +92,40 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
     setGradeDialogOpen(true)
   }
 
-  const handleEditGrade = (grade: CourseGrade) => {
+  const handleEditGrade = (grade: CoursePeriodAdmin) => {
     setSelectedGrade(grade)
     setGradeDialogOpen(true)
   }
 
-  const handleSaveGrade = (data: { name: string; status: "current" | "completed" | "upcoming" }) => {
-    if (selectedGrade) {
-      // Edit existing grade
-      setGrades(grades.map(g => 
-        g.id === selectedGrade.id 
-          ? { ...g, name: data.name, status: data.status }
-          : g
-      ))
-      toast.success("Grade atualizada com sucesso!")
-    } else {
-      // Create new grade
-      const newGrade: CourseGrade = {
-        id: `grade_${Date.now()}`,
-        courseId,
-        name: data.name,
-        number: grades.length + 1,
-        status: data.status,
-        disciplines: [],
+  const handleSaveGrade = async (data: { name: string; status: "current" | "completed" | "upcoming" }) => {
+    try {
+      if (selectedGrade) {
+        await updatePeriodMutation.mutateAsync({ periodId: selectedGrade.id, data })
+        toast.success("Grade atualizada com sucesso!")
+        return
       }
-      setGrades([...grades, newGrade])
+
+      await createPeriodMutation.mutateAsync(data)
       toast.success("Grade criada com sucesso!")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar grade.")
     }
   }
 
-  const handleDeleteGrade = (grade: CourseGrade) => {
+  const handleDeleteGrade = (grade: CoursePeriodAdmin) => {
     setGradeToDelete(grade)
     setDeleteGradeOpen(true)
   }
 
-  const confirmDeleteGrade = () => {
+  const confirmDeleteGrade = async () => {
     if (gradeToDelete) {
-      setGrades(grades.filter(g => g.id !== gradeToDelete.id))
-      toast.success("Grade excluída com sucesso!")
-      setGradeToDelete(null)
+      try {
+        await deletePeriodMutation.mutateAsync(gradeToDelete.id)
+        toast.success("Grade excluída com sucesso!")
+        setGradeToDelete(null)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao excluir grade.")
+      }
     }
   }
 
@@ -122,77 +136,54 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
     setDisciplineDialogOpen(true)
   }
 
-  const handleEditDiscipline = (discipline: Discipline, gradeId: string) => {
+  const handleEditDiscipline = (discipline: CourseDisciplineAdmin, gradeId: string) => {
     setSelectedGradeId(gradeId)
     setSelectedDiscipline(discipline)
     setDisciplineDialogOpen(true)
   }
 
-  const handleSaveDiscipline = (data: { name: string; code: string; workload: number; professor?: string }) => {
+  const handleSaveDiscipline = async (data: {
+    name: string
+    code: string
+    workload: number
+    credits: number
+    professor?: string
+  }) => {
     if (!selectedGradeId) return
 
-    if (selectedDiscipline) {
-      // Edit existing discipline
-      setGrades(grades.map(g => {
-        if (g.id === selectedGradeId) {
-          return {
-            ...g,
-            disciplines: g.disciplines.map(d =>
-              d.id === selectedDiscipline.id
-                ? { ...d, ...data }
-                : d
-            ),
-          }
-        }
-        return g
-      }))
-      toast.success("Disciplina atualizada com sucesso!")
-    } else {
-      // Create new discipline
-      const newDiscipline: Discipline = {
-        id: `disc_${Date.now()}`,
-        name: data.name,
-        code: data.code,
-        workload: data.workload,
-        professor: data.professor,
-        status: "active",
+    try {
+      if (selectedDiscipline) {
+        await updateDisciplineMutation.mutateAsync({ disciplineId: selectedDiscipline.id, data })
+        toast.success("Disciplina atualizada com sucesso!")
+        return
       }
-      setGrades(grades.map(g => {
-        if (g.id === selectedGradeId) {
-          return {
-            ...g,
-            disciplines: [...g.disciplines, newDiscipline],
-          }
-        }
-        return g
-      }))
+
+      await createDisciplineMutation.mutateAsync({ periodId: selectedGradeId, data })
       toast.success("Disciplina adicionada com sucesso!")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar disciplina.")
     }
   }
 
-  const handleDeleteDiscipline = (discipline: Discipline, gradeId: string) => {
+  const handleDeleteDiscipline = (discipline: CourseDisciplineAdmin, gradeId: string) => {
     setDisciplineToDelete({ discipline, gradeId })
     setDeleteDisciplineOpen(true)
   }
 
-  const confirmDeleteDiscipline = () => {
+  const confirmDeleteDiscipline = async () => {
     if (disciplineToDelete) {
-      setGrades(grades.map(g => {
-        if (g.id === disciplineToDelete.gradeId) {
-          return {
-            ...g,
-            disciplines: g.disciplines.filter(d => d.id !== disciplineToDelete.discipline.id),
-          }
-        }
-        return g
-      }))
-      toast.success("Disciplina removida com sucesso!")
-      setDisciplineToDelete(null)
+      try {
+        await deleteDisciplineMutation.mutateAsync(disciplineToDelete.discipline.id)
+        toast.success("Disciplina removida com sucesso!")
+        setDisciplineToDelete(null)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro ao remover disciplina.")
+      }
     }
   }
 
   // Library link handler
-  const handleLinkLibrary = (discipline: Discipline) => {
+  const handleLinkLibrary = (discipline: CourseDisciplineAdmin) => {
     setLinkDiscipline(discipline)
     setLinkDialogOpen(true)
   }
@@ -214,12 +205,20 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
       </div>
 
       {/* Grades Accordion */}
-      {grades.length > 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="font-medium mb-1">Carregando grades...</p>
+            <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+          </CardContent>
+        </Card>
+      ) : grades.length > 0 ? (
         <Accordion type="multiple" defaultValue={grades.map((g) => g.id)} className="space-y-4">
           {grades.map((grade) => {
             const StatusIcon = gradeStatusConfig[grade.status].icon
             const linkedCount = grade.disciplines.filter((d) => d.linkedTrailId).length
-            
+
             return (
               <AccordionItem
                 key={grade.id}
@@ -229,10 +228,9 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
                 <AccordionTrigger className="px-6 hover:no-underline">
                   <div className="flex items-center gap-4 w-full">
                     <div className="flex items-center gap-3">
-                      <StatusIcon className={`h-5 w-5 ${
-                        grade.status === "current" ? "text-info" :
+                      <StatusIcon className={`h-5 w-5 ${grade.status === "current" ? "text-info" :
                         grade.status === "completed" ? "text-success" : "text-muted-foreground"
-                      }`} />
+                        }`} />
                       <span className="font-semibold">{grade.name}</span>
                     </div>
                     <Badge variant={gradeStatusConfig[grade.status].variant}>
@@ -253,7 +251,7 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
                           <Edit className="h-4 w-4 mr-2" />
                           Editar Grade
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={(e) => { e.stopPropagation(); handleDeleteGrade(grade); }}
                         >
@@ -281,6 +279,7 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
                                       <Clock className="h-3 w-3" />
                                       {discipline.workload}h
                                     </span>
+                                    <span>{discipline.credits} créditos</span>
                                     {discipline.professor && (
                                       <span className="flex items-center gap-1">
                                         <User className="h-3 w-3" />
@@ -324,7 +323,7 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
                                     <Edit className="h-4 w-4 mr-2" />
                                     Editar Disciplina
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     className="text-destructive"
                                     onClick={() => handleDeleteDiscipline(discipline, grade.id)}
                                   >
@@ -339,9 +338,9 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
                       </Card>
                     ))}
 
-                    <Button 
-                      variant="outline" 
-                      className="w-full mt-4" 
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4"
                       size="sm"
                       onClick={() => handleNewDiscipline(grade.id)}
                     >
@@ -389,8 +388,8 @@ export function CourseGradesTab({ courseId, grades: initialGrades }: CourseGrade
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
         discipline={linkDiscipline}
-        onConfirm={(libraryContentId) => {
-          console.log("Linking:", linkDiscipline?.id, "to", libraryContentId)
+        onConfirm={(selectedContent) => {
+          console.log("Linking:", linkDiscipline?.id, "to", selectedContent.id)
           setLinkDialogOpen(false)
         }}
       />
