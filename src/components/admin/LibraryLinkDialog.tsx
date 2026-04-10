@@ -22,7 +22,9 @@ import {
   ExternalLink,
   Tag,
 } from "lucide-react"
-import { mockLibraryContent, type LibraryContent, type Discipline } from "@/lib/mock-data"
+import { type Discipline } from "@/lib/mock-data"
+import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
+import type { LibraryItem } from "@/services/libraryAdapter"
 
 interface LibraryLinkDialogProps {
   open: boolean
@@ -38,17 +40,17 @@ export function LibraryLinkDialog({
   onConfirm,
 }: LibraryLinkDialogProps) {
   const [search, setSearch] = useState("")
-  const [selectedContent, setSelectedContent] = useState<LibraryContent | null>(null)
+  const [selectedContent, setSelectedContent] = useState<LibraryItem | null>(null)
   const [contentType, setContentType] = useState<"all" | "trail" | "module">("all")
 
-  const filteredContent = mockLibraryContent.filter((content) => {
-    const matchesSearch =
-      content.name.toLowerCase().includes(search.toLowerCase()) ||
-      content.description.toLowerCase().includes(search.toLowerCase()) ||
-      content.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
-    const matchesType = contentType === "all" || content.type === contentType
-    return matchesSearch && matchesType
+  const { items, isLoading } = useSearchLibraryContent({
+    q: search,
+    type: contentType,
+    page: 1,
+    pageSize: 20,
   })
+
+  const filteredContent = items
 
   const handleConfirm = () => {
     if (selectedContent) {
@@ -100,7 +102,13 @@ export function LibraryLinkDialog({
           {/* Content List */}
           <ScrollArea className="h-[400px] rounded-md border">
             <div className="p-4 space-y-3">
-              {filteredContent.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="font-medium mb-1">Buscando conteúdo...</p>
+                  <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+                </div>
+              ) : filteredContent.length > 0 ? (
                 filteredContent.map((content) => (
                   <Card
                     key={content.id}
@@ -133,28 +141,30 @@ export function LibraryLinkDialog({
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                              {content.description}
+                              {content.description ?? "—"}
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {content.duration}
+                                {content.duration ?? "—"}
                               </span>
-                              {content.modulesCount && (
+                              {content.modulesCount != null && content.modulesCount > 0 && (
                                 <span>{content.modulesCount} módulos</span>
                               )}
-                              {content.lessonsCount && (
+                              {content.lessonsCount != null && content.lessonsCount > 0 && (
                                 <span>{content.lessonsCount} aulas</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Tag className="h-3 w-3 text-muted-foreground" />
-                              {content.tags.map((tag) => (
-                                <Badge key={tag} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
+                            {content.tags && content.tags.length > 0 && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Tag className="h-3 w-3 text-muted-foreground" />
+                                {content.tags.map((tag) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         {selectedContent?.id === content.id && (

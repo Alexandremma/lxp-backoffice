@@ -14,7 +14,7 @@ import {
   Link2,
   GraduationCap,
 } from "lucide-react"
-import { mockStudents, type Course } from "@/lib/mock-data"
+import { type Course } from "@/lib/mock-data"
 import { CourseGradesTab } from "@/components/admin/CourseGradesTab"
 import { CourseContentTab } from "@/components/admin/CourseContentTab"
 import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
@@ -47,10 +47,6 @@ const CourseDetailsPage = () => {
 
   // Nesta fase, as abas ainda usam dados mock (persistência incremental).
   // IMPORTANTE: hooks devem ser chamados sempre (não podem ficar após returns condicionais).
-  const courseStudents = useMemo(
-    () => mockStudents.filter((s) => s.enrollments.some((e) => e.courseId === courseId)),
-    [courseId],
-  )
 
   useEffect(() => {
     if (!error) return
