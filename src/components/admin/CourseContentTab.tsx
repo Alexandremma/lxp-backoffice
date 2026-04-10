@@ -25,7 +25,6 @@ import {
   Unlink,
   BookOpen,
   Layers,
-  Clock,
   Calendar,
   User,
 } from "lucide-react"
@@ -100,7 +99,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
         <div>
           <h3 className="text-lg font-semibold">Conteúdo Vinculado</h3>
           <p className="text-sm text-muted-foreground">
-            Trilhas e módulos da biblioteca externa vinculados às disciplinas
+            Disciplinas externas vinculadas às disciplinas internas do curso
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -129,7 +128,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-lg bg-primary/10">
-                <Layers className="h-5 w-5 text-primary" />
+                <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{linkedContent.length}</p>
@@ -146,9 +145,9 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {linkedContent.filter((c) => c.type === "trail").length}
+                  {linkedContent.filter((c) => c.type === "discipline").length}
                 </p>
-                <p className="text-sm text-muted-foreground">Trilhas</p>
+                <p className="text-sm text-muted-foreground">Disciplinas Externas</p>
               </div>
             </div>
           </CardContent>
@@ -161,9 +160,9 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {linkedContent.filter((c) => c.type === "module").length}
+                  {linkedContent.filter((c) => c.type !== "discipline").length}
                 </p>
-                <p className="text-sm text-muted-foreground">Módulos</p>
+                <p className="text-sm text-muted-foreground">Legado (trail/module)</p>
               </div>
             </div>
           </CardContent>
@@ -189,7 +188,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="font-medium mb-1">Carregando conteúdos...</p>
               <p className="text-sm text-muted-foreground">Aguarde um instante</p>
             </div>
@@ -210,17 +209,13 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
                   <TableRow key={content.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {content.type === "trail" ? (
-                          <BookOpen className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Layers className="h-5 w-5 text-secondary" />
-                        )}
+                        <BookOpen className="h-5 w-5 text-primary" />
                         <span className="font-medium">{content.libraryContentName}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={content.type === "trail" ? "default" : "secondary"}>
-                        {content.type === "trail" ? "Trilha" : "Módulo"}
+                      <Badge variant={content.type === "discipline" ? "default" : "secondary"}>
+                        {content.type === "discipline" ? "Disciplina" : "Legado"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -270,10 +265,10 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             </Table>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
-              <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="font-medium mb-1">Nenhum conteúdo vinculado</p>
               <p className="text-sm text-muted-foreground mb-4">
-                Vincule trilhas e módulos da biblioteca às disciplinas do curso
+                Vincule disciplinas externas às disciplinas do curso
               </p>
               <Button onClick={() => setLinkDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -293,7 +288,8 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             if (!selectedDisciplineId) return
             await linkMutation.mutateAsync({
               disciplineId: selectedDisciplineId,
-              libraryContentType: selectedContent.type === "module" ? "module" : "trail",
+              // TODO: manter type fixo em discipline até a migração completa dos vínculos antigos.
+              libraryContentType: "discipline",
               libraryContentId: selectedContent.id,
               libraryContentName: selectedContent.name,
             })

@@ -63,7 +63,7 @@ export type CourseLinkedContentAdmin = {
     courseId: string
     libraryContentId: string
     libraryContentName: string
-    type: "trail" | "module"
+    type: "discipline" | "trail" | "module"
     linkedAt: string
     linkedBy: string
     disciplineId?: string
@@ -429,7 +429,7 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
     const rows = (data ?? []) as Array<{
         id: string
         course_discipline_id: string
-        library_content_type: "trail" | "module"
+        library_content_type: "discipline" | "trail" | "module"
         library_content_id: string
         library_content_name: string | null
         linked_at: string
@@ -450,6 +450,7 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
             courseId: period?.course_id ?? courseId,
             libraryContentId: row.library_content_id,
             libraryContentName: row.library_content_name ?? row.library_content_id,
+            // TODO: Remover suporte legado trail/module quando todos os vínculos antigos forem migrados para discipline.
             type: row.library_content_type,
             linkedAt: row.linked_at,
             linkedBy: row.linked_by ?? "Sistema",
@@ -462,7 +463,7 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
 export async function linkCourseContentAdmin(
     data: {
         disciplineId: string
-        libraryContentType: "trail" | "module"
+        libraryContentType: "discipline"
         libraryContentId: string
         libraryContentName?: string
     },
