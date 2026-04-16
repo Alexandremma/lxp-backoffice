@@ -16,19 +16,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Search,
   BookOpen,
-  Layers,
   Clock,
   CheckCircle2,
   ExternalLink,
   Tag,
 } from "lucide-react"
-import { mockLibraryContent, type LibraryContent, type Discipline } from "@/lib/mock-data"
+import { type Discipline } from "@/lib/mock-data"
+import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
+import type { LibraryItem } from "@/services/libraryAdapter"
 
 interface LibraryLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   discipline?: Discipline | null
-  onConfirm: (selectedContent: LibraryContent) => void
+  onConfirm: (selectedContent: LibraryItem) => void
 }
 
 export function LibraryLinkDialog({
@@ -38,17 +39,17 @@ export function LibraryLinkDialog({
   onConfirm,
 }: LibraryLinkDialogProps) {
   const [search, setSearch] = useState("")
-  const [selectedContent, setSelectedContent] = useState<LibraryContent | null>(null)
-  const [contentType, setContentType] = useState<"all" | "trail" | "module">("all")
+  const [selectedContent, setSelectedContent] = useState<LibraryItem | null>(null)
+  const [contentType, setContentType] = useState<"all" | "discipline">("all")
 
-  const filteredContent = mockLibraryContent.filter((content) => {
-    const matchesSearch =
-      content.name.toLowerCase().includes(search.toLowerCase()) ||
-      content.description.toLowerCase().includes(search.toLowerCase()) ||
-      content.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
-    const matchesType = contentType === "all" || content.type === contentType
-    return matchesSearch && matchesType
+  const { items, isLoading } = useSearchLibraryContent({
+    q: search,
+    type: contentType,
+    page: 1,
+    pageSize: 20,
   })
+
+  const filteredContent = items
 
   const handleConfirm = () => {
     if (selectedContent) {
@@ -71,7 +72,7 @@ export function LibraryLinkDialog({
           <DialogTitle>Vincular Conteúdo da Biblioteca</DialogTitle>
           <DialogDescription>
             {discipline
-              ? `Selecione uma trilha ou módulo para vincular à disciplina "${discipline.name}"`
+              ? `Selecione uma disciplina externa para vincular à disciplina "${discipline.name}"`
               : "Busque e selecione conteúdo da biblioteca externa para vincular ao curso"}
           </DialogDescription>
         </DialogHeader>
@@ -82,7 +83,7 @@ export function LibraryLinkDialog({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar trilhas, módulos ou tags..."
+                placeholder="Buscar disciplinas externas ou tags..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -91,8 +92,7 @@ export function LibraryLinkDialog({
             <Tabs value={contentType} onValueChange={(v) => setContentType(v as typeof contentType)}>
               <TabsList>
                 <TabsTrigger value="all">Todos</TabsTrigger>
-                <TabsTrigger value="trail">Trilhas</TabsTrigger>
-                <TabsTrigger value="module">Módulos</TabsTrigger>
+                <TabsTrigger value="discipline">Disciplinas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -100,7 +100,13 @@ export function LibraryLinkDialog({
           {/* Content List */}
           <ScrollArea className="h-[400px] rounded-md border">
             <div className="p-4 space-y-3">
-              {filteredContent.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="font-medium mb-1">Buscando conteúdo...</p>
+                  <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+                </div>
+              ) : filteredContent.length > 0 ? (
                 filteredContent.map((content) => (
                   <Card
                     key={content.id}
@@ -114,47 +120,41 @@ export function LibraryLinkDialog({
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
-                          <div className={`p-2 rounded-lg ${
-                            content.type === "trail" ? "bg-primary/10" : "bg-secondary/10"
-                          }`}>
-                            {content.type === "trail" ? (
-                              <BookOpen className={`h-5 w-5 ${
-                                content.type === "trail" ? "text-primary" : "text-secondary"
-                              }`} />
-                            ) : (
-                              <Layers className="h-5 w-5 text-secondary" />
-                            )}
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <BookOpen className="h-5 w-5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <p className="font-medium truncate">{content.name}</p>
-                              <Badge variant={content.type === "trail" ? "default" : "secondary"} className="shrink-0">
-                                {content.type === "trail" ? "Trilha" : "Módulo"}
+                              <Badge variant="default" className="shrink-0">
+                                Disciplina
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                              {content.description}
+                              {content.description ?? "—"}
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {content.duration}
+                                {content.duration ?? "—"}
                               </span>
-                              {content.modulesCount && (
+                              {content.modulesCount != null && content.modulesCount > 0 && (
                                 <span>{content.modulesCount} módulos</span>
                               )}
-                              {content.lessonsCount && (
+                              {content.lessonsCount != null && content.lessonsCount > 0 && (
                                 <span>{content.lessonsCount} aulas</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Tag className="h-3 w-3 text-muted-foreground" />
-                              {content.tags.map((tag) => (
-                                <Badge key={tag} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
+                            {content.tags && content.tags.length > 0 && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Tag className="h-3 w-3 text-muted-foreground" />
+                                {content.tags.map((tag) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         {selectedContent?.id === content.id && (
@@ -186,7 +186,7 @@ export function LibraryLinkDialog({
                     <div>
                       <p className="font-medium">Selecionado: {selectedContent.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {selectedContent.type === "trail" ? "Trilha" : "Módulo"} • {selectedContent.duration}
+                        Disciplina • {selectedContent.duration}
                         {selectedContent.lessonsCount && ` • ${selectedContent.lessonsCount} aulas`}
                       </p>
                     </div>

@@ -8,7 +8,7 @@ export function useLinkCourseContent(courseId?: string) {
   return useMutation({
     mutationFn: (data: {
       disciplineId: string
-      libraryContentType: "trail" | "module"
+      libraryContentType: "discipline"
       libraryContentId: string
       libraryContentName?: string
     }) => linkCourseContentAdmin(data),
