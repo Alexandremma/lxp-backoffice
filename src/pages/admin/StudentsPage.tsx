@@ -71,6 +71,7 @@ import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useUpdateStudentProfile } from "@/hooks/mutations/useUpdateStudentProfile"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 function courseRowToStudent(row: CourseStudentRow): Student {
   return {
@@ -262,17 +263,7 @@ const StudentsPage = () => {
       toast.success("Dados do aluno atualizados.")
       handleProfileEditOpenChange(false)
     } catch (err: unknown) {
-      const code = typeof err === "object" && err !== null && "code" in err ? String((err as { code?: string }).code) : ""
-      const message = err instanceof Error ? err.message : "Erro ao salvar"
-      if (code === "23505" || message.includes("duplicate") || message.includes("unique")) {
-        toast.error("Este e-mail já está em uso por outro perfil.")
-      } else if (message.includes("student_profile_not_found") || message.includes("P0001")) {
-        toast.error("Perfil de aluno não encontrado ou não é mais um aluno.")
-      } else if (message.includes("not_authorized") || code === "42501") {
-        toast.error("Sem permissão para esta operação.")
-      } else {
-        toast.error(message)
-      }
+      toast.error(getAdminErrorMessage("students-update-profile", err))
     }
   }
 
@@ -320,7 +311,7 @@ const StudentsPage = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Não foi possível carregar os alunos</AlertTitle>
           <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span>{error instanceof Error ? error.message : "Erro desconhecido"}</span>
+            <span>{getAdminErrorMessage("students-list", error)}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

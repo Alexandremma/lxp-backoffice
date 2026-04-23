@@ -33,15 +33,22 @@ import {
 } from "@/components/ui/select"
 import {
     AlertCircle,
+    ChevronsLeft,
+    ChevronsRight,
+    ChevronLeft,
+    ChevronRight,
     Copy,
+    Edit,
     GraduationCap,
     HeadphonesIcon,
     Loader2,
     Mail,
     Megaphone,
     MoreHorizontal,
+    Plus,
     Search,
     Shield,
+    Trash2,
     UserCog,
     FileText,
     DollarSign,
@@ -49,6 +56,15 @@ import {
 import { toast } from "sonner"
 import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
 import type { TeamMemberAdminRow } from "@/services/teamService"
+import {
+    TeamMemberDialog,
+    type TeamMemberDialogMember,
+    type TeamMemberFormData,
+} from "@/components/admin/TeamMemberDialog"
+import { useUpsertTeamMemberAdmin } from "@/hooks/mutations/useUpsertTeamMemberAdmin"
+import { useDeleteTeamMemberAdmin } from "@/hooks/mutations/useDeleteTeamMemberAdmin"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 type TeamRole = TeamMemberAdminRow["role"]
 
@@ -69,10 +85,28 @@ const roleConfig: Record<
     commercial: { label: "Comercial", icon: Megaphone, badgeVariant: "outline" },
 }
 
+function toTeamMemberDialogModel(row: TeamMemberAdminRow): TeamMemberDialogMember {
+    return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        status: "active",
+    }
+}
+
 const TeamPage = () => {
     const { data, isLoading, isError, error, refetch } = useGetTeamMembersAdmin()
+    const upsertMember = useUpsertTeamMemberAdmin()
+    const deleteMember = useDeleteTeamMemberAdmin()
     const [search, setSearch] = useState("")
     const [roleFilter, setRoleFilter] = useState<"all" | TeamRole>("all")
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [editingMember, setEditingMember] = useState<TeamMemberAdminRow | null>(null)
+    const [deletingMember, setDeletingMember] = useState<TeamMemberAdminRow | null>(null)
+    const [deleteOpen, setDeleteOpen] = useState(false)
 
     const members = data ?? []
 
@@ -100,6 +134,11 @@ const TeamPage = () => {
         return counts
     }, [members])
 
+    const totalPages = Math.max(1, Math.ceil(filteredMembers.length / pageSize))
+    const safePage = Math.min(page, totalPages)
+    const start = (safePage - 1) * pageSize
+    const paginatedMembers = filteredMembers.slice(start, start + pageSize)
+
     const handleCopyEmail = async (email: string) => {
         try {
             await navigator.clipboard.writeText(email)
@@ -109,18 +148,77 @@ const TeamPage = () => {
         }
     }
 
+    const handleOpenCreate = () => {
+        setEditingMember(null)
+        setDialogOpen(true)
+    }
+
+    const handleOpenEdit = (member: TeamMemberAdminRow) => {
+        setEditingMember(member)
+        setDialogOpen(true)
+    }
+
+    const handleSaveDialog = async (values: TeamMemberFormData) => {
+        try {
+            if (editingMember) {
+                await upsertMember.mutateAsync({
+                    mode: "update",
+                    id: editingMember.id,
+                    name: values.name,
+                    email: values.email,
+                    role: values.role as TeamRole,
+                })
+                toast.success("Membro atualizado com sucesso.")
+            } else {
+                await upsertMember.mutateAsync({
+                    mode: "create",
+                    name: values.name,
+                    email: values.email,
+                    role: values.role as TeamRole,
+                })
+                toast.success("Membro adicionado na equipe.")
+            }
+            setDialogOpen(false)
+            setEditingMember(null)
+        } catch (err: unknown) {
+            toast.error(getAdminErrorMessage("team-save", err))
+        }
+    }
+
+    const handleDeleteMember = (member: TeamMemberAdminRow) => {
+        setDeletingMember(member)
+        setDeleteOpen(true)
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!deletingMember) return
+        try {
+            await deleteMember.mutateAsync(deletingMember.id)
+            toast.success("Membro removido da equipe.")
+            setDeleteOpen(false)
+            setDeletingMember(null)
+        } catch (err: unknown) {
+            toast.error(getAdminErrorMessage("team-delete", err))
+        }
+    }
+
     return (
         <AdminLayout>
             <PageHeader
                 title="Equipe"
-                description="Visualize a equipe administrativa real do Backoffice."
-            />
+                description="Visualize e mantenha a equipe administrativa do Backoffice."
+            >
+                <Button onClick={handleOpenCreate}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Membro
+                </Button>
+            </PageHeader>
 
             <Alert variant="info" className="mb-6">
                 <AlertTitle>Escopo atual desta sprint</AlertTitle>
                 <AlertDescription>
-                    Tela conectada ao Supabase para listagem e filtros. Cadastro/remoção no painel dependem de
-                    fluxo completo com Supabase Auth Admin e regras de governança.
+                    Criação/edição atualizam somente <code>backoffice_team_members</code>. Não criam conta no
+                    Supabase Auth automaticamente (fluxo sensível fica para etapa dedicada).
                 </AlertDescription>
             </Alert>
 
@@ -129,7 +227,7 @@ const TeamPage = () => {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Não foi possível carregar a equipe</AlertTitle>
                     <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <span>{error instanceof Error ? error.message : "Erro desconhecido"}</span>
+                        <span>{getAdminErrorMessage("team-list", error)}</span>
                         <Button variant="outline" size="sm" onClick={() => void refetch()}>
                             Tentar novamente
                         </Button>
@@ -175,11 +273,20 @@ const TeamPage = () => {
                             <Input
                                 placeholder="Buscar por nome ou e-mail..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value)
+                                    setPage(1)
+                                }}
                                 className="pl-10"
                             />
                         </div>
-                        <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as "all" | TeamRole)}>
+                        <Select
+                            value={roleFilter}
+                            onValueChange={(value) => {
+                                setRoleFilter(value as "all" | TeamRole)
+                                setPage(1)
+                            }}
+                        >
                             <SelectTrigger className="w-full md:w-[220px]">
                                 <SelectValue placeholder="Função" />
                             </SelectTrigger>
@@ -209,8 +316,8 @@ const TeamPage = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredMembers.length > 0 ? (
-                                filteredMembers.map((member) => {
+                            {paginatedMembers.length > 0 ? (
+                                paginatedMembers.map((member) => {
                                     const RoleIcon = roleConfig[member.role].icon
                                     return (
                                         <TableRow key={member.id}>
@@ -255,6 +362,10 @@ const TeamPage = () => {
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                                         <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
+                                                            <Edit className="h-4 w-4 mr-2" />
+                                                            Editar
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => void handleCopyEmail(member.email)}>
                                                             <Copy className="h-4 w-4 mr-2" />
                                                             Copiar e-mail
@@ -262,6 +373,14 @@ const TeamPage = () => {
                                                         <DropdownMenuItem onClick={() => (window.location.href = `mailto:${member.email}`)}>
                                                             <Mail className="h-4 w-4 mr-2" />
                                                             Enviar e-mail
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => handleDeleteMember(member)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                            Remover
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -278,8 +397,76 @@ const TeamPage = () => {
                             )}
                         </TableBody>
                     </Table>
+
+                    {filteredMembers.length > 0 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t">
+                            <div className="text-sm text-muted-foreground">
+                                Mostrando {start + 1} a {Math.min(start + pageSize, filteredMembers.length)} de{" "}
+                                {filteredMembers.length} membros
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Itens por página:</span>
+                                    <Select
+                                        value={String(pageSize)}
+                                        onValueChange={(value) => {
+                                            setPageSize(Number(value))
+                                            setPage(1)
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-[70px] h-8">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="20">20</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="icon-sm" onClick={() => setPage(1)} disabled={safePage === 1}>
+                                        <ChevronsLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" size="icon-sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground px-2">
+                                        Página {safePage} de {totalPages}
+                                    </span>
+                                    <Button variant="outline" size="icon-sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" size="icon-sm" onClick={() => setPage(totalPages)} disabled={safePage >= totalPages}>
+                                        <ChevronsRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
+
+            <TeamMemberDialog
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                    setDialogOpen(open)
+                    if (!open) setEditingMember(null)
+                }}
+                member={editingMember ? toTeamMemberDialogModel(editingMember) : null}
+                onSave={(values) => void handleSaveDialog(values)}
+            />
+
+            <DeleteConfirmDialog
+                open={deleteOpen}
+                onOpenChange={(open) => {
+                    setDeleteOpen(open)
+                    if (!open) setDeletingMember(null)
+                }}
+                title="Remover membro da equipe"
+                description={`Tem certeza que deseja remover ${deletingMember?.name ?? "este membro"}? A conta Auth vinculada (se existir) não será excluída nesta etapa.`}
+                onConfirm={() => void handleConfirmDelete()}
+            />
         </AdminLayout>
     )
 }
