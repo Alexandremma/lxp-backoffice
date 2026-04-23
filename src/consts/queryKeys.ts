@@ -6,5 +6,8 @@ export const queryKeys = {
         grades: (courseId: string) => ["courses", "grades", courseId] as const,
         content: (courseId: string) => ["courses", "content", courseId] as const,
     },
+    students: {
+        list: ["students", "list"] as const,
+    },
 } as const;
 

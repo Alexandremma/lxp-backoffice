@@ -51,15 +51,40 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Unlock,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
-import { mockStudents, mockCourses, type Student } from "@/lib/mock-data"
+import { type Student } from "@/lib/mock-data"
+import type { CourseStudentRow } from "@/services/coursesService"
+import { useGetStudentsAdmin } from "@/hooks/queries/useGetStudentsAdmin"
+import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useState, useMemo } from "react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { StudentDetailsDialog } from "@/components/admin/StudentDetailsDialog"
 import { StudentDialog, type StudentFormData } from "@/components/admin/StudentDialog"
+import {
+    StudentProfileEditDialog,
+    type StudentProfileEditFormValues,
+} from "@/components/admin/StudentProfileEditDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { useUpdateStudentProfile } from "@/hooks/mutations/useUpdateStudentProfile"
 import { toast } from "sonner"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+
+function courseRowToStudent(row: CourseStudentRow): Student {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: "student",
+    status: row.status,
+    enrollments: row.enrollments,
+    lastAccess: row.lastAccess ?? new Date().toISOString(),
+    createdAt: row.createdAt ?? new Date().toISOString(),
+    avatar: row.avatar,
+  }
+}
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -71,12 +96,27 @@ type SortColumn = "name" | "enrollmentDate" | "progress" | "lastAccess"
 type SortDirection = "asc" | "desc"
 
 const StudentsPage = () => {
-  const [students, setStudents] = useState<Student[]>(mockStudents)
+  const {
+    data: studentsRaw,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetStudentsAdmin()
+  const { data: coursesList } = useGetCourses()
+  const updateStudentProfile = useUpdateStudentProfile()
+
+  const students = useMemo(
+    () => (studentsRaw ?? []).map(courseRowToStudent),
+    [studentsRaw],
+  )
+
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [courseFilter, setCourseFilter] = useState<string>("all")
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+  const [profileEditStudent, setProfileEditStudent] = useState<Student | null>(null)
+  const [profileEditOpen, setProfileEditOpen] = useState(false)
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -193,61 +233,47 @@ const StudentsPage = () => {
     setDetailsOpen(true)
   }
 
-  const handleSaveStudent = (data: StudentFormData) => {
-    const selectedCourses = mockCourses.filter((c) => data.courseIds.includes(c.id))
-    
-    if (editingStudent) {
-      setStudents(students.map((s) => 
-        s.id === editingStudent.id 
-          ? {
-              ...s,
-              name: data.name,
-              email: data.email,
-              status: data.status,
-              enrollments: data.courseIds.map(courseId => {
-                const existingEnrollment = s.enrollments.find(e => e.courseId === courseId)
-                const course = mockCourses.find(c => c.id === courseId)
-                return existingEnrollment || {
-                  courseId,
-                  courseName: course?.name || "",
-                  enrollmentDate: new Date().toISOString().split("T")[0],
-                  progress: 0,
-                  status: "active" as const,
-                }
-              }),
-            }
-          : s
-      ))
-      setEditingStudent(null)
-      setDialogOpen(false)
-      toast.success("Aluno atualizado com sucesso!")
-    } else {
-      const newStudent: Student = {
-        id: `std_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: "student",
-        status: data.status,
-        enrollments: selectedCourses.map(course => ({
-          courseId: course.id,
-          courseName: course.name,
-          enrollmentDate: new Date().toISOString().split("T")[0],
-          progress: 0,
-          status: "active" as const,
-        })),
-        lastAccess: new Date().toISOString(),
-        createdAt: new Date().toISOString().split("T")[0],
-      }
-      setStudents([newStudent, ...students])
-      setDialogOpen(false)
-      toast.success("Aluno cadastrado com sucesso!")
-    }
+  const handleSaveStudent = (_data: StudentFormData) => {
+    toast.info(
+      "Cadastro de novo aluno pelo painel exige fluxo com Supabase Auth Admin. Matrículas: Admin → Cursos → Alunos.",
+    )
+    setDialogOpen(false)
   }
 
   const handleEditStudent = (student: Student, e: React.MouseEvent) => {
     e.stopPropagation()
-    setEditingStudent(student)
-    setDialogOpen(true)
+    setProfileEditStudent(student)
+    setProfileEditOpen(true)
+  }
+
+  const handleProfileEditOpenChange = (open: boolean) => {
+    setProfileEditOpen(open)
+    if (!open) setProfileEditStudent(null)
+  }
+
+  const handleSaveProfile = async (values: StudentProfileEditFormValues) => {
+    if (!profileEditStudent) return
+    try {
+      await updateStudentProfile.mutateAsync({
+        profileId: profileEditStudent.id,
+        name: values.name,
+        email: values.email,
+      })
+      toast.success("Dados do aluno atualizados.")
+      handleProfileEditOpenChange(false)
+    } catch (err: unknown) {
+      const code = typeof err === "object" && err !== null && "code" in err ? String((err as { code?: string }).code) : ""
+      const message = err instanceof Error ? err.message : "Erro ao salvar"
+      if (code === "23505" || message.includes("duplicate") || message.includes("unique")) {
+        toast.error("Este e-mail já está em uso por outro perfil.")
+      } else if (message.includes("student_profile_not_found") || message.includes("P0001")) {
+        toast.error("Perfil de aluno não encontrado ou não é mais um aluno.")
+      } else if (message.includes("not_authorized") || code === "42501") {
+        toast.error("Sem permissão para esta operação.")
+      } else {
+        toast.error(message)
+      }
+    }
   }
 
   const handleDeleteClick = (student: Student, e: React.MouseEvent) => {
@@ -257,32 +283,18 @@ const StudentsPage = () => {
   }
 
   const handleConfirmDelete = () => {
-    if (deletingStudent) {
-      setStudents(students.filter(s => s.id !== deletingStudent.id))
-      toast.success("Aluno excluído com sucesso!")
-      setDeletingStudent(null)
-      setDeleteDialogOpen(false)
-    }
+    toast.info("Exclusão de usuário requer operação no Supabase Auth / política definida.")
+    setDeletingStudent(null)
+    setDeleteDialogOpen(false)
   }
 
-  const handleToggleBlock = (student: Student, e: React.MouseEvent) => {
+  const handleToggleBlock = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const newStatus = student.status === "blocked" ? "active" : "blocked"
-    setStudents(students.map(s => 
-      s.id === student.id ? { ...s, status: newStatus } : s
-    ))
-    toast.success(
-      newStatus === "blocked" 
-        ? "Aluno bloqueado com sucesso" 
-        : "Aluno desbloqueado com sucesso"
-    )
+    toast.info("Bloqueio de acesso será integrado ao Auth em versão futura.")
   }
 
   const handleDialogClose = (open: boolean) => {
     setDialogOpen(open)
-    if (!open) {
-      setEditingStudent(null)
-    }
   }
 
   return (
@@ -292,16 +304,38 @@ const StudentsPage = () => {
         description="Gerencie os alunos matriculados na plataforma"
       >
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" disabled title="Em breve">
             <Upload className="h-4 w-4 mr-2" />
             Importar CSV
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} disabled title="Use matrícula em Cursos ou fluxo Auth (em breve)">
             <Plus className="h-4 w-4 mr-2" />
             Novo Aluno
           </Button>
         </div>
       </PageHeader>
+
+      {isError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Não foi possível carregar os alunos</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span>{error instanceof Error ? error.message : "Erro desconhecido"}</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isLoading && (
+        <Card className="mb-6">
+          <CardContent className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            Carregando alunos do Supabase…
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
@@ -395,7 +429,7 @@ const StudentsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os cursos</SelectItem>
-                {mockCourses.map((course) => (
+                {(coursesList ?? []).map((course) => (
                   <SelectItem key={course.id} value={course.id}>
                     {course.name}
                   </SelectItem>
@@ -533,7 +567,7 @@ const StudentsPage = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => handleEditStudent(student, e)}>
                             <Pencil className="h-4 w-4 mr-2" />
-                            Editar
+                            Editar dados
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Mail className="h-4 w-4 mr-2" />
@@ -544,7 +578,7 @@ const StudentsPage = () => {
                             Resetar senha
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => handleToggleBlock(student, e)}>
+                          <DropdownMenuItem onClick={(e) => handleToggleBlock(e)}>
                             {student.status === "blocked" ? (
                               <>
                                 <Unlock className="h-4 w-4 mr-2" />
@@ -651,15 +685,21 @@ const StudentsPage = () => {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         student={selectedStudent}
+        dataMode
       />
 
-      {/* Student Create/Edit Dialog */}
-      <StudentDialog
-        open={dialogOpen}
-        onOpenChange={handleDialogClose}
-        student={editingStudent}
-        onSave={handleSaveStudent}
-      />
+      {/* Novo aluno (UI reservada — botão desabilitado até Auth Admin) */}
+      <StudentDialog open={dialogOpen} onOpenChange={handleDialogClose} student={null} onSave={handleSaveStudent} />
+
+      {profileEditStudent && (
+        <StudentProfileEditDialog
+          open={profileEditOpen}
+          onOpenChange={handleProfileEditOpenChange}
+          student={profileEditStudent}
+          onSubmit={handleSaveProfile}
+          isSubmitting={updateStudentProfile.isPending}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
