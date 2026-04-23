@@ -1,435 +1,287 @@
-import { useState } from "react"
-import { AdminLayout } from "@/components/layout/AdminLayout"
-import { PageHeader } from "@/components/layout/PageHeader"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2,
-  Mail,
-  GraduationCap,
-  HeadphonesIcon,
-  UserCog,
-  Shield,
-  FileText,
-  DollarSign,
-  Megaphone,
-} from "lucide-react"
-import { mockTeamMembers, type TeamMember, type TeamRole } from "@/lib/mock-data"
+import { useMemo, useState } from "react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { AdminLayout } from "@/components/layout/AdminLayout"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    AlertCircle,
+    Copy,
+    GraduationCap,
+    HeadphonesIcon,
+    Loader2,
+    Mail,
+    Megaphone,
+    MoreHorizontal,
+    Search,
+    Shield,
+    UserCog,
+    FileText,
+    DollarSign,
+} from "lucide-react"
 import { toast } from "sonner"
-import { TeamMemberDialog, type TeamMemberFormData } from "@/components/admin/TeamMemberDialog"
-import { TeamMemberDetailsDialog } from "@/components/admin/TeamMemberDetailsDialog"
-import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
+import type { TeamMemberAdminRow } from "@/services/teamService"
 
-const statusConfig = {
-  active: { label: "Ativo", variant: "success" as const },
-  inactive: { label: "Inativo", variant: "secondary" as const },
-  blocked: { label: "Bloqueado", variant: "destructive" as const },
-}
+type TeamRole = TeamMemberAdminRow["role"]
 
-const roleConfig: Record<TeamRole, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"; icon: React.ElementType }> = {
-  admin: { label: "Admin", variant: "destructive", icon: Shield },
-  coordinator: { label: "Coordenador", variant: "info", icon: UserCog },
-  secretary: { label: "Secretaria", variant: "secondary", icon: FileText },
-  professor: { label: "Professor", variant: "default", icon: GraduationCap },
-  tutor: { label: "Tutor", variant: "success", icon: HeadphonesIcon },
-  financial: { label: "Financeiro", variant: "warning", icon: DollarSign },
-  commercial: { label: "Comercial", variant: "outline", icon: Megaphone },
+const roleConfig: Record<
+    TeamRole,
+    {
+        label: string
+        icon: React.ElementType
+        badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
+    }
+> = {
+    admin: { label: "Admin", icon: Shield, badgeVariant: "destructive" },
+    coordinator: { label: "Coordenador", icon: UserCog, badgeVariant: "info" },
+    secretary: { label: "Secretaria", icon: FileText, badgeVariant: "secondary" },
+    professor: { label: "Professor", icon: GraduationCap, badgeVariant: "default" },
+    tutor: { label: "Tutor", icon: HeadphonesIcon, badgeVariant: "success" },
+    financial: { label: "Financeiro", icon: DollarSign, badgeVariant: "warning" },
+    commercial: { label: "Comercial", icon: Megaphone, badgeVariant: "outline" },
 }
 
 const TeamPage = () => {
-  const [search, setSearch] = useState("")
-  const [roleFilter, setRoleFilter] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  
-  // CRUD States
-  const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+    const { data, isLoading, isError, error, refetch } = useGetTeamMembersAdmin()
+    const [search, setSearch] = useState("")
+    const [roleFilter, setRoleFilter] = useState<"all" | TeamRole>("all")
 
-  const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(search.toLowerCase()) ||
-      member.email.toLowerCase().includes(search.toLowerCase())
-    const matchesRole = roleFilter === "all" || member.role === roleFilter
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter
-    return matchesSearch && matchesRole && matchesStatus
-  })
+    const members = data ?? []
 
-  const getCountByRole = (role: TeamRole) => members.filter((m) => m.role === role).length
+    const filteredMembers = useMemo(() => {
+        return members.filter((member) => {
+            const matchesSearch =
+                member.name.toLowerCase().includes(search.toLowerCase()) ||
+                member.email.toLowerCase().includes(search.toLowerCase())
+            const matchesRole = roleFilter === "all" || member.role === roleFilter
+            return matchesSearch && matchesRole
+        })
+    }, [members, search, roleFilter])
 
-  // Handlers
-  const handleAddMember = () => {
-    setSelectedMember(null)
-    setIsDialogOpen(true)
-  }
+    const countByRole = useMemo(() => {
+        const counts: Record<TeamRole, number> = {
+            admin: 0,
+            coordinator: 0,
+            secretary: 0,
+            professor: 0,
+            tutor: 0,
+            financial: 0,
+            commercial: 0,
+        }
+        for (const member of members) counts[member.role] += 1
+        return counts
+    }, [members])
 
-  const handleEditMember = (member: TeamMember) => {
-    setSelectedMember(member)
-    setIsDialogOpen(true)
-  }
-
-  const handleViewDetails = (member: TeamMember) => {
-    setSelectedMember(member)
-    setIsDetailsOpen(true)
-  }
-
-  const handleDeleteMember = (member: TeamMember) => {
-    setSelectedMember(member)
-    setIsDeleteOpen(true)
-  }
-
-  const handleSaveMember = (data: TeamMemberFormData) => {
-    if (selectedMember) {
-      // Update existing member
-      setMembers(prev => prev.map(m => 
-        m.id === selectedMember.id ? { ...m, ...data } : m
-      ))
-      toast.success("Membro atualizado com sucesso!")
-    } else {
-      // Add new member
-      const newMember: TeamMember = {
-        id: `team_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        department: data.department,
-        status: data.status,
-        createdAt: new Date().toISOString(),
-      }
-      setMembers(prev => [...prev, newMember])
-      toast.success("Membro adicionado com sucesso!")
+    const handleCopyEmail = async (email: string) => {
+        try {
+            await navigator.clipboard.writeText(email)
+            toast.success("E-mail copiado.")
+        } catch {
+            toast.error("Não foi possível copiar o e-mail.")
+        }
     }
-    setIsDialogOpen(false)
-    setSelectedMember(null)
-  }
 
-  const handleConfirmDelete = () => {
-    if (selectedMember) {
-      setMembers(prev => prev.filter(m => m.id !== selectedMember.id))
-      toast.success("Membro removido com sucesso!")
-      setIsDeleteOpen(false)
-      setSelectedMember(null)
-    }
-  }
+    return (
+        <AdminLayout>
+            <PageHeader
+                title="Equipe"
+                description="Visualize a equipe administrativa real do Backoffice."
+            />
 
-  const handleSendEmail = (member: TeamMember) => {
-    window.location.href = `mailto:${member.email}`
-  }
+            <Alert variant="info" className="mb-6">
+                <AlertTitle>Escopo atual desta sprint</AlertTitle>
+                <AlertDescription>
+                    Tela conectada ao Supabase para listagem e filtros. Cadastro/remoção no painel dependem de
+                    fluxo completo com Supabase Auth Admin e regras de governança.
+                </AlertDescription>
+            </Alert>
 
-  return (
-    <AdminLayout>
-      <PageHeader
-        title="Equipe"
-        description="Gerencie administradores, professores, tutores e equipe administrativa"
-      >
-        <Button onClick={handleAddMember}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Membro
-        </Button>
-      </PageHeader>
+            {isError && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Não foi possível carregar a equipe</AlertTitle>
+                    <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span>{error instanceof Error ? error.message : "Erro desconhecido"}</span>
+                        <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                            Tentar novamente
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-destructive/10">
-                <Shield className="h-4 w-4 text-destructive" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("admin")}</p>
-                <p className="text-xs text-muted-foreground">Admin</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-info/10">
-                <UserCog className="h-4 w-4 text-info" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("coordinator")}</p>
-                <p className="text-xs text-muted-foreground">Coordenadores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-secondary/10">
-                <FileText className="h-4 w-4 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("secretary")}</p>
-                <p className="text-xs text-muted-foreground">Secretaria</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-primary/10">
-                <GraduationCap className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("professor")}</p>
-                <p className="text-xs text-muted-foreground">Professores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-success/10">
-                <HeadphonesIcon className="h-4 w-4 text-success" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("tutor")}</p>
-                <p className="text-xs text-muted-foreground">Tutores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-warning/10">
-                <DollarSign className="h-4 w-4 text-warning" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("financial")}</p>
-                <p className="text-xs text-muted-foreground">Financeiro</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-muted">
-                <Megaphone className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{getCountByRole("commercial")}</p>
-                <p className="text-xs text-muted-foreground">Comercial</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            {isLoading && (
+                <Card className="mb-6">
+                    <CardContent className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        Carregando equipe do Supabase...
+                    </CardContent>
+                </Card>
+            )}
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+            <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7 mb-6">
+                {(Object.keys(roleConfig) as TeamRole[]).map((role) => {
+                    const Icon = roleConfig[role].icon
+                    return (
+                        <Card key={role}>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 rounded-lg bg-muted">
+                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xl font-bold">{countByRole[role]}</p>
+                                        <p className="text-xs text-muted-foreground">{roleConfig[role].label}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Função" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as funções</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="coordinator">Coordenador</SelectItem>
-                <SelectItem value="secretary">Secretaria</SelectItem>
-                <SelectItem value="professor">Professor</SelectItem>
-                <SelectItem value="tutor">Tutor</SelectItem>
-                <SelectItem value="financial">Financeiro</SelectItem>
-                <SelectItem value="commercial">Comercial</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="inactive">Inativo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Membro</TableHead>
-                <TableHead>Função</TableHead>
-                <TableHead>Departamento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Desde</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMembers.map((member) => {
-                const RoleIcon = roleConfig[member.role].icon
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={member.avatar} alt={member.name} />
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {member.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
+            <Card className="mb-6">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por nome ou e-mail..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10"
+                            />
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <RoleIcon className="h-4 w-4 text-muted-foreground" />
-                        <Badge variant={roleConfig[member.role].variant}>
-                          {roleConfig[member.role].label}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {member.department || (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusConfig[member.status].variant}>
-                        {statusConfig[member.status].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(member.createdAt), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewDetails(member)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditMember(member)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendEmail(member)}>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Enviar email
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDeleteMember(member)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remover
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                        <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as "all" | TeamRole)}>
+                            <SelectTrigger className="w-full md:w-[220px]">
+                                <SelectValue placeholder="Função" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas as funções</SelectItem>
+                                {(Object.keys(roleConfig) as TeamRole[]).map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                        {roleConfig[role].label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
 
-      {/* Dialogs */}
-      <TeamMemberDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        member={selectedMember}
-        onSave={handleSaveMember}
-      />
-
-      <TeamMemberDetailsDialog
-        open={isDetailsOpen}
-        onOpenChange={setIsDetailsOpen}
-        member={selectedMember}
-        onEdit={() => {
-          setIsDetailsOpen(false)
-          setIsDialogOpen(true)
-        }}
-        onDelete={() => {
-          setIsDetailsOpen(false)
-          setIsDeleteOpen(true)
-        }}
-      />
-
-      <DeleteConfirmDialog
-        open={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        title="Remover membro"
-        description={`Tem certeza que deseja remover ${selectedMember?.name}? Esta ação não pode ser desfeita.`}
-        onConfirm={handleConfirmDelete}
-      />
-    </AdminLayout>
-  )
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Membro</TableHead>
+                                <TableHead>Função</TableHead>
+                                <TableHead>Desde</TableHead>
+                                <TableHead>Última atualização</TableHead>
+                                <TableHead className="w-[56px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredMembers.length > 0 ? (
+                                filteredMembers.map((member) => {
+                                    const RoleIcon = roleConfig[member.role].icon
+                                    return (
+                                        <TableRow key={member.id}>
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                                                        {member.name
+                                                            .split(" ")
+                                                            .map((part) => part[0])
+                                                            .join("")
+                                                            .slice(0, 2)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{member.name}</p>
+                                                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <RoleIcon className="h-4 w-4 text-muted-foreground" />
+                                                    <Badge variant={roleConfig[member.role].badgeVariant}>
+                                                        {roleConfig[member.role].label}
+                                                    </Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {format(new Date(member.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                                            </TableCell>
+                                            <TableCell>
+                                                {format(new Date(member.updatedAt), "dd/MM/yyyy HH:mm", {
+                                                    locale: ptBR,
+                                                })}
+                                            </TableCell>
+                                            <TableCell>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon-sm">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => void handleCopyEmail(member.email)}>
+                                                            <Copy className="h-4 w-4 mr-2" />
+                                                            Copiar e-mail
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => (window.location.href = `mailto:${member.email}`)}>
+                                                            <Mail className="h-4 w-4 mr-2" />
+                                                            Enviar e-mail
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                                        Nenhum membro encontrado para os filtros atuais.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </AdminLayout>
+    )
 }
 
 export default TeamPage

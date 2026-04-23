@@ -9,5 +9,8 @@ export const queryKeys = {
     students: {
         list: ["students", "list"] as const,
     },
+    team: {
+        list: ["team", "list"] as const,
+    },
 } as const;
 
