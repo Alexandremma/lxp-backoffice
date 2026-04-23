@@ -27,7 +27,26 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { type TeamMember, type TeamRole } from "@/lib/mock-data"
+
+export type TeamRole =
+  | "admin"
+  | "coordinator"
+  | "secretary"
+  | "professor"
+  | "tutor"
+  | "financial"
+  | "commercial"
+
+export type TeamMemberDialogMember = {
+  id: string
+  name: string
+  email: string
+  role: TeamRole
+  status: "active" | "inactive"
+  department?: string
+  createdAt?: string
+  avatar?: string
+}
 
 const teamMemberSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
@@ -42,7 +61,7 @@ export type TeamMemberFormData = z.infer<typeof teamMemberSchema>
 interface TeamMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  member?: TeamMember | null
+  member?: TeamMemberDialogMember | null
   onSave: (data: TeamMemberFormData) => void
 }
 
