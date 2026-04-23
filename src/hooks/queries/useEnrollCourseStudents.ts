@@ -10,6 +10,7 @@ export function useEnrollCourseStudents(courseId?: string) {
         onSuccess: () => {
             if (!courseId) return
             queryClient.invalidateQueries({ queryKey: queryKeys.courses.students(courseId) })
+            queryClient.invalidateQueries({ queryKey: queryKeys.students.list })
         },
     })
 }

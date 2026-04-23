@@ -55,7 +55,7 @@ import {
   type DocumentRequest,
   type EnrollmentQueueItem,
 } from "@/lib/mock-data"
-import { formatDistanceToNow, format } from "date-fns"
+import { formatDistanceToNow, format, isValid } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { toast } from "sonner"
 
@@ -63,6 +63,8 @@ interface StudentDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   student: Student | null
+  /** Dados reais do Supabase: esconde abas demonstrativas (financeiro, documentos, etc.). */
+  dataMode?: boolean
 }
 
 const statusConfig = {
@@ -122,8 +124,10 @@ export function StudentDetailsDialog({
   open,
   onOpenChange,
   student,
+  dataMode = false,
 }: StudentDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState("profile")
+  const showExtendedTabs = !dataMode
 
   if (!student) return null
 
@@ -169,7 +173,7 @@ export function StudentDetailsDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className={showExtendedTabs ? "grid w-full grid-cols-6" : "grid w-full grid-cols-2"}>
             <TabsTrigger value="profile" className="gap-1 text-xs">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Perfil</span>
@@ -178,22 +182,26 @@ export function StudentDetailsDialog({
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Progresso</span>
             </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-1 text-xs">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Financeiro</span>
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-1 text-xs">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Documentos</span>
-            </TabsTrigger>
-            <TabsTrigger value="enrollment" className="gap-1 text-xs">
-              <GraduationCap className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrícula</span>
-            </TabsTrigger>
-            <TabsTrigger value="actions" className="gap-1 text-xs">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Histórico</span>
-            </TabsTrigger>
+            {showExtendedTabs && (
+              <>
+                <TabsTrigger value="financial" className="gap-1 text-xs">
+                  <CreditCard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Financeiro</span>
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="gap-1 text-xs">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Documentos</span>
+                </TabsTrigger>
+                <TabsTrigger value="enrollment" className="gap-1 text-xs">
+                  <GraduationCap className="h-4 w-4" />
+                  <span className="hidden sm:inline">Matrícula</span>
+                </TabsTrigger>
+                <TabsTrigger value="actions" className="gap-1 text-xs">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">Histórico</span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           {/* Profile Tab */}
@@ -215,14 +223,26 @@ export function StudentDetailsDialog({
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Telefone</p>
-                      <p className="font-medium">(11) 99999-9999</p>
+                      <p className="font-medium">
+                        {dataMode ? (
+                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
+                        ) : (
+                          "(11) 99999-9999"
+                        )}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Data de Nascimento</p>
-                      <p className="font-medium">15/03/1998</p>
+                      <p className="font-medium">
+                        {dataMode ? (
+                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
+                        ) : (
+                          "15/03/1998"
+                        )}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -262,10 +282,12 @@ export function StudentDetailsDialog({
                     <div>
                       <p className="text-sm text-muted-foreground">Último Acesso</p>
                       <p className="font-medium">
-                        {formatDistanceToNow(new Date(student.lastAccess), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
+                        {isValid(new Date(student.lastAccess))
+                          ? formatDistanceToNow(new Date(student.lastAccess), {
+                              addSuffix: true,
+                              locale: ptBR,
+                            })
+                          : "—"}
                       </p>
                     </div>
                   </div>
@@ -273,25 +295,27 @@ export function StudentDetailsDialog({
               </Card>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Ações Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm">
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar Email
-                </Button>
-                <Button variant="outline" size="sm">
-                  <KeyRound className="h-4 w-4 mr-2" />
-                  Resetar Senha
-                </Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                  <Ban className="h-4 w-4 mr-2" />
-                  Bloquear Aluno
-                </Button>
-              </CardContent>
-            </Card>
+            {!dataMode && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ações Rápidas</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm">
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar Email
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Resetar Senha
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                    <Ban className="h-4 w-4 mr-2" />
+                    Bloquear Aluno
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="progress" className="mt-4 space-y-4 min-h-[450px]">
@@ -335,6 +359,8 @@ export function StudentDetailsDialog({
             )}
           </TabsContent>
 
+          {showExtendedTabs && (
+            <>
           {/* Financial Tab */}
           <TabsContent value="financial" className="mt-4 space-y-4 min-h-[450px]">
             {financial ? (
@@ -672,6 +698,8 @@ export function StudentDetailsDialog({
               </CardContent>
             </Card>
           </TabsContent>
+            </>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>
