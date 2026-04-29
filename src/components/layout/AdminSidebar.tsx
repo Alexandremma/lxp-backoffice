@@ -13,9 +13,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Palette,
   Package,
-  LayoutGrid,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -41,8 +39,6 @@ const navigationItems: NavItem[] = [
   { title: "AI Tutor", url: "/admin/ai-tutor", icon: Bot },
   { title: "Certificados", url: "/admin/certificados", icon: Award },
   { title: "Geral", url: "/admin/configuracoes", icon: Settings },
-  { title: "Design System", url: "/kitchen-sink", icon: Palette },
-  { title: "Módulos", url: "/dev/modules", icon: LayoutGrid },
 ]
 
 interface AdminSidebarProps {

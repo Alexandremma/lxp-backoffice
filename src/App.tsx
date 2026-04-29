@@ -23,9 +23,6 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminCoursesV1 from "./pages/admin/AdminCoursesV1";
 import AdminEnrollmentsV1 from "./pages/admin/AdminEnrollmentsV1";
 import CoursesPage from "./pages/admin/CoursesPage";
-
-import KitchenSink from "./pages/KitchenSink";
-import DevModulesPage from "./pages/admin/DevModulesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -118,10 +115,6 @@ const App = () => (
                 path="/admin/configuracoes"
                 element={<ProtectedRoute element={<SettingsPage />} requiredRole="admin" />}
               />
-
-              {/* Dev (pode manter livre ou proteger; aqui mantenho livre para desenvolvedor) */}
-              <Route path="/kitchen-sink" element={<KitchenSink />} />
-              <Route path="/dev/modules" element={<DevModulesPage />} />
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
