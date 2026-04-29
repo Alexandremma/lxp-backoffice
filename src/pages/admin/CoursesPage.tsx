@@ -48,6 +48,8 @@ import { CourseDialog } from "@/components/admin/CourseDialog"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { useUpsertCourseAdmin } from "@/hooks/mutations/useUpsertCourseAdmin"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -65,6 +67,7 @@ const CoursesPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: coursesData, isLoading, error } = useGetCourses()
+  const upsertCourse = useUpsertCourseAdmin()
   const courses = useMemo(() => coursesData ?? [], [coursesData])
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
@@ -102,31 +105,26 @@ const CoursesPage = () => {
     setSubmitting(true)
     try {
       if (editingCourse) {
-        // Persistência gradual: por enquanto salvamos apenas campos existentes no schema da Semana 1.
-        const { error } = await supabase
-          .from("lxp_courses")
-          .update({
-            name: updated.name,
-            description: updated.description,
-            status: updated.status,
-          })
-          .eq("id", editingCourse.id)
-
-        if (error) throw error
-        toast.success("Curso atualizado com sucesso")
-      } else {
-        const { error } = await supabase.from("lxp_courses").insert({
+        await upsertCourse.mutateAsync({
+          mode: "update",
+          id: editingCourse.id,
           name: updated.name,
           description: updated.description,
           status: updated.status,
         })
-
-        if (error) throw error
+        toast.success("Curso atualizado com sucesso")
+      } else {
+        await upsertCourse.mutateAsync({
+          mode: "create",
+          name: updated.name,
+          description: updated.description,
+          status: updated.status,
+          periods: updated.periods,
+        })
         toast.success("Curso criado com sucesso")
       }
-      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
     } catch (e) {
-      toast.error("Erro ao salvar curso")
+      toast.error(getAdminErrorMessage("courses-save", e))
     } finally {
       setSubmitting(false)
     }

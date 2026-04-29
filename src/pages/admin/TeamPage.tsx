@@ -176,7 +176,7 @@ const TeamPage = () => {
                     email: values.email,
                     role: values.role as TeamRole,
                 })
-                toast.success("Membro adicionado na equipe.")
+                toast.success("Membro adicionado e convite enviado por e-mail.")
             }
             setDialogOpen(false)
             setEditingMember(null)
@@ -217,8 +217,8 @@ const TeamPage = () => {
             <Alert variant="info" className="mb-6">
                 <AlertTitle>Escopo atual desta sprint</AlertTitle>
                 <AlertDescription>
-                    Criação/edição atualizam somente <code>backoffice_team_members</code>. Não criam conta no
-                    Supabase Auth automaticamente (fluxo sensível fica para etapa dedicada).
+                    Ao criar membro, enviamos convite por e-mail e vinculamos o usuário ao{" "}
+                    <code>backoffice_team_members</code> automaticamente.
                 </AlertDescription>
             </Alert>
 

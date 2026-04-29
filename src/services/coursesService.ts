@@ -136,6 +136,56 @@ export async function getCourseDetailAdmin(courseId: string): Promise<Course | u
     return mapped
 }
 
+export type UpsertCourseAdminPayload = {
+    name: string
+    description: string
+    status: Course["status"]
+    periods: number
+}
+
+export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Promise<void> {
+    const normalizedPeriods = Math.max(1, Math.min(20, Math.trunc(payload.periods || 1)))
+
+    const { data: createdCourse, error: courseError } = await supabase
+        .from("lxp_courses")
+        .insert({
+            name: payload.name.trim(),
+            description: payload.description.trim(),
+            status: payload.status,
+        })
+        .select("id")
+        .single()
+
+    if (courseError) throw courseError
+
+    const courseId = (createdCourse as { id: string }).id
+    const periodsToInsert = Array.from({ length: normalizedPeriods }, (_, idx) => ({
+        course_id: courseId,
+        number: idx + 1,
+        name: `${idx + 1}º Período`,
+        status: idx === 0 && payload.status === "active" ? "current" : "upcoming",
+    }))
+
+    const { error: periodsError } = await supabase.from("lxp_course_periods").insert(periodsToInsert)
+    if (periodsError) throw periodsError
+}
+
+export async function updateCourseAdmin(
+    courseId: string,
+    payload: Pick<UpsertCourseAdminPayload, "name" | "description" | "status">,
+): Promise<void> {
+    const { error } = await supabase
+        .from("lxp_courses")
+        .update({
+            name: payload.name.trim(),
+            description: payload.description.trim(),
+            status: payload.status,
+            updated_at: new Date().toISOString(),
+        })
+        .eq("id", courseId)
+    if (error) throw error
+}
+
 export async function getCourseStudentsAdmin(courseId: string, courseName: string): Promise<{
     enrolledStudents: CourseStudentRow[]
     allStudents: StudentOption[]
