@@ -12,13 +12,16 @@ import {
 } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type { Student } from "@/lib/mock-data"
+import type { StudentAdmin } from "@/types/studentAdmin"
 
 const profileSchema = z.object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
     email: z.string().email("E-mail inválido"),
+    status: z.enum(["active", "inactive", "blocked"] as const),
+    phone: z.string().max(30, "Telefone muito longo").optional(),
+    birthDate: z.string().optional(),
 })
 
 export type StudentProfileEditFormValues = z.infer<typeof profileSchema>
@@ -26,7 +29,7 @@ export type StudentProfileEditFormValues = z.infer<typeof profileSchema>
 type StudentProfileEditDialogProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
-    student: Student
+    student: StudentAdmin
     onSubmit: (values: StudentProfileEditFormValues) => void
     isSubmitting?: boolean
 }
@@ -40,7 +43,7 @@ export function StudentProfileEditDialog({
 }: StudentProfileEditDialogProps) {
     const form = useForm<StudentProfileEditFormValues>({
         resolver: zodResolver(profileSchema),
-        defaultValues: { name: "", email: "" },
+        defaultValues: { name: "", email: "", status: "active", phone: "", birthDate: "" },
     })
 
     useEffect(() => {
@@ -48,6 +51,9 @@ export function StudentProfileEditDialog({
             form.reset({
                 name: student.name,
                 email: student.email,
+                status: student.status,
+                phone: student.phone ?? "",
+                birthDate: student.birthDate ?? "",
             })
         }
     }, [student, open, form])
@@ -57,20 +63,8 @@ export function StudentProfileEditDialog({
             <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
                     <DialogTitle>Editar dados do aluno</DialogTitle>
-                    <DialogDescription>
-                        Nome e e-mail exibidos no LXP. Matrículas em cursos continuam em{" "}
-                        <span className="font-medium">Admin → Cursos → Alunos</span>.
-                    </DialogDescription>
+                    <DialogDescription>Atualize nome, status e dados cadastrais do aluno.</DialogDescription>
                 </DialogHeader>
-
-                <Alert variant="info" className="border-info/50 bg-info-muted/50">
-                    <AlertTitle className="text-sm">E-mail e login</AlertTitle>
-                    <AlertDescription className="text-xs">
-                        Esta alteração atualiza o cadastro em <code className="text-xs">lxp_profiles</code>. O e-mail de
-                        acesso no Supabase Auth pode continuar diferente até existir sincronização automática (decisão de
-                        produto).
-                    </AlertDescription>
-                </Alert>
 
                 <Form {...form}>
                     <form
@@ -97,8 +91,59 @@ export function StudentProfileEditDialog({
                                 <FormItem>
                                     <FormLabel>E-mail</FormLabel>
                                     <FormControl>
-                                        <Input type="email" placeholder="email@exemplo.com" {...field} />
+                                        <Input type="email" placeholder="email@exemplo.com" {...field} disabled />
                                     </FormControl>
+                                    <p className="text-xs text-muted-foreground">Campo somente leitura.</p>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Telefone</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="(99) 99999-9999" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="birthDate"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Data de nascimento</FormLabel>
+                                        <FormControl>
+                                            <Input type="date" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Status</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione o status" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="active">Ativo</SelectItem>
+                                            <SelectItem value="inactive">Inativo</SelectItem>
+                                            <SelectItem value="blocked">Bloqueado</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
                             )}

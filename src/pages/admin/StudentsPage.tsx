@@ -54,7 +54,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react"
-import { type Student } from "@/lib/mock-data"
+import type { StudentAdmin as Student } from "@/types/studentAdmin"
 import type { CourseStudentRow } from "@/services/coursesService"
 import { useGetStudentsAdmin } from "@/hooks/queries/useGetStudentsAdmin"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
@@ -69,9 +69,13 @@ import {
 } from "@/components/admin/StudentProfileEditDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useUpdateStudentProfile } from "@/hooks/mutations/useUpdateStudentProfile"
+import { useCreateStudentAdmin } from "@/hooks/mutations/useCreateStudentAdmin"
+import { useDeleteStudentAdmin } from "@/hooks/mutations/useDeleteStudentAdmin"
+import { useSetStudentAccessAdmin } from "@/hooks/mutations/useSetStudentAccessAdmin"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import { supabase } from "@/lib/supabaseClient"
 
 function courseRowToStudent(row: CourseStudentRow): Student {
   return {
@@ -106,6 +110,9 @@ const StudentsPage = () => {
   } = useGetStudentsAdmin()
   const { data: coursesList } = useGetCourses()
   const updateStudentProfile = useUpdateStudentProfile()
+  const createStudent = useCreateStudentAdmin()
+  const deleteStudent = useDeleteStudentAdmin()
+  const setStudentAccess = useSetStudentAccessAdmin()
 
   const students = useMemo(
     () => (studentsRaw ?? []).map(courseRowToStudent),
@@ -234,11 +241,20 @@ const StudentsPage = () => {
     setDetailsOpen(true)
   }
 
-  const handleSaveStudent = (_data: StudentFormData) => {
-    toast.info(
-      "Cadastro de novo aluno pelo painel exige fluxo com Supabase Auth Admin. Matrículas: Admin → Cursos → Alunos.",
-    )
-    setDialogOpen(false)
+  const handleSaveStudent = async (data: StudentFormData) => {
+    try {
+      await createStudent.mutateAsync({
+        name: data.name,
+        email: data.email,
+        courseIds: data.courseIds,
+        status: data.status,
+        redirectTo: `${window.location.origin}/admin/login`,
+      })
+      toast.success("Aluno criado com convite enviado por e-mail.")
+      setDialogOpen(false)
+    } catch (err: unknown) {
+      toast.error(getAdminErrorMessage("students-create", err))
+    }
   }
 
   const handleEditStudent = (student: Student, e: React.MouseEvent) => {
@@ -258,7 +274,13 @@ const StudentsPage = () => {
       await updateStudentProfile.mutateAsync({
         profileId: profileEditStudent.id,
         name: values.name,
-        email: values.email,
+        email: profileEditStudent.email,
+        phone: values.phone,
+        birthDate: values.birthDate,
+      })
+      await setStudentAccess.mutateAsync({
+        profileId: profileEditStudent.id,
+        status: values.status,
       })
       toast.success("Dados do aluno atualizados.")
       handleProfileEditOpenChange(false)
@@ -273,15 +295,45 @@ const StudentsPage = () => {
     setDeleteDialogOpen(true)
   }
 
-  const handleConfirmDelete = () => {
-    toast.info("Exclusão de usuário requer operação no Supabase Auth / política definida.")
-    setDeletingStudent(null)
-    setDeleteDialogOpen(false)
+  const handleConfirmDelete = async () => {
+    if (!deletingStudent) return
+    try {
+      await deleteStudent.mutateAsync(deletingStudent.id)
+      toast.success("Aluno excluído com sucesso.")
+      setDeletingStudent(null)
+      setDeleteDialogOpen(false)
+    } catch (err: unknown) {
+      toast.error(getAdminErrorMessage("students-delete", err))
+    }
   }
 
-  const handleToggleBlock = (e: React.MouseEvent) => {
+  const handleToggleBlock = async (student: Student, e: React.MouseEvent) => {
     e.stopPropagation()
-    toast.info("Bloqueio de acesso será integrado ao Auth em versão futura.")
+    try {
+      await setStudentAccess.mutateAsync({
+        profileId: student.id,
+        status: student.status === "blocked" ? "active" : "blocked",
+      })
+      toast.success(student.status === "blocked" ? "Acesso do aluno desbloqueado." : "Acesso do aluno bloqueado.")
+    } catch (err: unknown) {
+      toast.error(getAdminErrorMessage("students-access", err))
+    }
+  }
+
+  const handleSendEmail = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.location.href = `mailto:${student.email}`
+  }
+
+  const handleResetPassword = async (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const redirectTo = `${window.location.origin}/admin/login`
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(student.email, { redirectTo })
+    if (resetErr) {
+      toast.error("Não foi possível enviar o e-mail de redefinição de senha.")
+      return
+    }
+    toast.success("E-mail de redefinição de senha enviado.")
   }
 
   const handleDialogClose = (open: boolean) => {
@@ -299,7 +351,7 @@ const StudentsPage = () => {
             <Upload className="h-4 w-4 mr-2" />
             Importar CSV
           </Button>
-          <Button onClick={() => setDialogOpen(true)} disabled title="Use matrícula em Cursos ou fluxo Auth (em breve)">
+          <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Aluno
           </Button>
@@ -560,16 +612,16 @@ const StudentsPage = () => {
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar dados
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleSendEmail(student, e)}>
                             <Mail className="h-4 w-4 mr-2" />
                             Enviar email
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => void handleResetPassword(student, e)}>
                             <KeyRound className="h-4 w-4 mr-2" />
                             Resetar senha
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => handleToggleBlock(e)}>
+                          <DropdownMenuItem onClick={(e) => void handleToggleBlock(student, e)}>
                             {student.status === "blocked" ? (
                               <>
                                 <Unlock className="h-4 w-4 mr-2" />
@@ -680,7 +732,18 @@ const StudentsPage = () => {
       />
 
       {/* Novo aluno (UI reservada — botão desabilitado até Auth Admin) */}
-      <StudentDialog open={dialogOpen} onOpenChange={handleDialogClose} student={null} onSave={handleSaveStudent} />
+      <StudentDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        student={null}
+        courses={(coursesList ?? []).map((course) => ({
+          id: course.id,
+          name: course.name,
+          category: course.category,
+        }))}
+        onSave={handleSaveStudent}
+        isSubmitting={createStudent.isPending}
+      />
 
       {profileEditStudent && (
         <StudentProfileEditDialog

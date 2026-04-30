@@ -94,12 +94,14 @@ export async function createTeamMemberAdmin(params: {
     name: string
     email: string
     role: TeamMemberAdminRow["role"]
+    redirectTo?: string
 }): Promise<TeamInviteResult> {
     const { data, error } = await supabase.functions.invoke<InviteFunctionResponse>("invite-team-member", {
         body: {
             name: params.name,
             email: params.email,
             role: params.role,
+            redirect_to: params.redirectTo,
         },
     })
 

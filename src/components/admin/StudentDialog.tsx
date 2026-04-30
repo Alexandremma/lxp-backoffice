@@ -31,8 +31,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { type Student, mockCourses } from "@/lib/mock-data"
-import { ChevronDown, X } from "lucide-react"
+import type { StudentAdmin } from "@/types/studentAdmin"
+import { ChevronDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const studentSchema = z.object({
@@ -48,8 +48,10 @@ export type StudentFormData = z.infer<typeof studentSchema>
 interface StudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  student?: Student | null
-  onSave: (data: StudentFormData) => void
+  student?: StudentAdmin | null
+  courses: { id: string; name: string; category?: string }[]
+  onSave: (data: StudentFormData) => Promise<void> | void
+  isSubmitting?: boolean
 }
 
 const statusOptions = [
@@ -62,7 +64,9 @@ export function StudentDialog({
   open,
   onOpenChange,
   student,
+  courses,
   onSave,
+  isSubmitting = false,
 }: StudentDialogProps) {
   const isEditing = !!student
   const [coursesOpen, setCoursesOpen] = useState(false)
@@ -98,13 +102,12 @@ export function StudentDialog({
     }
   }, [student, form])
 
-  const handleSubmit = (data: StudentFormData) => {
-    onSave(data)
-    form.reset()
+  const handleSubmit = async (data: StudentFormData) => {
+    await onSave(data)
   }
 
   const selectedCourseIds = form.watch("courseIds")
-  const selectedCourses = mockCourses.filter(c => selectedCourseIds.includes(c.id))
+  const selectedCourses = courses.filter((c) => selectedCourseIds.includes(c.id))
 
   const toggleCourse = (courseId: string) => {
     const current = form.getValues("courseIds")
@@ -144,7 +147,7 @@ export function StudentDialog({
                 <FormItem>
                   <FormLabel>Nome completo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome do aluno" {...field} />
+                      <Input placeholder="Nome do aluno" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -158,10 +161,11 @@ export function StudentDialog({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
+                      <Input
                       type="email"
                       placeholder="email@exemplo.com"
                       {...field}
+                        disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormMessage />
@@ -186,6 +190,7 @@ export function StudentDialog({
                             "w-full justify-between h-auto min-h-10",
                             selectedCourseIds.length === 0 && "text-muted-foreground"
                           )}
+                          disabled={isSubmitting}
                         >
                           <div className="flex flex-wrap gap-1">
                             {selectedCourses.length > 0 ? (
@@ -218,7 +223,7 @@ export function StudentDialog({
                     <PopoverContent className="w-[400px] p-0" align="start">
                       <ScrollArea className="h-[200px] p-4">
                         <div className="space-y-2">
-                          {mockCourses.map((course) => (
+                          {courses.map((course) => (
                             <div
                               key={course.id}
                               className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted cursor-pointer"
@@ -230,10 +235,15 @@ export function StudentDialog({
                               />
                               <div className="flex-1">
                                 <p className="text-sm font-medium">{course.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {course.category === "graduation" ? "Graduação" : 
-                                   course.category === "postgraduate" ? "Pós-Graduação" : "Extensão"}
-                                </p>
+                                  {course.category && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {course.category === "graduation"
+                                      ? "Graduação"
+                                      : course.category === "postgraduate"
+                                        ? "Pós-Graduação"
+                                        : "Extensão"}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -258,7 +268,7 @@ export function StudentDialog({
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger disabled={isSubmitting}>
                           <SelectValue placeholder="Selecione o status" />
                         </SelectTrigger>
                       </FormControl>
@@ -282,7 +292,7 @@ export function StudentDialog({
                   <FormItem>
                     <FormLabel>Telefone (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="(99) 99999-9999" {...field} />
+                      <Input placeholder="(99) 99999-9999" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -295,11 +305,17 @@ export function StudentDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {isEditing ? "Salvar alterações" : "Cadastrar Aluno"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSubmitting
+                  ? "Salvando..."
+                  : isEditing
+                    ? "Salvar alterações"
+                    : "Cadastrar Aluno"}
               </Button>
             </DialogFooter>
           </form>

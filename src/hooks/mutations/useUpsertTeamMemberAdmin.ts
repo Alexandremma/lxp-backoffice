@@ -12,6 +12,7 @@ type UpsertPayload =
           name: string
           email: string
           role: TeamMemberAdminRow["role"]
+          redirectTo?: string
       }
     | {
           mode: "update"

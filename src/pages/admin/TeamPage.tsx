@@ -175,6 +175,7 @@ const TeamPage = () => {
                     name: values.name,
                     email: values.email,
                     role: values.role as TeamRole,
+                    redirectTo: `${window.location.origin}/admin/login`,
                 })
                 toast.success("Membro adicionado e convite enviado por e-mail.")
             }

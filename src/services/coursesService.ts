@@ -275,12 +275,19 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
 const ENROLLMENT_STATUS_MAP: Record<string, CourseEnrollment["status"]> = {
     active: "active",
     inactive: "inactive",
+    blocked: "inactive",
     completed: "completed",
     cancelled: "cancelled",
 }
 
 function normalizeEnrollmentStatus(raw: string): CourseEnrollment["status"] {
     return ENROLLMENT_STATUS_MAP[raw] ?? "active"
+}
+
+function deriveStudentStatus(rawStatuses: string[]): "active" | "inactive" | "blocked" {
+    if (rawStatuses.some((status) => status === "blocked")) return "blocked"
+    if (rawStatuses.some((status) => status === "inactive")) return "inactive"
+    return "active"
 }
 
 /**
@@ -290,7 +297,7 @@ function normalizeEnrollmentStatus(raw: string): CourseEnrollment["status"] {
 export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
     const { data: profiles, error: profilesError } = await supabase
         .from("lxp_profiles")
-        .select("id,name,email,created_at,updated_at")
+        .select("id,name,email,phone,birth_date,created_at,updated_at")
         .eq("role", "student")
         .order("created_at", { ascending: false })
 
@@ -381,6 +388,7 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
     }
 
     const enrByStudent = new Map<string, CourseEnrollment[]>()
+    const rawStatusByStudent = new Map<string, string[]>()
     for (const e of enrollmentsRaw ?? []) {
         const row = e as {
             student_profile_id: string
@@ -398,20 +406,33 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
         }
         if (!enrByStudent.has(row.student_profile_id)) enrByStudent.set(row.student_profile_id, [])
         enrByStudent.get(row.student_profile_id)!.push(enrollment)
+        if (!rawStatusByStudent.has(row.student_profile_id)) rawStatusByStudent.set(row.student_profile_id, [])
+        rawStatusByStudent.get(row.student_profile_id)!.push(row.status)
     }
 
-    return (profiles ?? []).map(
-        (p: { id: string; name: string | null; email: string | null; created_at: string; updated_at: string }) => ({
+    return (profiles ?? []).map((p: {
+        id: string
+        name: string | null
+        email: string | null
+        phone: string | null
+        birth_date: string | null
+        created_at: string
+        updated_at: string
+    }) => {
+        const enrollments = enrByStudent.get(p.id) ?? []
+        return {
             id: p.id,
             name: p.name ?? p.email ?? p.id,
             email: p.email ?? "",
             avatar: "/placeholder.svg",
-            status: "active" as const,
+            status: deriveStudentStatus(rawStatusByStudent.get(p.id) ?? []),
             lastAccess: p.updated_at,
             createdAt: p.created_at,
-            enrollments: enrByStudent.get(p.id) ?? [],
-        }),
-    )
+            phone: p.phone,
+            birthDate: p.birth_date,
+            enrollments,
+        }
+    })
 }
 
 export async function enrollStudentsAdmin(courseId: string, studentIds: string[]): Promise<void> {

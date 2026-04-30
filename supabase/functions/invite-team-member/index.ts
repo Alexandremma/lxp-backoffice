@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
     const rawName = typeof body.name === "string" ? body.name.trim() : ""
     const rawEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const rawRole = typeof body.role === "string" ? body.role.trim() : ""
+    const redirectTo = typeof body.redirect_to === "string" ? body.redirect_to.trim() : ""
 
     if (!rawName || !rawEmail || !allowedRoles.has(rawRole)) {
       return jsonResponse(400, {
@@ -115,6 +116,7 @@ Deno.serve(async (req) => {
         full_name: rawName,
         role: "admin",
       },
+      ...(redirectTo ? { redirectTo } : {}),
     })
 
     if (inviteError || !invited.user) {
