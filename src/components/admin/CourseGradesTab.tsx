@@ -40,6 +40,7 @@ import { useDeleteCoursePeriod } from "@/hooks/queries/useDeleteCoursePeriod"
 import { useCreateCourseDiscipline } from "@/hooks/queries/useCreateCourseDiscipline"
 import { useUpdateCourseDiscipline } from "@/hooks/queries/useUpdateCourseDiscipline"
 import { useDeleteCourseDiscipline } from "@/hooks/queries/useDeleteCourseDiscipline"
+import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
 
 interface CourseGradesTabProps {
   courseId: string
@@ -80,6 +81,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
   const createDisciplineMutation = useCreateCourseDiscipline(courseId)
   const updateDisciplineMutation = useUpdateCourseDiscipline(courseId)
   const deleteDisciplineMutation = useDeleteCourseDiscipline(courseId)
+  const linkContentMutation = useLinkCourseContent(courseId)
 
   useEffect(() => {
     if (!error) return
@@ -188,6 +190,17 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
     setLinkDialogOpen(true)
   }
 
+  const getLinkErrorMessage = (err: unknown): string => {
+    if (err && typeof err === "object" && "code" in err) {
+      const code = String((err as { code?: string }).code ?? "")
+      if (code === "23505") {
+        return "Já existe vínculo para esta disciplina. Atualize a página e tente substituir novamente."
+      }
+    }
+    if (err instanceof Error) return err.message
+    return "Erro ao vincular disciplina externa."
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -225,43 +238,51 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                 value={grade.id}
                 className="border rounded-lg bg-card"
               >
-                <AccordionTrigger className="px-6 hover:no-underline">
-                  <div className="flex items-center gap-4 w-full">
-                    <div className="flex items-center gap-3">
-                      <StatusIcon className={`h-5 w-5 ${grade.status === "current" ? "text-info" :
-                        grade.status === "completed" ? "text-success" : "text-muted-foreground"
-                        }`} />
-                      <span className="font-semibold">{grade.name}</span>
+                <div className="relative">
+                  <AccordionTrigger className="px-6 pr-24 hover:no-underline">
+                    <div className="flex items-center gap-4 w-full">
+                      <div className="flex items-center gap-3">
+                        <StatusIcon className={`h-5 w-5 ${grade.status === "current" ? "text-info" :
+                          grade.status === "completed" ? "text-success" : "text-muted-foreground"
+                          }`} />
+                        <span className="font-semibold">{grade.name}</span>
+                      </div>
+                      <Badge variant={gradeStatusConfig[grade.status].variant}>
+                        {gradeStatusConfig[grade.status].label}
+                      </Badge>
+                      <div className="flex items-center gap-4 ml-auto mr-4 text-sm text-muted-foreground">
+                        <span>{grade.disciplines.length} disciplinas</span>
+                        <span className="text-success">{linkedCount} vinculadas</span>
+                      </div>
                     </div>
-                    <Badge variant={gradeStatusConfig[grade.status].variant}>
-                      {gradeStatusConfig[grade.status].label}
-                    </Badge>
-                    <div className="flex items-center gap-4 ml-auto mr-4 text-sm text-muted-foreground">
-                      <span>{grade.disciplines.length} disciplinas</span>
-                      <span className="text-success">{linkedCount} vinculadas</span>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon-sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditGrade(grade); }}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar Grade
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteGrade(grade); }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir Grade
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </AccordionTrigger>
+                  </AccordionTrigger>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute right-14 top-1/2 -translate-y-1/2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditGrade(grade)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar Grade
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDeleteGrade(grade)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir Grade
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <AccordionContent className="px-6 pb-6">
                   <div className="space-y-3">
                     {grade.disciplines.map((discipline) => (
@@ -304,7 +325,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                                   onClick={() => handleLinkLibrary(discipline)}
                                 >
                                   <Link2 className="h-4 w-4 mr-2" />
-                                  Vincular Trilha
+                                  Vincular Disciplina
                                 </Button>
                               )}
 
@@ -317,7 +338,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => handleLinkLibrary(discipline)}>
                                     <Link2 className="h-4 w-4 mr-2" />
-                                    {discipline.linkedTrailId ? "Alterar Trilha" : "Vincular Trilha"}
+                                    {discipline.linkedTrailId ? "Substituir vínculo" : "Vincular Disciplina"}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleEditDiscipline(discipline, grade.id)}>
                                     <Edit className="h-4 w-4 mr-2" />
@@ -388,9 +409,20 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
         discipline={linkDiscipline}
-        onConfirm={(selectedContent) => {
-          console.log("Linking:", linkDiscipline?.id, "to", selectedContent.id)
-          setLinkDialogOpen(false)
+        onConfirm={async (selectedContent) => {
+          if (!linkDiscipline) return
+          try {
+            await linkContentMutation.mutateAsync({
+              disciplineId: linkDiscipline.id,
+              libraryContentType: "discipline",
+              libraryContentId: selectedContent.id,
+              libraryContentName: selectedContent.name,
+            })
+            toast.success("Disciplina externa vinculada com sucesso.")
+            setLinkDialogOpen(false)
+          } catch (e) {
+            toast.error(getLinkErrorMessage(e))
+          }
         }}
       />
 

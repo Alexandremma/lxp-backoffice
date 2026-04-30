@@ -21,14 +21,18 @@ import {
   ExternalLink,
   Tag,
 } from "lucide-react"
-import { type Discipline } from "@/lib/mock-data"
 import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
 import type { LibraryItem } from "@/services/libraryAdapter"
+
+type LinkableDiscipline = {
+  id: string
+  name: string
+}
 
 interface LibraryLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  discipline?: Discipline | null
+  discipline?: LinkableDiscipline | null
   onConfirm: (selectedContent: LibraryItem) => void
 }
 
@@ -65,14 +69,19 @@ export function LibraryLinkDialog({
     onOpenChange(false)
   }
 
+  const handlePreview = () => {
+    if (!selectedContent?.externalUrl) return
+    window.open(selectedContent.externalUrl, "_blank", "noopener,noreferrer")
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Vincular Conteúdo da Biblioteca</DialogTitle>
+          <DialogTitle>Vincular Disciplina Externa</DialogTitle>
           <DialogDescription>
             {discipline
-              ? `Selecione uma disciplina externa para vincular à disciplina "${discipline.name}"`
+              ? `Selecione uma disciplina externa para vincular à disciplina "${discipline.name}". Se já existir vínculo, ele será substituído.`
               : "Busque e selecione conteúdo da biblioteca externa para vincular ao curso"}
           </DialogDescription>
         </DialogHeader>
@@ -191,7 +200,7 @@ export function LibraryLinkDialog({
                       </p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" onClick={handlePreview} disabled={!selectedContent.externalUrl}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Preview
                   </Button>
@@ -206,7 +215,7 @@ export function LibraryLinkDialog({
             Cancelar
           </Button>
           <Button onClick={handleConfirm} disabled={!selectedContent}>
-            Vincular Conteúdo
+            Vincular Disciplina
           </Button>
         </DialogFooter>
       </DialogContent>

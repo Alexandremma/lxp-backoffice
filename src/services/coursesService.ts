@@ -1,11 +1,15 @@
 import { supabase } from "@/lib/supabaseClient"
-import type { Course } from "@/lib/mock-data"
+import type { CourseAdmin, CourseStatus } from "@/types/courseAdmin"
+import { getLibraryDisciplineUrl } from "@/services/libraryAdapter"
 
 type CourseDbRow = {
     id: string
     name: string
     description: string | null
     status: string
+    category: string | null
+    periods: number | null
+    external_library_id: string | null
     created_at: string
 }
 
@@ -65,82 +69,166 @@ export type CourseLinkedContentAdmin = {
     courseId: string
     libraryContentId: string
     libraryContentName: string
-    type: "discipline" | "trail" | "module"
+    externalUrl?: string
+    type: "discipline"
     linkedAt: string
     linkedBy: string
     disciplineId?: string
     disciplineName?: string
 }
 
-export async function getCoursesAdmin(): Promise<Course[]> {
-    const { data: coursesData, error: coursesError } = await supabase
-        .from("lxp_courses")
-        .select("id,name,description,status,created_at")
-        .order("created_at", { ascending: false })
+export type CourseRecentActivityItem = {
+    id: string
+    action: string
+    actor: string
+    happenedAt: string
+}
 
-    if (coursesError) throw coursesError
+export async function getCoursesAdmin(): Promise<CourseAdmin[]> {
+    const [coursesResult, enrollmentsResult, periodsResult] = await Promise.all([
+        supabase
+            .from("lxp_courses")
+            .select("id,name,description,status,category,periods,external_library_id,created_at")
+            .order("created_at", { ascending: false }),
+        supabase.from("lxp_enrollments").select("course_id"),
+        supabase.from("lxp_course_periods").select("course_id"),
+    ])
 
-    // Semana 1: Total de alunos por curso (por enquanto via lxp_enrollments)
-    const { data: enrollmentsData, error: enrollmentsError } = await supabase
-        .from("lxp_enrollments")
-        .select("course_id")
+    if (coursesResult.error) throw coursesResult.error
+    if (enrollmentsResult.error) throw enrollmentsResult.error
+    if (periodsResult.error) throw periodsResult.error
 
-    if (enrollmentsError) throw enrollmentsError
+    const coursesData = coursesResult.data
+    const enrollmentsData = enrollmentsResult.data
+    const periodsData = periodsResult.data
 
     const countsByCourseId = new Map<string, number>()
     ;(enrollmentsData ?? []).forEach((e: { course_id: string }) => {
         countsByCourseId.set(e.course_id, (countsByCourseId.get(e.course_id) ?? 0) + 1)
     })
 
-    const mapped: Course[] = (coursesData ?? []).map((c) => {
+    const periodsByCourseId = new Map<string, number>()
+    ;(periodsData ?? []).forEach((p: { course_id: string }) => {
+        periodsByCourseId.set(p.course_id, (periodsByCourseId.get(p.course_id) ?? 0) + 1)
+    })
+
+    const mapped: CourseAdmin[] = (coursesData ?? []).map((c) => {
         const row = c as CourseDbRow
         return {
             id: row.id,
             name: row.name,
             description: row.description ?? "",
-            category: "graduation",
-            status: (row.status as Course["status"]) ?? "draft",
-            periods: 8,
+            category: (row.category as CourseAdmin["category"]) ?? "graduation",
+            status: (row.status as CourseStatus) ?? "draft",
+            periods: periodsByCourseId.get(row.id) ?? row.periods ?? 0,
             totalStudents: countsByCourseId.get(row.id) ?? 0,
             createdAt: row.created_at,
-            externalLibraryId: undefined,
+            externalLibraryId: row.external_library_id ?? undefined,
         }
     })
 
     return mapped
 }
 
-export async function getCourseDetailAdmin(courseId: string): Promise<Course | undefined> {
-    const { data, error } = await supabase
-        .from("lxp_courses")
-        .select("id,name,description,status,created_at")
-        .eq("id", courseId)
-        .maybeSingle()
+export async function getCourseDetailAdmin(courseId: string): Promise<CourseAdmin | undefined> {
+    const [courseResult, enrollmentsResult, periodsResult] = await Promise.all([
+        supabase
+            .from("lxp_courses")
+            .select("id,name,description,status,category,periods,external_library_id,created_at")
+            .eq("id", courseId)
+            .maybeSingle(),
+        supabase.from("lxp_enrollments").select("student_profile_id").eq("course_id", courseId),
+        supabase.from("lxp_course_periods").select("id").eq("course_id", courseId),
+    ])
 
-    if (error) throw error
-    if (!data) return undefined
+    if (courseResult.error) throw courseResult.error
+    if (enrollmentsResult.error) throw enrollmentsResult.error
+    if (periodsResult.error) throw periodsResult.error
+    if (!courseResult.data) return undefined
 
-    const row = data as CourseDbRow
-    const mapped: Course = {
+    const row = courseResult.data as CourseDbRow
+    const mapped: CourseAdmin = {
         id: row.id,
         name: row.name,
         description: row.description ?? "",
-        category: "graduation",
-        status: (row.status as Course["status"]) ?? "draft",
-        periods: 8,
-        totalStudents: 0,
+        category: (row.category as CourseAdmin["category"]) ?? "graduation",
+        status: (row.status as CourseStatus) ?? "draft",
+        periods: (periodsResult.data ?? []).length || row.periods || 0,
+        totalStudents: new Set((enrollmentsResult.data ?? []).map((e: { student_profile_id: string }) => e.student_profile_id)).size,
         createdAt: row.created_at,
-        externalLibraryId: undefined,
+        externalLibraryId: row.external_library_id ?? undefined,
     }
 
     return mapped
 }
 
+export async function getCourseRecentActivityAdmin(courseId: string): Promise<CourseRecentActivityItem[]> {
+    const [enrollmentsResult, linksResult, periodsResult] = await Promise.all([
+        supabase
+            .from("lxp_enrollments")
+            .select("student_profile_id,created_at,lxp_profiles(name)")
+            .eq("course_id", courseId)
+            .order("created_at", { ascending: false })
+            .limit(5),
+        supabase
+            .from("lxp_course_library_links")
+            .select(
+                "id,library_content_name,linked_at,lxp_course_disciplines!inner(id,lxp_course_periods!inner(course_id))",
+            )
+            .eq("lxp_course_disciplines.lxp_course_periods.course_id", courseId)
+            .order("linked_at", { ascending: false })
+            .limit(5),
+        supabase
+            .from("lxp_course_periods")
+            .select("id,name,created_at")
+            .eq("course_id", courseId)
+            .order("created_at", { ascending: false })
+            .limit(3),
+    ])
+
+    if (enrollmentsResult.error) throw enrollmentsResult.error
+    if (linksResult.error) throw linksResult.error
+    if (periodsResult.error) throw periodsResult.error
+
+    const enrollmentEvents: CourseRecentActivityItem[] = (enrollmentsResult.data ?? []).map(
+        (row: { student_profile_id: string; created_at: string; lxp_profiles: Array<{ name: string | null }> | null }) => ({
+            id: `enrollment-${row.student_profile_id}-${row.created_at}`,
+            action: "Novo aluno matriculado",
+            actor: row.lxp_profiles?.[0]?.name ?? "Aluno",
+            happenedAt: row.created_at,
+        }),
+    )
+
+    const linkEvents: CourseRecentActivityItem[] = (linksResult.data ?? []).map(
+        (row: { id: string; library_content_name: string | null; linked_at: string }) => ({
+            id: `link-${row.id}`,
+            action: `Conteúdo vinculado: ${row.library_content_name ?? "Conteúdo externo"}`,
+            actor: "Admin",
+            happenedAt: row.linked_at,
+        }),
+    )
+
+    const periodEvents: CourseRecentActivityItem[] = (periodsResult.data ?? []).map(
+        (row: { id: string; name: string; created_at: string }) => ({
+            id: `period-${row.id}`,
+            action: `Período criado: ${row.name}`,
+            actor: "Admin",
+            happenedAt: row.created_at,
+        }),
+    )
+
+    return [...enrollmentEvents, ...linkEvents, ...periodEvents]
+        .sort((a, b) => new Date(b.happenedAt).getTime() - new Date(a.happenedAt).getTime())
+        .slice(0, 8)
+}
+
 export type UpsertCourseAdminPayload = {
     name: string
     description: string
-    status: Course["status"]
+    category: CourseAdmin["category"]
+    status: CourseStatus
     periods: number
+    externalLibraryId?: string
 }
 
 export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Promise<void> {
@@ -151,7 +239,10 @@ export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Prom
         .insert({
             name: payload.name.trim(),
             description: payload.description.trim(),
+            category: payload.category,
             status: payload.status,
+            periods: normalizedPeriods,
+            external_library_id: payload.externalLibraryId?.trim() || null,
         })
         .select("id")
         .single()
@@ -172,14 +263,16 @@ export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Prom
 
 export async function updateCourseAdmin(
     courseId: string,
-    payload: Pick<UpsertCourseAdminPayload, "name" | "description" | "status">,
+    payload: Pick<UpsertCourseAdminPayload, "name" | "description" | "category" | "status" | "externalLibraryId">,
 ): Promise<void> {
     const { error } = await supabase
         .from("lxp_courses")
         .update({
             name: payload.name.trim(),
             description: payload.description.trim(),
+            category: payload.category,
             status: payload.status,
+            external_library_id: payload.externalLibraryId?.trim() || null,
             updated_at: new Date().toISOString(),
         })
         .eq("id", courseId)
@@ -203,11 +296,11 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
     )
 
     // 2) Buscar perfis (alunos) matriculados
-    let enrolledProfiles: Array<{ id: string; name: string | null; email: string | null }> = []
+    let enrolledProfiles: Array<{ id: string; name: string | null; email: string | null; updated_at: string | null }> = []
     if (enrolledProfileIds.length > 0) {
         const { data: prof, error: profError } = await supabase
             .from("lxp_profiles")
-            .select("id,name,email")
+            .select("id,name,email,updated_at")
             .in("id", enrolledProfileIds)
 
         if (profError) throw profError
@@ -226,8 +319,8 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
             name: p.name ?? p.email ?? p.id,
             email: p.email ?? "",
             avatar: "/placeholder.svg",
-            status: "active",
-            lastAccess: null,
+            status: enrInfo?.status === "inactive" ? "inactive" : "active",
+            lastAccess: p.updated_at ?? null,
             enrollments: [
                 {
                     courseId,
@@ -448,6 +541,23 @@ export async function enrollStudentsAdmin(courseId: string, studentIds: string[]
     if (error) throw error
 }
 
+export async function setCourseEnrollmentStatusAdmin(params: {
+    courseId: string
+    studentProfileId: string
+    status: "active" | "inactive"
+}): Promise<void> {
+    const { error } = await supabase
+        .from("lxp_enrollments")
+        .update({
+            status: params.status,
+            updated_at: new Date().toISOString(),
+        })
+        .eq("course_id", params.courseId)
+        .eq("student_profile_id", params.studentProfileId)
+
+    if (error) throw error
+}
+
 export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeriodAdmin[]> {
     const { data: periodsData, error: periodsError } = await supabase
         .from("lxp_course_periods")
@@ -567,6 +677,7 @@ export async function createCoursePeriodAdmin(
     })
 
     if (error) throw error
+    await syncCoursePeriodsCount(courseId)
 }
 
 export async function updateCoursePeriodAdmin(
@@ -586,8 +697,16 @@ export async function updateCoursePeriodAdmin(
 }
 
 export async function deleteCoursePeriodAdmin(periodId: string): Promise<void> {
+    const { data: period, error: getError } = await supabase
+        .from("lxp_course_periods")
+        .select("course_id")
+        .eq("id", periodId)
+        .maybeSingle()
+    if (getError) throw getError
+
     const { error } = await supabase.from("lxp_course_periods").delete().eq("id", periodId)
     if (error) throw error
+    if (period?.course_id) await syncCoursePeriodsCount(period.course_id)
 }
 
 export async function createCourseDisciplineAdmin(
@@ -637,6 +756,7 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
             "id,course_discipline_id,library_content_type,library_content_id,library_content_name,linked_at,linked_by,lxp_course_disciplines!inner(id,name,course_period_id,lxp_course_periods!inner(course_id))",
         )
         .eq("lxp_course_disciplines.lxp_course_periods.course_id", courseId)
+        .eq("library_content_type", "discipline")
         .order("linked_at", { ascending: false })
 
     if (error) throw error
@@ -644,33 +764,57 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
     const rows = (data ?? []) as Array<{
         id: string
         course_discipline_id: string
-        library_content_type: "discipline" | "trail" | "module"
+        library_content_type: "discipline"
         library_content_id: string
         library_content_name: string | null
         linked_at: string
         linked_by: string | null
-        lxp_course_disciplines: Array<{
-            id: string
-            name: string
-            course_period_id: string
-            lxp_course_periods: Array<{ course_id: string }>
+        lxp_course_disciplines:
+            | {
+                  id: string
+                  name: string
+                  course_period_id: string
+                  lxp_course_periods: { course_id: string } | Array<{ course_id: string }>
+              }
+            | Array<{
+                  id: string
+                  name: string
+                  course_period_id: string
+                  lxp_course_periods: { course_id: string } | Array<{ course_id: string }>
+              }>
         }>
-    }>
+
+    const linkedByIds = [...new Set(rows.map((row) => row.linked_by).filter((v): v is string => Boolean(v)))]
+    const linkedByMap = new Map<string, string>()
+    if (linkedByIds.length > 0) {
+        const { data: membersData, error: membersError } = await supabase
+            .from("backoffice_team_members")
+            .select("user_id,name,email")
+            .in("user_id", linkedByIds)
+        if (membersError) throw membersError
+        ;(membersData ?? []).forEach((m: { user_id: string; name: string | null; email: string | null }) => {
+            linkedByMap.set(m.user_id, m.name ?? m.email ?? m.user_id)
+        })
+    }
 
     return rows.map((row) => {
-        const discipline = row.lxp_course_disciplines?.[0]
-        const period = discipline?.lxp_course_periods?.[0]
+        const disciplineRaw = Array.isArray(row.lxp_course_disciplines)
+            ? row.lxp_course_disciplines[0]
+            : row.lxp_course_disciplines
+        const periodRaw = Array.isArray(disciplineRaw?.lxp_course_periods)
+            ? disciplineRaw?.lxp_course_periods[0]
+            : disciplineRaw?.lxp_course_periods
         return {
             id: row.id,
-            courseId: period?.course_id ?? courseId,
+            courseId: periodRaw?.course_id ?? courseId,
             libraryContentId: row.library_content_id,
             libraryContentName: row.library_content_name ?? row.library_content_id,
-            // TODO: Remover suporte legado trail/module quando todos os vínculos antigos forem migrados para discipline.
+            externalUrl: getLibraryDisciplineUrl(row.library_content_id),
             type: row.library_content_type,
             linkedAt: row.linked_at,
-            linkedBy: row.linked_by ?? "Sistema",
-            disciplineId: discipline?.id,
-            disciplineName: discipline?.name,
+            linkedBy: row.linked_by ? linkedByMap.get(row.linked_by) ?? row.linked_by : "Sistema",
+            disciplineId: disciplineRaw?.id,
+            disciplineName: disciplineRaw?.name,
         }
     })
 }
@@ -683,12 +827,24 @@ export async function linkCourseContentAdmin(
         libraryContentName?: string
     },
 ): Promise<void> {
+    // Mantemos um único vínculo "discipline" por disciplina interna para evitar ambiguidades na jornada do aluno.
+    const { error: cleanupError } = await supabase
+        .from("lxp_course_library_links")
+        .delete()
+        .eq("course_discipline_id", data.disciplineId)
+        .eq("library_content_type", "discipline")
+    if (cleanupError) throw cleanupError
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
     const { error } = await supabase.from("lxp_course_library_links").insert({
         course_discipline_id: data.disciplineId,
         library_content_type: data.libraryContentType,
         library_content_id: data.libraryContentId,
         library_content_name: data.libraryContentName ?? null,
-        linked_by: null,
+        linked_by: user?.id ?? null,
     })
     if (error) throw error
 }
@@ -696,4 +852,18 @@ export async function linkCourseContentAdmin(
 export async function unlinkCourseContentAdmin(linkId: string): Promise<void> {
     const { error } = await supabase.from("lxp_course_library_links").delete().eq("id", linkId)
     if (error) throw error
+}
+
+async function syncCoursePeriodsCount(courseId: string): Promise<void> {
+    const { data: periodsData, error: periodsError } = await supabase
+        .from("lxp_course_periods")
+        .select("id")
+        .eq("course_id", courseId)
+    if (periodsError) throw periodsError
+
+    const { error: courseError } = await supabase
+        .from("lxp_courses")
+        .update({ periods: (periodsData ?? []).length, updated_at: new Date().toISOString() })
+        .eq("id", courseId)
+    if (courseError) throw courseError
 }

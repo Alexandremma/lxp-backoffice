@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Plus,
   Search,
@@ -39,12 +40,13 @@ import {
   Users,
   Calendar,
 } from "lucide-react"
-import { type Course } from "@/lib/mock-data"
+import type { CourseAdmin, CourseAdminInput } from "@/types/courseAdmin"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 import { CourseDialog } from "@/components/admin/CourseDialog"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
@@ -63,6 +65,11 @@ const categoryConfig = {
   extension: { label: "Extensão", variant: "secondary" as const },
 }
 
+const COURSE_TABS = {
+  grades: "grades",
+  content: "content",
+} as const
+
 const CoursesPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -70,8 +77,10 @@ const CoursesPage = () => {
   const upsertCourse = useUpsertCourseAdmin()
   const courses = useMemo(() => coursesData ?? [], [coursesData])
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
+  const [editingCourse, setEditingCourse] = useState<CourseAdmin | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingCourse, setDeletingCourse] = useState<CourseAdmin | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -86,8 +95,14 @@ const CoursesPage = () => {
     const matchesCategory = categoryFilter === "all" || course.category === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
   })
+  const hasActiveFilters = search.trim().length > 0 || statusFilter !== "all" || categoryFilter !== "all"
 
   const handleViewCourse = (courseId: string) => {
+    navigate(`/admin/cursos/${courseId}`)
+  }
+
+  const handleOpenCourseTab = (courseId: string, tab: (typeof COURSE_TABS)[keyof typeof COURSE_TABS]) => {
+    localStorage.setItem(`course-details-active-tab:${courseId}`, tab)
     navigate(`/admin/cursos/${courseId}`)
   }
 
@@ -96,12 +111,12 @@ const CoursesPage = () => {
     setEditDialogOpen(true)
   }
 
-  const handleOpenEdit = (course: Course) => {
+  const handleOpenEdit = (course: CourseAdmin) => {
     setEditingCourse(course)
     setEditDialogOpen(true)
   }
 
-  const handleSaveCourse = async (updated: Omit<Course, "id" | "totalStudents" | "createdAt">) => {
+  const handleSaveCourse = async (updated: CourseAdminInput) => {
     setSubmitting(true)
     try {
       if (editingCourse) {
@@ -110,7 +125,9 @@ const CoursesPage = () => {
           id: editingCourse.id,
           name: updated.name,
           description: updated.description,
+          category: updated.category,
           status: updated.status,
+          externalLibraryId: updated.externalLibraryId,
         })
         toast.success("Curso atualizado com sucesso")
       } else {
@@ -118,8 +135,10 @@ const CoursesPage = () => {
           mode: "create",
           name: updated.name,
           description: updated.description,
+          category: updated.category,
           status: updated.status,
           periods: updated.periods,
+          externalLibraryId: updated.externalLibraryId,
         })
         toast.success("Curso criado com sucesso")
       }
@@ -130,24 +149,33 @@ const CoursesPage = () => {
     }
   }
 
-  const handleDeleteCourse = async (course: Course) => {
-    const confirmed = window.confirm(
-      `Tem certeza que deseja excluir o curso "${course.name}"? Esta ação não pode ser desfeita.`,
-    )
-    if (!confirmed) return
+  const handleDeleteCourse = async (course: CourseAdmin) => {
+    setDeletingCourse(course)
+    setDeleteDialogOpen(true)
+  }
 
+  const handleConfirmDelete = async () => {
+    if (!deletingCourse) return
     setSubmitting(true)
     try {
-      const { error } = await supabase.from("lxp_courses").delete().eq("id", course.id)
+      const { error } = await supabase.from("lxp_courses").delete().eq("id", deletingCourse.id)
       if (error) throw error
 
       toast.success("Curso excluído com sucesso")
       await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+      setDeleteDialogOpen(false)
+      setDeletingCourse(null)
     } catch (e) {
       toast.error("Erro ao excluir curso")
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const clearFilters = () => {
+    setSearch("")
+    setStatusFilter("all")
+    setCategoryFilter("all")
   }
 
   const stats = useMemo(() => {
@@ -177,6 +205,17 @@ const CoursesPage = () => {
         onSave={handleSaveCourse}
       />
 
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open)
+          if (!open) setDeletingCourse(null)
+        }}
+        title="Excluir Curso"
+        description={`Tem certeza que deseja excluir o curso "${deletingCourse?.name ?? ""}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleConfirmDelete}
+      />
+
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
@@ -186,8 +225,17 @@ const CoursesPage = () => {
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{isLoading ? "—" : stats.totalCourses}</p>
-                <p className="text-sm text-muted-foreground">Total de Cursos</p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-14" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">{stats.totalCourses}</p>
+                    <p className="text-sm text-muted-foreground">Total de Cursos</p>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -199,10 +247,17 @@ const CoursesPage = () => {
                 <BookOpen className="h-5 w-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {isLoading ? "—" : stats.activeCourses}
-                </p>
-                <p className="text-sm text-muted-foreground">Cursos Ativos</p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-14" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">{stats.activeCourses}</p>
+                    <p className="text-sm text-muted-foreground">Cursos Ativos</p>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -214,10 +269,17 @@ const CoursesPage = () => {
                 <Users className="h-5 w-5 text-info" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {isLoading ? "—" : stats.totalStudents.toLocaleString("pt-BR")}
-                </p>
-                <p className="text-sm text-muted-foreground">Total de Alunos</p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">{stats.totalStudents.toLocaleString("pt-BR")}</p>
+                    <p className="text-sm text-muted-foreground">Total de Alunos</p>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -229,10 +291,17 @@ const CoursesPage = () => {
                 <Link2 className="h-5 w-5 text-secondary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {isLoading ? "—" : stats.linkedToLibrary}
-                </p>
-                <p className="text-sm text-muted-foreground">Vinculados à Biblioteca</p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-14" />
+                    <Skeleton className="h-4 w-36" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">{stats.linkedToLibrary}</p>
+                    <p className="text-sm text-muted-foreground">Vinculados à Biblioteca</p>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -274,6 +343,11 @@ const CoursesPage = () => {
                 <SelectItem value="extension">Extensão</SelectItem>
               </SelectContent>
             </Select>
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -295,15 +369,28 @@ const CoursesPage = () => {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="p-6 text-sm text-muted-foreground">
-                    Carregando cursos...
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={`skeleton-${idx}`}>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-3 w-72" />
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell className="text-center"><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Skeleton className="h-4 w-10 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                  </TableRow>
+                ))
               ) : filteredCourses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="p-6 text-sm text-muted-foreground">
-                    Nenhum curso encontrado.
+                    {hasActiveFilters
+                      ? "Nenhum curso encontrado com os filtros atuais."
+                      : "Nenhum curso cadastrado ainda. Clique em \"Novo Curso\" para começar."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -368,11 +455,21 @@ const CoursesPage = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleOpenCourseTab(course.id, COURSE_TABS.content)
+                            }}
+                          >
                             <Link2 className="h-4 w-4 mr-2" />
-                            Vincular biblioteca
+                            Vincular disciplina externa
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleOpenCourseTab(course.id, COURSE_TABS.grades)
+                            }}
+                          >
                             <Calendar className="h-4 w-4 mr-2" />
                             Gerenciar períodos
                           </DropdownMenuItem>
@@ -381,7 +478,7 @@ const CoursesPage = () => {
                             className="text-destructive"
                             onClick={(e) => {
                               e.stopPropagation()
-                              void handleDeleteCourse(course)
+                              handleDeleteCourse(course)
                             }}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />

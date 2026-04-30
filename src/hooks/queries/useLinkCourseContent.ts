@@ -16,6 +16,7 @@ export function useLinkCourseContent(courseId?: string) {
       if (!courseId) return
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.content(courseId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.grades(courseId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.recentActivity(courseId) })
     },
   })
 }

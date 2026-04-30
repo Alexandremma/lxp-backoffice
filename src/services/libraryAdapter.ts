@@ -7,6 +7,7 @@ export type LibraryItem = {
   name: string
   type: LibraryContentType
   description?: string
+  externalUrl?: string
   tags?: string[]
   duration?: string
   modulesCount?: number
@@ -73,6 +74,12 @@ function normalizeBaseUrl(baseUrl?: string): string {
   return `https://${baseUrl}`
 }
 
+export function getLibraryDisciplineUrl(disciplineId: string): string | undefined {
+  const baseUrl = normalizeBaseUrl(import.meta.env.VITE_EADSTOCK_BASE_URL)
+  if (!baseUrl) return undefined
+  return `${baseUrl}/disciplinas/get/${disciplineId}`
+}
+
 function toDurationLabel(value: EadstockDisciplineListItem["carga_horaria"]): string | undefined {
   if (value == null || value === "") return undefined
   return `${value}h`
@@ -131,6 +138,7 @@ export async function getLibraryContent(params: SearchLibraryParams): Promise<Se
       name: row.nome?.trim() || row.hash?.trim() || `Disciplina ${row.id}`,
       type: "discipline",
       description: row.ementa ?? undefined,
+      externalUrl: getLibraryDisciplineUrl(String(row.id)),
       tags: row.autores_concat ? row.autores_concat.split(",").map((tag) => tag.trim()).filter(Boolean) : [],
       duration: toDurationLabel(row.carga_horaria),
       lessonsCount: row.total_unidades ?? undefined,

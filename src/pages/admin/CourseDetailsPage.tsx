@@ -14,7 +14,7 @@ import {
   Link2,
   GraduationCap,
 } from "lucide-react"
-import { type Course } from "@/lib/mock-data"
+import type { CourseAdminInput } from "@/types/courseAdmin"
 import { CourseGradesTab } from "@/components/admin/CourseGradesTab"
 import { CourseContentTab } from "@/components/admin/CourseContentTab"
 import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
@@ -24,6 +24,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { useGetCourseDetail } from "@/hooks/queries/useGetCourseDetail"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { useGetCourseRecentActivity } from "@/hooks/queries/useGetCourseRecentActivity"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -37,16 +38,26 @@ const categoryConfig = {
   extension: { label: "Extensão", variant: "secondary" as const },
 }
 
+const COURSE_TABS = ["overview", "grades", "content", "students"] as const
+type CourseTab = (typeof COURSE_TABS)[number]
+
+function isCourseTab(value: string): value is CourseTab {
+  return COURSE_TABS.includes(value as CourseTab)
+}
+
 const CourseDetailsPage = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState<CourseTab>(() => {
+    if (!courseId) return "overview"
+    const saved = localStorage.getItem(`course-details-active-tab:${courseId}`)
+    return saved && isCourseTab(saved) ? saved : "overview"
+  })
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
   const { data: course, isLoading, error } = useGetCourseDetail(courseId)
 
-  // Nesta fase, as abas ainda usam dados mock (persistência incremental).
-  // IMPORTANTE: hooks devem ser chamados sempre (não podem ficar após returns condicionais).
+  const { data: recentActivity = [] } = useGetCourseRecentActivity(courseId)
 
   useEffect(() => {
     if (!error) return
@@ -58,6 +69,21 @@ const CourseDetailsPage = () => {
     })
     navigate("/admin/cursos")
   }, [error, navigate])
+
+  useEffect(() => {
+    if (!courseId) return
+    const saved = localStorage.getItem(`course-details-active-tab:${courseId}`)
+    if (saved && isCourseTab(saved)) {
+      setActiveTab(saved)
+      return
+    }
+    setActiveTab("overview")
+  }, [courseId])
+
+  useEffect(() => {
+    if (!courseId) return
+    localStorage.setItem(`course-details-active-tab:${courseId}`, activeTab)
+  }, [courseId, activeTab])
 
   if (!course) {
     return (
@@ -75,16 +101,16 @@ const CourseDetailsPage = () => {
     )
   }
 
-  const handleSaveCourse = async (updatedData: Omit<Course, "id" | "totalStudents" | "createdAt">) => {
+  const handleSaveCourse = async (updatedData: CourseAdminInput) => {
     if (!courseId) return
-
-    // Persistência gradual: no schema atual (Semana 1) salvamos apenas name/description/status.
     const { error } = await supabase
       .from("lxp_courses")
       .update({
         name: updatedData.name,
         description: updatedData.description,
+        category: updatedData.category,
         status: updatedData.status,
+        external_library_id: updatedData.externalLibraryId?.trim() || null,
       })
       .eq("id", courseId)
 
@@ -144,7 +170,7 @@ const CourseDetailsPage = () => {
           </TabsTrigger>
           <TabsTrigger value="content" className="gap-2">
             <Link2 className="h-4 w-4" />
-            Conteúdo
+            Disciplinas Externas
           </TabsTrigger>
           <TabsTrigger value="students" className="gap-2">
             <Users className="h-4 w-4" />
@@ -191,7 +217,7 @@ const CourseDetailsPage = () => {
               <CardHeader>
                 <CardTitle>Biblioteca Externa</CardTitle>
                 <CardDescription>
-                  Conteúdo vinculado da biblioteca de cursos
+                  Disciplinas externas vinculadas ao curso
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -208,7 +234,7 @@ const CourseDetailsPage = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        Gerencie os vínculos na aba Conteúdo
+                        Gerencie os vínculos na aba Disciplinas Externas
                       </p>
                     </div>
                   </div>
@@ -217,11 +243,11 @@ const CourseDetailsPage = () => {
                     <Link2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
                     <p className="font-medium mb-1">Nenhuma biblioteca vinculada</p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Vincule conteúdo da biblioteca externa para disponibilizar aos alunos
+                      Vincule disciplinas externas para disponibilizar aos alunos
                     </p>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("content")}>
                       <Link2 className="h-4 w-4 mr-2" />
-                      Vincular Biblioteca
+                      Vincular Disciplina
                     </Button>
                   </div>
                 )}
@@ -235,22 +261,23 @@ const CourseDetailsPage = () => {
               <CardTitle>Atividade Recente</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { action: "Novo aluno matriculado", user: "Maria Silva", time: "Há 2 horas" },
-                  { action: "Quiz publicado: Fundamentos de Gestão", user: "Prof. Carlos", time: "Há 5 horas" },
-                  { action: "Trilha vinculada: Marketing Digital", user: "Admin", time: "Há 1 dia" },
-                  { action: "Período 2 iniciado", user: "Sistema", time: "Há 3 dias" },
-                ].map((activity, idx) => (
-                  <div key={idx} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium text-sm">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground">{activity.user}</p>
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem atividade recente para este curso.</p>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="font-medium text-sm">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground">{activity.actor}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.happenedAt).toLocaleString("pt-BR")}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
