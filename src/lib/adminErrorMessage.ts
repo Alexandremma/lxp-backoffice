@@ -1,6 +1,10 @@
 type AdminErrorContext =
+    | "dashboard-load"
     | "team-save"
     | "team-delete"
+    | "students-create"
+    | "students-delete"
+    | "students-access"
     | "students-update-profile"
     | "students-list"
     | "team-list"
@@ -61,11 +65,44 @@ export function getAdminErrorMessage(context: AdminErrorContext, err: unknown): 
     if (context === "team-list") {
         return "Não foi possível carregar a equipe agora. Tente novamente."
     }
+    if (context === "dashboard-load") {
+        return "Não foi possível carregar os indicadores do dashboard."
+    }
     if (context === "team-delete") {
         return "Não foi possível remover o membro da equipe."
     }
     if (context === "team-save") {
         return "Não foi possível salvar o membro da equipe."
+    }
+    if (context === "students-create") {
+        if (code === "STUDENT_ALREADY_EXISTS") {
+            return "Já existe aluno com este e-mail."
+        }
+        if (code === "NOT_AUTHORIZED") {
+            return "Sem permissão para cadastrar aluno."
+        }
+        if (code === "INVALID_PAYLOAD") {
+            return "Preencha corretamente os dados do novo aluno."
+        }
+        return "Não foi possível criar o aluno."
+    }
+    if (context === "students-delete") {
+        if (code === "STUDENT_NOT_FOUND") {
+            return "Aluno não encontrado para exclusão."
+        }
+        if (code === "NOT_AUTHORIZED") {
+            return "Sem permissão para excluir aluno."
+        }
+        return "Não foi possível excluir o aluno."
+    }
+    if (context === "students-access") {
+        if (code === "STUDENT_NOT_FOUND") {
+            return "Aluno não encontrado para atualização de acesso."
+        }
+        if (code === "NOT_AUTHORIZED") {
+            return "Sem permissão para bloquear/desbloquear aluno."
+        }
+        return "Não foi possível atualizar o acesso do aluno."
     }
     if (context === "students-update-profile") {
         return "Não foi possível atualizar os dados do aluno."

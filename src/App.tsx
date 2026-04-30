@@ -2,13 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
-import DashboardMock from "./pages/admin/DashboardMock";
+import DashboardOld from "./pages/admin/DashboardOld";
 import CourseDetailsPage from "./pages/admin/CourseDetailsPage";
 import StudentsPage from "./pages/admin/StudentsPage";
 import FinancePage from "./pages/admin/FinancePage";
@@ -46,7 +46,11 @@ const App = () => (
               />
               <Route
                 path="/dashboard-mock"
-                element={<ProtectedRoute element={<DashboardMock />} requiredRole="admin" />}
+                element={<Navigate to="/" replace />}
+              />
+              <Route
+                path="/dashboard-old"
+                element={<ProtectedRoute element={<DashboardOld />} requiredRole="admin" />}
               />
 
               {/* Gestão de Usuários */}

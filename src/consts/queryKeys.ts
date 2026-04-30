@@ -1,4 +1,7 @@
 export const queryKeys = {
+    dashboard: {
+        stats: ["dashboard", "stats"] as const,
+    },
     courses: {
         list: ["courses", "list"] as const,
         detail: (courseId: string) => ["courses", "detail", courseId] as const,

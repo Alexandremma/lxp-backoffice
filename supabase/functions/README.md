@@ -15,6 +15,21 @@ Fluxo de convite do Backoffice Equipe:
 supabase functions deploy invite-team-member
 ```
 
+## manage-student-admin
+
+Fluxo administrativo de alunos no Backoffice:
+
+1. Cria aluno com convite no Auth e perfil em `lxp_profiles`.
+2. Cria matr?culas iniciais em `lxp_enrollments`.
+3. Bloqueia/desbloqueia acesso (Auth + status de matr?culas).
+4. Exclui aluno via Auth (com cascata no dom?nio).
+
+### Deploy
+
+```bash
+supabase functions deploy manage-student-admin
+```
+
 ### Secrets necessárias
 
 Em projetos Supabase hospedados, estas variáveis já existem no runtime:

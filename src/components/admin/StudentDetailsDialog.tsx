@@ -45,7 +45,6 @@ import {
   RefreshCw,
 } from "lucide-react"
 import {
-  type Student,
   mockStudentFinancial,
   mockStudentHistory,
   mockDocumentRequests,
@@ -55,6 +54,7 @@ import {
   type DocumentRequest,
   type EnrollmentQueueItem,
 } from "@/lib/mock-data"
+import type { StudentAdmin as Student } from "@/types/studentAdmin"
 import { formatDistanceToNow, format, isValid } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { toast } from "sonner"
@@ -319,44 +319,48 @@ export function StudentDetailsDialog({
           </TabsContent>
 
           <TabsContent value="progress" className="mt-4 space-y-4 min-h-[450px]">
-            {student.enrollments.map((enrollment) => {
-              return (
-                <Card key={enrollment.courseId}>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center justify-between">
-                      <span>{enrollment.courseName}</span>
-                      <Badge variant={enrollment.status === "active" ? "success" : "secondary"}>
-                        {enrollment.status === "active" ? "Ativo" : 
-                         enrollment.status === "completed" ? "Concluído" : 
-                         enrollment.status === "cancelled" ? "Cancelado" : "Inativo"}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <Progress value={enrollment.progress} className="h-3" />
-                      </div>
-                      <span className="text-2xl font-bold">{enrollment.progress}%</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Matriculado em {format(new Date(enrollment.enrollmentDate), "dd/MM/yyyy", { locale: ptBR })}
-                    </p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-            {student.enrollments.length === 0 && (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <GraduationCap className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="font-medium">Nenhum curso matriculado</p>
-                  <p className="text-sm text-muted-foreground">
-                    Este aluno não está matriculado em nenhum curso
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <ScrollArea className="h-[420px] pr-4">
+              <div className="space-y-4">
+                {student.enrollments.map((enrollment) => {
+                  return (
+                    <Card key={enrollment.courseId}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center justify-between">
+                          <span>{enrollment.courseName}</span>
+                          <Badge variant={enrollment.status === "active" ? "success" : "secondary"}>
+                            {enrollment.status === "active" ? "Ativo" : 
+                             enrollment.status === "completed" ? "Concluído" : 
+                             enrollment.status === "cancelled" ? "Cancelado" : "Inativo"}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <Progress value={enrollment.progress} className="h-3" />
+                          </div>
+                          <span className="text-xl font-bold">{enrollment.progress}%</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1.5">
+                          Matriculado em {format(new Date(enrollment.enrollmentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+                {student.enrollments.length === 0 && (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <GraduationCap className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                      <p className="font-medium">Nenhum curso matriculado</p>
+                      <p className="text-sm text-muted-foreground">
+                        Este aluno não está matriculado em nenhum curso
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </ScrollArea>
           </TabsContent>
 
           {showExtendedTabs && (
