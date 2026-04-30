@@ -8,7 +8,7 @@ import {
 
 type UpsertCoursePayload =
     | ({ mode: "create" } & UpsertCourseAdminPayload)
-    | ({ mode: "update"; id: string } & Pick<UpsertCourseAdminPayload, "name" | "description" | "status">)
+    | ({ mode: "update"; id: string } & Pick<UpsertCourseAdminPayload, "name" | "description" | "category" | "status" | "externalLibraryId">)
 
 export function useUpsertCourseAdmin() {
     const queryClient = useQueryClient()

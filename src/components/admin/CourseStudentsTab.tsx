@@ -35,7 +35,6 @@ import {
   Eye,
   Mail,
   Ban,
-  Download,
   Users,
   TrendingUp,
   Clock,
@@ -43,9 +42,12 @@ import {
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
-import { EnrollStudentDialog, type StudentOption } from "./EnrollStudentDialog"
+import { EnrollStudentDialog } from "./EnrollStudentDialog"
 import { useGetCourseStudents } from "@/hooks/queries/useGetCourseStudents"
 import { useEnrollCourseStudents } from "@/hooks/queries/useEnrollCourseStudents"
+import { useSetCourseEnrollmentStatus } from "@/hooks/queries/useSetCourseEnrollmentStatus"
+import { StudentDetailsDialog } from "@/components/admin/StudentDetailsDialog"
+import type { StudentAdmin } from "@/types/studentAdmin"
 
 interface CourseStudentsTabProps {
   courseId: string
@@ -55,7 +57,6 @@ interface CourseStudentsTabProps {
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
   inactive: { label: "Inativo", variant: "secondary" as const },
-  blocked: { label: "Bloqueado", variant: "destructive" as const },
 }
 
 export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabProps) {
@@ -63,10 +64,13 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
   const enrolledStudents = data?.enrolledStudents ?? []
   const allStudents = data?.allStudents ?? []
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<StudentAdmin | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
   const enrollMutation = useEnrollCourseStudents(courseId)
+  const setEnrollmentStatus = useSetCourseEnrollmentStatus(courseId)
 
   useEffect(() => {
     if (!error) return
@@ -106,15 +110,46 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
 
     if (toInsert.length === 0) return
 
+    await enrollMutation.mutateAsync(toInsert)
+    toast({
+      title: "Alunos matriculados",
+      description: `${toInsert.length} aluno(s) matriculado(s) com sucesso.`,
+    })
+  }
+
+  const toStudentAdmin = (student: (typeof enrolledStudents)[number]): StudentAdmin => {
+    return {
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      role: "student",
+      status: student.status,
+      enrollments: student.enrollments,
+      lastAccess: student.lastAccess ?? new Date().toISOString(),
+      createdAt: student.createdAt ?? new Date().toISOString(),
+      avatar: student.avatar,
+    }
+  }
+
+  const handleViewProfile = (student: (typeof enrolledStudents)[number]) => {
+    setSelectedStudent(toStudentAdmin(student))
+    setDetailsOpen(true)
+  }
+
+  const handleToggleEnrollmentStatus = async (student: (typeof enrolledStudents)[number]) => {
+    const nextStatus = student.status === "inactive" ? "active" : "inactive"
     try {
-      await enrollMutation.mutateAsync(toInsert)
+      await setEnrollmentStatus.mutateAsync({
+        studentProfileId: student.id,
+        status: nextStatus,
+      })
       toast({
-        title: "Alunos matriculados",
-        description: `${toInsert.length} aluno(s) matriculado(s) com sucesso.`,
+        title: nextStatus === "inactive" ? "Matrícula inativada" : "Matrícula reativada",
+        description: `${student.name} foi ${nextStatus === "inactive" ? "inativado" : "reativado"} neste curso.`,
       })
     } catch (e: unknown) {
       toast({
-        title: "Erro ao matricular aluno(s)",
+        title: "Erro ao atualizar matrícula",
         description: e instanceof Error ? e.message : "Tente novamente.",
         variant: "destructive",
       })
@@ -132,10 +167,6 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
           <Button onClick={() => setEnrollDialogOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Matricular Aluno
@@ -152,6 +183,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
         enrolledStudentIds={enrolledStudentIds}
         allStudents={allStudents}
         onEnroll={handleEnrollStudents}
+        isSubmitting={enrollMutation.isPending}
       />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -188,7 +220,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
               </div>
               <div>
                 <p className="text-2xl font-bold">{activeCount}</p>
-                <p className="text-sm text-muted-foreground">Ativos (7 dias)</p>
+                <p className="text-sm text-muted-foreground">Matrículas ativas</p>
               </div>
             </div>
           </CardContent>
@@ -202,7 +234,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar aluno..."
+                placeholder="Buscar por nome ou e-mail..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -216,7 +248,6 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                 <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="active">Ativo</SelectItem>
                 <SelectItem value="inactive">Inativo</SelectItem>
-                <SelectItem value="blocked">Bloqueado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -230,7 +261,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
             <div className="flex flex-col items-center justify-center py-12">
               <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="font-medium mb-1">Carregando alunos...</p>
-              <p className="text-sm text-muted-foreground">Aguarde um instante</p>
+              <p className="text-sm text-muted-foreground">Aguarde um instante...</p>
             </div>
           ) : filteredStudents.length > 0 ? (
             <Table>
@@ -304,18 +335,21 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Ações</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewProfile(student)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Perfil
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => (window.location.href = `mailto:${student.email}`)}>
                             <Mail className="h-4 w-4 mr-2" />
-                            Enviar Email
+                            Enviar e-mail
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => void handleToggleEnrollmentStatus(student)}
+                          >
                             <Ban className="h-4 w-4 mr-2" />
-                            Bloquear
+                            {student.status === "inactive" ? "Reativar matrícula" : "Inativar matrícula"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -336,13 +370,19 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
               {!search && statusFilter === "all" && (
                 <Button onClick={() => setEnrollDialogOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Matricular Primeiro Aluno
+                  Matricular primeiro aluno
                 </Button>
               )}
             </div>
           )}
         </CardContent>
       </Card>
+      <StudentDetailsDialog
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        student={selectedStudent}
+        dataMode
+      />
     </div>
   )
 }

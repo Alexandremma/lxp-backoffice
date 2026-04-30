@@ -34,7 +34,12 @@ const App = () => (
         <Toaster />
         <Sonner />
         <div className="dark">
-          <BrowserRouter>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
             <Routes>
               {/* Login admin */}
               <Route path="/admin/login" element={<AdminLogin />} />

@@ -22,7 +22,8 @@ interface EnrollStudentDialogProps {
   courseName: string
   enrolledStudentIds: string[]
   allStudents: StudentOption[]
-  onEnroll: (studentIds: string[]) => void
+  onEnroll: (studentIds: string[]) => Promise<void>
+  isSubmitting?: boolean
 }
 
 export type StudentOption = {
@@ -48,6 +49,7 @@ export function EnrollStudentDialog({
   enrolledStudentIds,
   allStudents,
   onEnroll,
+  isSubmitting = false,
 }: EnrollStudentDialogProps) {
   const [search, setSearch] = useState("")
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -82,8 +84,8 @@ export function EnrollStudentDialog({
     )
   }
 
-  const handleEnroll = () => {
-    onEnroll(selectedStudentIds)
+  const handleEnroll = async () => {
+    await onEnroll(selectedStudentIds)
     onOpenChange(false)
   }
 
@@ -106,6 +108,7 @@ export function EnrollStudentDialog({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
+              disabled={isSubmitting}
             />
           </div>
 
@@ -142,6 +145,7 @@ export function EnrollStudentDialog({
                       <Checkbox
                         checked={selectedStudentIds.includes(student.id)}
                         onCheckedChange={() => handleToggleStudent(student.id)}
+                        disabled={isSubmitting}
                       />
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={student.avatar} />
@@ -191,15 +195,15 @@ export function EnrollStudentDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button
-            onClick={handleEnroll}
-            disabled={selectedStudentIds.length === 0}
+            onClick={() => void handleEnroll()}
+            disabled={selectedStudentIds.length === 0 || isSubmitting}
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            Matricular
+            {isSubmitting ? "Matriculando..." : "Matricular"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -18,13 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type Course } from "@/lib/mock-data"
+import type { CourseAdmin, CourseAdminInput } from "@/types/courseAdmin"
 
 interface CourseDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  course?: Course | null
-  onSave: (course: Omit<Course, "id" | "totalStudents" | "createdAt">) => void
+  course?: CourseAdmin | null
+  onSave: (course: CourseAdminInput) => void
 }
 
 const categoryOptions = [
@@ -47,8 +47,8 @@ export function CourseDialog({
 }: CourseDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [category, setCategory] = useState<Course["category"]>("graduation")
-  const [status, setStatus] = useState<Course["status"]>("draft")
+  const [category, setCategory] = useState<CourseAdmin["category"]>("graduation")
+  const [status, setStatus] = useState<CourseAdmin["status"]>("draft")
   const [periods, setPeriods] = useState(8)
   const [externalLibraryId, setExternalLibraryId] = useState("")
 
@@ -129,7 +129,7 @@ export function CourseDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select value={category} onValueChange={(v) => setCategory(v as Course["category"])}>
+                <Select value={category} onValueChange={(v) => setCategory(v as CourseAdmin["category"])}>
                   <SelectTrigger id="category">
                     <SelectValue />
                   </SelectTrigger>
@@ -145,7 +145,7 @@ export function CourseDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as Course["status"])}>
+                <Select value={status} onValueChange={(v) => setStatus(v as CourseAdmin["status"])}>
                   <SelectTrigger id="status">
                     <SelectValue />
                   </SelectTrigger>
@@ -170,6 +170,7 @@ export function CourseDialog({
                   max={20}
                   value={periods}
                   onChange={(e) => setPeriods(Number(e.target.value))}
+                  disabled={isEditing}
                 />
               </div>
 

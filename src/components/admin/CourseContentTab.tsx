@@ -24,7 +24,6 @@ import {
   ExternalLink,
   Unlink,
   BookOpen,
-  Layers,
   Calendar,
   User,
 } from "lucide-react"
@@ -66,6 +65,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
       ),
     [gradesData],
   )
+  const hasInternalDisciplines = disciplineOptions.length > 0
 
   useEffect(() => {
     if (!selectedDisciplineId && disciplineOptions.length > 0) {
@@ -86,10 +86,18 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
   const handleUnlink = async (linkId: string) => {
     try {
       await unlinkMutation.mutateAsync(linkId)
-      toast.success("Conteúdo desvinculado com sucesso.")
+      toast.success("Disciplina externa desvinculada com sucesso.")
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao desvincular conteúdo.")
+      toast.error(e instanceof Error ? e.message : "Erro ao desvincular disciplina externa.")
     }
+  }
+
+  const handleOpenInLibrary = (url?: string) => {
+    if (!url) {
+      toast.error("URL da biblioteca não configurada para esta disciplina.")
+      return
+    }
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   return (
@@ -97,15 +105,22 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Conteúdo Vinculado</h3>
+          <h3 className="text-lg font-semibold">Disciplinas Externas Vinculadas</h3>
           <p className="text-sm text-muted-foreground">
             Disciplinas externas vinculadas às disciplinas internas do curso
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Selecione a disciplina interna no campo ao lado e clique em "Vincular Disciplina".
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selectedDisciplineId} onValueChange={setSelectedDisciplineId}>
+          <Select
+            value={selectedDisciplineId}
+            onValueChange={setSelectedDisciplineId}
+            disabled={!hasInternalDisciplines}
+          >
             <SelectTrigger className="w-[320px]">
-              <SelectValue placeholder="Selecione uma disciplina" />
+              <SelectValue placeholder={hasInternalDisciplines ? "Selecione a disciplina interna" : "Sem disciplinas internas"} />
             </SelectTrigger>
             <SelectContent>
               {disciplineOptions.map((discipline) => (
@@ -115,15 +130,15 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={() => setLinkDialogOpen(true)} disabled={!selectedDisciplineId}>
+          <Button onClick={() => setLinkDialogOpen(true)} disabled={!selectedDisciplineId || !hasInternalDisciplines}>
             <Plus className="h-4 w-4 mr-2" />
-            Vincular Conteúdo
+            Vincular à disciplina selecionada
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -132,7 +147,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold">{linkedContent.length}</p>
-                <p className="text-sm text-muted-foreground">Conteúdos Vinculados</p>
+                <p className="text-sm text-muted-foreground">Vínculos Totais</p>
               </div>
             </div>
           </CardContent>
@@ -152,32 +167,17 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-secondary/10">
-                <Layers className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {linkedContent.filter((c) => c.type !== "discipline").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Legado (trail/module)</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Content Table */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Lista de Conteúdos</CardTitle>
+            <CardTitle className="text-base">Lista de Vínculos</CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar conteúdo..."
+                placeholder="Buscar disciplina externa..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -196,9 +196,9 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Conteúdo</TableHead>
+                  <TableHead>Disciplina Externa</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Disciplina</TableHead>
+                  <TableHead>Disciplina Interna</TableHead>
                   <TableHead>Vinculado por</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -214,8 +214,8 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={content.type === "discipline" ? "default" : "secondary"}>
-                        {content.type === "discipline" ? "Disciplina" : "Legado"}
+                      <Badge variant="default">
+                        Disciplina Externa
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -245,7 +245,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenInLibrary(content.externalUrl)}>
                             <ExternalLink className="h-4 w-4 mr-2" />
                             Ver na Biblioteca
                           </DropdownMenuItem>
@@ -254,7 +254,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
                             onClick={() => handleUnlink(content.id)}
                           >
                             <Unlink className="h-4 w-4 mr-2" />
-                            Desvincular
+                            Desvincular Disciplina
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -266,13 +266,15 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
               <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="font-medium mb-1">Nenhum conteúdo vinculado</p>
+              <p className="font-medium mb-1">Nenhuma disciplina externa vinculada</p>
               <p className="text-sm text-muted-foreground mb-4">
-                Vincule disciplinas externas às disciplinas do curso
+                {hasInternalDisciplines
+                  ? "Vincule disciplinas externas às disciplinas do curso"
+                  : "Cadastre disciplinas internas na aba Grades antes de criar vínculos externos"}
               </p>
-              <Button onClick={() => setLinkDialogOpen(true)}>
+              <Button onClick={() => setLinkDialogOpen(true)} disabled={!hasInternalDisciplines}>
                 <Plus className="h-4 w-4 mr-2" />
-                Vincular Primeiro Conteúdo
+                Vincular primeira disciplina
               </Button>
             </div>
           )}
@@ -288,15 +290,14 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             if (!selectedDisciplineId) return
             await linkMutation.mutateAsync({
               disciplineId: selectedDisciplineId,
-              // TODO: manter type fixo em discipline até a migração completa dos vínculos antigos.
               libraryContentType: "discipline",
               libraryContentId: selectedContent.id,
               libraryContentName: selectedContent.name,
             })
-            toast.success("Conteúdo vinculado com sucesso.")
+            toast.success("Disciplina externa vinculada com sucesso.")
             setLinkDialogOpen(false)
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erro ao vincular conteúdo.")
+            toast.error(e instanceof Error ? e.message : "Erro ao vincular disciplina externa.")
           }
         }}
       />
