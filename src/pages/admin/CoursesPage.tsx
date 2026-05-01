@@ -86,7 +86,7 @@ const CoursesPage = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   useEffect(() => {
-    if (error) toast.error("Erro ao carregar cursos")
+    if (error) toast.error(getAdminErrorMessage("courses-list", error))
   }, [error])
 
   const filteredCourses = courses.filter((course) => {
@@ -166,7 +166,7 @@ const CoursesPage = () => {
       setDeleteDialogOpen(false)
       setDeletingCourse(null)
     } catch (e) {
-      toast.error("Erro ao excluir curso")
+      toast.error(getAdminErrorMessage("courses-delete", e))
     } finally {
       setSubmitting(false)
     }

@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 interface CourseContentTabProps {
   courseId: string
@@ -75,7 +76,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
 
   useEffect(() => {
     if (!error) return
-    toast.error(error instanceof Error ? error.message : "Erro ao carregar conteúdo do curso.")
+    toast.error(getAdminErrorMessage("courses-content", error))
   }, [error])
 
   const filteredContent = linkedContent.filter((content) =>
@@ -88,7 +89,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
       await unlinkMutation.mutateAsync(linkId)
       toast.success("Disciplina externa desvinculada com sucesso.")
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao desvincular disciplina externa.")
+      toast.error(getAdminErrorMessage("courses-content", e))
     }
   }
 
@@ -297,7 +298,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
             toast.success("Disciplina externa vinculada com sucesso.")
             setLinkDialogOpen(false)
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erro ao vincular disciplina externa.")
+            toast.error(getAdminErrorMessage("courses-content", e))
           }
         }}
       />

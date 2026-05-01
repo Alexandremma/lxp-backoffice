@@ -65,6 +65,7 @@ import { useUpsertTeamMemberAdmin } from "@/hooks/mutations/useUpsertTeamMemberA
 import { useDeleteTeamMemberAdmin } from "@/hooks/mutations/useDeleteTeamMemberAdmin"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import { useResendTeamInviteAdmin } from "@/hooks/mutations/useResendTeamInviteAdmin"
 
 type TeamRole = TeamMemberAdminRow["role"]
 
@@ -99,6 +100,7 @@ const TeamPage = () => {
     const { data, isLoading, isError, error, refetch } = useGetTeamMembersAdmin()
     const upsertMember = useUpsertTeamMemberAdmin()
     const deleteMember = useDeleteTeamMemberAdmin()
+    const resendInvite = useResendTeamInviteAdmin()
     const [search, setSearch] = useState("")
     const [roleFilter, setRoleFilter] = useState<"all" | TeamRole>("all")
     const [page, setPage] = useState(1)
@@ -119,6 +121,7 @@ const TeamPage = () => {
             return matchesSearch && matchesRole
         })
     }, [members, search, roleFilter])
+    const hasActiveFilters = search.trim().length > 0 || roleFilter !== "all"
 
     const countByRole = useMemo(() => {
         const counts: Record<TeamRole, number> = {
@@ -135,7 +138,7 @@ const TeamPage = () => {
     }, [members])
 
     const totalPages = Math.max(1, Math.ceil(filteredMembers.length / pageSize))
-    const safePage = Math.min(page, totalPages)
+    const safePage = Math.max(1, Math.min(page, totalPages))
     const start = (safePage - 1) * pageSize
     const paginatedMembers = filteredMembers.slice(start, start + pageSize)
 
@@ -191,6 +194,18 @@ const TeamPage = () => {
         setDeleteOpen(true)
     }
 
+    const handleResendInvite = async (member: TeamMemberAdminRow) => {
+        try {
+            await resendInvite.mutateAsync({
+                email: member.email,
+                redirectTo: `${window.location.origin}/admin/login`,
+            })
+            toast.success("Convite reenviado por e-mail.")
+        } catch (err: unknown) {
+            toast.error(getAdminErrorMessage("team-save", err))
+        }
+    }
+
     const handleConfirmDelete = async () => {
         if (!deletingMember) return
         try {
@@ -216,7 +231,7 @@ const TeamPage = () => {
             </PageHeader>
 
             <Alert variant="info" className="mb-6">
-                <AlertTitle>Escopo atual desta sprint</AlertTitle>
+                <AlertTitle>Fluxo de convite</AlertTitle>
                 <AlertDescription>
                     Ao criar membro, enviamos convite por e-mail e vinculamos o usuário ao{" "}
                     <code>backoffice_team_members</code> automaticamente.
@@ -300,6 +315,18 @@ const TeamPage = () => {
                                 ))}
                             </SelectContent>
                         </Select>
+                        {hasActiveFilters && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch("")
+                                    setRoleFilter("all")
+                                    setPage(1)
+                                }}
+                            >
+                                Limpar filtros
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -375,6 +402,10 @@ const TeamPage = () => {
                                                             <Mail className="h-4 w-4 mr-2" />
                                                             Enviar e-mail
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => void handleResendInvite(member)}>
+                                                            <Mail className="h-4 w-4 mr-2" />
+                                                            Reenviar convite
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
                                                             className="text-destructive"
@@ -392,7 +423,9 @@ const TeamPage = () => {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                                        Nenhum membro encontrado para os filtros atuais.
+                                        {hasActiveFilters
+                                            ? "Nenhum membro encontrado para os filtros atuais."
+                                            : 'Nenhum membro cadastrado ainda. Clique em "Novo Membro" para começar.'}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -455,7 +488,8 @@ const TeamPage = () => {
                     if (!open) setEditingMember(null)
                 }}
                 member={editingMember ? toTeamMemberDialogModel(editingMember) : null}
-                onSave={(values) => void handleSaveDialog(values)}
+                onSave={handleSaveDialog}
+                isSubmitting={upsertMember.isPending}
             />
 
             <DeleteConfirmDialog

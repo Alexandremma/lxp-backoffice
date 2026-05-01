@@ -48,6 +48,7 @@ import { useEnrollCourseStudents } from "@/hooks/queries/useEnrollCourseStudents
 import { useSetCourseEnrollmentStatus } from "@/hooks/queries/useSetCourseEnrollmentStatus"
 import { StudentDetailsDialog } from "@/components/admin/StudentDetailsDialog"
 import type { StudentAdmin } from "@/types/studentAdmin"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 interface CourseStudentsTabProps {
   courseId: string
@@ -76,7 +77,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
     if (!error) return
     toast({
       title: "Erro ao carregar alunos do curso",
-      description: error instanceof Error ? error.message : "Tente novamente.",
+      description: getAdminErrorMessage("courses-students", error),
       variant: "destructive",
     })
   }, [error])
@@ -150,7 +151,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
     } catch (e: unknown) {
       toast({
         title: "Erro ao atualizar matrícula",
-        description: e instanceof Error ? e.message : "Tente novamente.",
+        description: getAdminErrorMessage("courses-students", e),
         variant: "destructive",
       })
     }

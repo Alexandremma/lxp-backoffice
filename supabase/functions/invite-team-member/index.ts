@@ -79,15 +79,79 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
+    const action = typeof body.action === "string" ? body.action.trim() : "create"
     const rawName = typeof body.name === "string" ? body.name.trim() : ""
     const rawEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const rawRole = typeof body.role === "string" ? body.role.trim() : ""
     const redirectTo = typeof body.redirect_to === "string" ? body.redirect_to.trim() : ""
 
-    if (!rawName || !rawEmail || !allowedRoles.has(rawRole)) {
+    if (!rawEmail) {
+      return jsonResponse(400, {
+        code: "INVITE_BAD_REQUEST",
+        message: "Informe um e-mail válido.",
+      })
+    }
+
+    if (action !== "create" && action !== "resend") {
+      return jsonResponse(400, {
+        code: "INVITE_BAD_REQUEST",
+        message: "Ação inválida para convite.",
+      })
+    }
+
+    if (action === "create" && (!rawName || !allowedRoles.has(rawRole))) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
         message: "Informe nome, e-mail e função válidos.",
+      })
+    }
+
+    const inviteUser = async () => {
+      const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(rawEmail, {
+        data: {
+          full_name: rawName || undefined,
+          role: rawRole || undefined,
+        },
+        ...(redirectTo ? { redirectTo } : {}),
+      })
+      if (inviteError || !invited.user) {
+        const msg = inviteError?.message?.toLowerCase() ?? ""
+        if (msg.includes("already") || msg.includes("exists")) {
+          return jsonResponse(409, {
+            code: "AUTH_USER_ALREADY_EXISTS",
+            message: "Já existe conta Auth para este e-mail.",
+          })
+        }
+        return jsonResponse(500, {
+          code: "INVITE_UNKNOWN_ERROR",
+          message: inviteError?.message ?? "Falha ao convidar usuário no Auth.",
+        })
+      }
+      return invited.user
+    }
+
+    if (action === "resend") {
+      const { data: existingMember, error: existingMemberError } = await supabaseAdmin
+        .from("backoffice_team_members")
+        .select("id")
+        .eq("email", rawEmail)
+        .maybeSingle()
+      if (existingMemberError) {
+        return jsonResponse(500, {
+          code: "INVITE_UNKNOWN_ERROR",
+          message: existingMemberError.message,
+        })
+      }
+      if (!existingMember) {
+        return jsonResponse(409, {
+          code: "TEAM_MEMBER_NOT_FOUND",
+          message: "Membro da equipe não encontrado para este e-mail.",
+        })
+      }
+      const inviteResult = await inviteUser()
+      if (inviteResult instanceof Response) return inviteResult
+      return jsonResponse(200, {
+        invitation_sent: true,
       })
     }
 
@@ -111,37 +175,19 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(rawEmail, {
-      data: {
-        full_name: rawName,
-        role: "admin",
-      },
-      ...(redirectTo ? { redirectTo } : {}),
-    })
-
-    if (inviteError || !invited.user) {
-      const msg = inviteError?.message?.toLowerCase() ?? ""
-      if (msg.includes("already") || msg.includes("exists")) {
-        return jsonResponse(409, {
-          code: "AUTH_USER_ALREADY_EXISTS",
-          message: "Já existe conta Auth para este e-mail.",
-        })
-      }
-      return jsonResponse(500, {
-        code: "INVITE_UNKNOWN_ERROR",
-        message: inviteError?.message ?? "Falha ao convidar usuário no Auth.",
-      })
-    }
+    const inviteResult = await inviteUser()
+    if (inviteResult instanceof Response) return inviteResult
 
     const { data: member, error: memberError } = await supabaseAdmin
       .from("backoffice_team_members")
       .insert({
-        user_id: invited.user.id,
+        user_id: inviteResult.id,
         name: rawName,
         email: rawEmail,
         role: rawRole,
+        updated_by: callerUser.user.id,
       })
-      .select("id,user_id,name,email,role,created_at,updated_at")
+      .select("id,user_id,name,email,role,created_at,updated_at,updated_by")
       .single()
 
     if (memberError) {
