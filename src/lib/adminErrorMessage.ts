@@ -9,6 +9,13 @@ type AdminErrorContext =
     | "students-list"
     | "team-list"
     | "courses-save"
+    | "courses-list"
+    | "courses-delete"
+    | "courses-update"
+    | "courses-grades"
+    | "courses-disciplines"
+    | "courses-content"
+    | "courses-students"
 
 function getErrorCode(err: unknown): string {
     if (typeof err === "object" && err !== null && "code" in err) {
@@ -42,7 +49,10 @@ export function getAdminErrorMessage(context: AdminErrorContext, err: unknown): 
             return "Já existe um membro da equipe com este e-mail."
         }
         if (code === "AUTH_USER_ALREADY_EXISTS") {
-            return "Já existe uma conta Auth para este e-mail. Vincule esse usuário antes de convidar."
+            return "Já existe uma conta de acesso para este e-mail. Use outro e-mail para convidar este membro."
+        }
+        if (code === "TEAM_MEMBER_NOT_FOUND") {
+            return "Não existe membro da equipe com este e-mail para reenviar convite."
         }
         if (code === "INVITE_NOT_ALLOWED") {
             return "Somente administradores podem convidar novos membros."
@@ -109,6 +119,27 @@ export function getAdminErrorMessage(context: AdminErrorContext, err: unknown): 
     }
     if (context === "courses-save") {
         return "Não foi possível salvar o curso."
+    }
+    if (context === "courses-list") {
+        return "Não foi possível carregar os cursos agora. Tente novamente."
+    }
+    if (context === "courses-delete") {
+        return "Não foi possível excluir o curso."
+    }
+    if (context === "courses-update") {
+        return "Não foi possível atualizar os dados do curso."
+    }
+    if (context === "courses-grades") {
+        return "Não foi possível concluir a operação de grades."
+    }
+    if (context === "courses-disciplines") {
+        return "Não foi possível concluir a operação de disciplinas."
+    }
+    if (context === "courses-content") {
+        return "Não foi possível concluir a operação de disciplinas externas."
+    }
+    if (context === "courses-students") {
+        return "Não foi possível concluir a operação de alunos do curso."
     }
     return "Erro inesperado. Tente novamente."
 }

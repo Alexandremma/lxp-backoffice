@@ -41,6 +41,7 @@ import { useCreateCourseDiscipline } from "@/hooks/queries/useCreateCourseDiscip
 import { useUpdateCourseDiscipline } from "@/hooks/queries/useUpdateCourseDiscipline"
 import { useDeleteCourseDiscipline } from "@/hooks/queries/useDeleteCourseDiscipline"
 import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 interface CourseGradesTabProps {
   courseId: string
@@ -85,7 +86,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
 
   useEffect(() => {
     if (!error) return
-    toast.error(error instanceof Error ? error.message : "Erro ao carregar grades.")
+    toast.error(getAdminErrorMessage("courses-grades", error))
   }, [error])
 
   // Grade handlers
@@ -110,7 +111,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
       await createPeriodMutation.mutateAsync(data)
       toast.success("Grade criada com sucesso!")
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar grade.")
+      toast.error(getAdminErrorMessage("courses-grades", e))
     }
   }
 
@@ -126,7 +127,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         toast.success("Grade excluída com sucesso!")
         setGradeToDelete(null)
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro ao excluir grade.")
+        toast.error(getAdminErrorMessage("courses-grades", e))
       }
     }
   }
@@ -163,7 +164,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
       await createDisciplineMutation.mutateAsync({ periodId: selectedGradeId, data })
       toast.success("Disciplina adicionada com sucesso!")
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar disciplina.")
+      toast.error(getAdminErrorMessage("courses-disciplines", e))
     }
   }
 
@@ -179,7 +180,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         toast.success("Disciplina removida com sucesso!")
         setDisciplineToDelete(null)
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erro ao remover disciplina.")
+        toast.error(getAdminErrorMessage("courses-disciplines", e))
       }
     }
   }
@@ -198,7 +199,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
       }
     }
     if (err instanceof Error) return err.message
-    return "Erro ao vincular disciplina externa."
+    return getAdminErrorMessage("courses-content", err)
   }
 
   return (

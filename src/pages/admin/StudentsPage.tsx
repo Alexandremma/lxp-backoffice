@@ -38,7 +38,6 @@ import {
   Ban,
   KeyRound,
   Pencil,
-  Upload,
   Users,
   UserCheck,
   UserX,
@@ -197,12 +196,14 @@ const StudentsPage = () => {
   }, [filteredStudents, sortColumn, sortDirection])
 
   // Paginated students
+  const safePage = Math.max(1, Math.min(page, Math.max(1, Math.ceil(sortedStudents.length / pageSize))))
   const paginatedStudents = useMemo(() => {
-    const start = (page - 1) * pageSize
+    const start = (safePage - 1) * pageSize
     return sortedStudents.slice(start, start + pageSize)
-  }, [sortedStudents, page, pageSize])
+  }, [sortedStudents, safePage, pageSize])
 
   const totalPages = Math.ceil(sortedStudents.length / pageSize)
+  const hasActiveFilters = search.trim().length > 0 || statusFilter !== "all" || courseFilter !== "all"
 
   // Reset page when filters change
   const handleFilterChange = (newFilter: string, type: "status" | "course" | "search") => {
@@ -210,6 +211,13 @@ const StudentsPage = () => {
     if (type === "status") setStatusFilter(newFilter)
     else if (type === "course") setCourseFilter(newFilter)
     else setSearch(newFilter)
+  }
+
+  const clearFilters = () => {
+    setSearch("")
+    setStatusFilter("all")
+    setCourseFilter("all")
+    setPage(1)
   }
 
   const handleSort = (column: SortColumn) => {
@@ -314,7 +322,11 @@ const StudentsPage = () => {
         profileId: student.id,
         status: student.status === "blocked" ? "active" : "blocked",
       })
-      toast.success(student.status === "blocked" ? "Acesso do aluno desbloqueado." : "Acesso do aluno bloqueado.")
+      toast.success(
+        student.status === "blocked"
+          ? "Acesso global do aluno desbloqueado."
+          : "Acesso global do aluno bloqueado.",
+      )
     } catch (err: unknown) {
       toast.error(getAdminErrorMessage("students-access", err))
     }
@@ -346,16 +358,10 @@ const StudentsPage = () => {
         title="Alunos"
         description="Gerencie os alunos matriculados na plataforma"
       >
-        <div className="flex gap-2">
-          <Button variant="outline" disabled title="Em breve">
-            <Upload className="h-4 w-4 mr-2" />
-            Importar CSV
-          </Button>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Aluno
-          </Button>
-        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Aluno
+        </Button>
       </PageHeader>
 
       {isError && (
@@ -479,6 +485,11 @@ const StudentsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -531,122 +542,132 @@ const StudentsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedStudents.map((student) => {
-                const avgProgress = calcAvgProgress(student)
-                return (
-                  <TableRow 
-                    key={student.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleViewStudent(student)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={student.avatar} alt={student.name} />
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {student.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{student.name}</p>
-                          <p className="text-sm text-muted-foreground">{student.email}</p>
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((student) => {
+                  const avgProgress = calcAvgProgress(student)
+                  return (
+                    <TableRow 
+                      key={student.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewStudent(student)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={student.avatar} alt={student.name} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {student.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{student.name}</p>
+                            <p className="text-sm text-muted-foreground">{student.email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {student.enrollments.slice(0, 2).map((enrollment) => (
-                          <Badge key={enrollment.courseId} variant="outline" className="text-xs">
-                            {enrollment.courseName.length > 15 
-                              ? enrollment.courseName.substring(0, 15) + "..." 
-                              : enrollment.courseName}
-                          </Badge>
-                        ))}
-                        {student.enrollments.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{student.enrollments.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {student.enrollments.length > 0 
-                        ? formatDate(getEarliestEnrollmentDate(student))
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 min-w-[120px]">
-                        <Progress value={avgProgress} className="h-2 flex-1" />
-                        <span className="text-sm text-muted-foreground w-10">
-                          {avgProgress}%
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusConfig[student.status].variant}>
-                        {statusConfig[student.status].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(student.lastAccess)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewStudent(student)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleEditStudent(student, e)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar dados
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleSendEmail(student, e)}>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Enviar email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => void handleResetPassword(student, e)}>
-                            <KeyRound className="h-4 w-4 mr-2" />
-                            Resetar senha
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => void handleToggleBlock(student, e)}>
-                            {student.status === "blocked" ? (
-                              <>
-                                <Unlock className="h-4 w-4 mr-2" />
-                                Desbloquear
-                              </>
-                            ) : (
-                              <>
-                                <Ban className="h-4 w-4 mr-2" />
-                                Bloquear
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={(e) => handleDeleteClick(student, e)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {student.enrollments.slice(0, 2).map((enrollment) => (
+                            <Badge key={enrollment.courseId} variant="outline" className="text-xs">
+                              {enrollment.courseName.length > 15 
+                                ? enrollment.courseName.substring(0, 15) + "..." 
+                                : enrollment.courseName}
+                            </Badge>
+                          ))}
+                          {student.enrollments.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{student.enrollments.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {student.enrollments.length > 0 
+                          ? formatDate(getEarliestEnrollmentDate(student))
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 min-w-[120px]">
+                          <Progress value={avgProgress} className="h-2 flex-1" />
+                          <span className="text-sm text-muted-foreground w-10">
+                            {avgProgress}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusConfig[student.status].variant}>
+                          {statusConfig[student.status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(student.lastAccess)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewStudent(student)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleEditStudent(student, e)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Editar dados
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleSendEmail(student, e)}>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Enviar e-mail
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => void handleResetPassword(student, e)}>
+                              <KeyRound className="h-4 w-4 mr-2" />
+                              Resetar senha
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => void handleToggleBlock(student, e)}>
+                              {student.status === "blocked" ? (
+                                <>
+                                  <Unlock className="h-4 w-4 mr-2" />
+                                  Desbloquear acesso global
+                                </>
+                              ) : (
+                                <>
+                                  <Ban className="h-4 w-4 mr-2" />
+                                  Bloquear acesso global
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={(e) => handleDeleteClick(student, e)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="p-6 text-sm text-muted-foreground">
+                    {hasActiveFilters
+                      ? "Nenhum aluno encontrado com os filtros atuais."
+                      : "Nenhum aluno cadastrado ainda. Clique em \"Novo Aluno\" para começar."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
 
@@ -698,7 +719,7 @@ const StudentsPage = () => {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="text-sm text-muted-foreground px-2">
-                    Página {page} de {totalPages || 1}
+                    Página {safePage} de {totalPages || 1}
                   </span>
                   <Button
                     variant="outline"

@@ -25,6 +25,7 @@ import { useGetCourseDetail } from "@/hooks/queries/useGetCourseDetail"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { useGetCourseRecentActivity } from "@/hooks/queries/useGetCourseRecentActivity"
+import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -117,7 +118,7 @@ const CourseDetailsPage = () => {
     if (error) {
       toast({
         title: "Erro ao atualizar curso",
-        description: error.message,
+        description: getAdminErrorMessage("courses-update", error),
         variant: "destructive",
       })
       return

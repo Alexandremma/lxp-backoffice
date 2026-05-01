@@ -62,7 +62,8 @@ interface TeamMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   member?: TeamMemberDialogMember | null
-  onSave: (data: TeamMemberFormData) => void
+  onSave: (data: TeamMemberFormData) => Promise<void>
+  isSubmitting?: boolean
 }
 
 const roleOptions: { value: TeamRole; label: string }[] = [
@@ -80,6 +81,7 @@ export function TeamMemberDialog({
   onOpenChange,
   member,
   onSave,
+  isSubmitting = false,
 }: TeamMemberDialogProps) {
   const isEditing = !!member
 
@@ -114,8 +116,8 @@ export function TeamMemberDialog({
     }
   }, [member, form])
 
-  const handleSubmit = (data: TeamMemberFormData) => {
-    onSave(data)
+  const handleSubmit = async (data: TeamMemberFormData) => {
+    await onSave(data)
     form.reset()
   }
 
@@ -143,7 +145,7 @@ export function TeamMemberDialog({
                   <FormItem className="sm:col-span-2">
                     <FormLabel>Nome completo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome do membro" {...field} />
+                      <Input placeholder="Nome do membro" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -161,6 +163,7 @@ export function TeamMemberDialog({
                         type="email"
                         placeholder="email@exemplo.com"
                         {...field}
+                        disabled={isEditing || isSubmitting}
                       />
                     </FormControl>
                     <FormMessage />
@@ -177,6 +180,7 @@ export function TeamMemberDialog({
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
+                      disabled={isSubmitting}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -205,6 +209,7 @@ export function TeamMemberDialog({
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
+                      disabled={isSubmitting}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -228,7 +233,7 @@ export function TeamMemberDialog({
                   <FormItem className="sm:col-span-2">
                     <FormLabel>Departamento (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Tecnologia, Acadêmico..." {...field} />
+                      <Input placeholder="Ex: Tecnologia, Acadêmico..." {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -241,11 +246,18 @@ export function TeamMemberDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {isEditing ? "Salvar alterações" : "Adicionar membro"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? isEditing
+                    ? "Salvando..."
+                    : "Adicionando..."
+                  : isEditing
+                    ? "Salvar alterações"
+                    : "Adicionar membro"}
               </Button>
             </DialogFooter>
           </form>

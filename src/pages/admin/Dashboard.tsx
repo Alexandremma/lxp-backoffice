@@ -11,7 +11,6 @@ import {
     Award,
     Settings,
     GraduationCap,
-    ClipboardList,
     Gamepad2,
     ArrowRight,
     TrendingUp,
@@ -93,14 +92,14 @@ const Dashboard = () => {
         { label: "Cadastrar Novo Aluno", href: "/admin/alunos", icon: UserCheck },
         { label: "Criar Novo Curso", href: "/admin/cursos", icon: GraduationCap },
         { label: "Adicionar Membro", href: "/admin/equipe", icon: Shield },
-        { label: "Gerenciar Matrículas", href: "/admin/matriculas", icon: ClipboardList },
+        { label: "Configurar Gamificação", href: "/admin/gamificacao", icon: Gamepad2 },
     ]
 
     return (
         <AdminLayout>
             <PageHeader
                 title="Dashboard"
-                description="Painel principal do Back Office - Acesso rápido às funcionalidades"
+                description="Painel principal do Back Office (snapshot atual) - Acesso rápido às funcionalidades"
             />
 
             {isError && (
@@ -124,7 +123,7 @@ const Dashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{isLoading ? "..." : stats.totalAlunos.toLocaleString("pt-BR")}</div>
-                        <p className="text-xs text-muted-foreground mt-1">{stats.alunosAtivos} alunos ativos</p>
+                        <p className="text-xs text-muted-foreground mt-1">{stats.alunosAtivos} com matrícula ativa</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -149,13 +148,13 @@ const Dashboard = () => {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Alunos Ativos</CardTitle>
+                        <CardTitle className="text-sm font-medium">Alunos com Matrícula Ativa</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{isLoading ? "..." : stats.alunosAtivos.toLocaleString("pt-BR")}</div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {stats.totalAlunos > 0 ? Math.round((stats.alunosAtivos / stats.totalAlunos) * 100) : 0}% do total
+                            {stats.totalAlunos > 0 ? Math.round((stats.alunosAtivos / stats.totalAlunos) * 100) : 0}% dos alunos cadastrados
                         </p>
                     </CardContent>
                 </Card>
