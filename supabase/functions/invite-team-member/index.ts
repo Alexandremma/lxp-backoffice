@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse(500, {
         code: "INVITE_UNKNOWN_ERROR",
-        message: "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente na função.",
+        message: "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente na fun˜˜o.",
       })
     }
 
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     if (!token) {
       return jsonResponse(401, {
         code: "INVITE_NOT_ALLOWED",
-        message: "Token de autenticação ausente.",
+        message: "Token de autentica˜˜o ausente.",
       })
     }
 
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     if (callerError || !callerUser.user) {
       return jsonResponse(401, {
         code: "INVITE_NOT_ALLOWED",
-        message: "Sessão inválida para convidar membro.",
+        message: "Sess˜o inv˜lida para convidar membro.",
       })
     }
 
@@ -83,28 +83,39 @@ Deno.serve(async (req) => {
     const rawName = typeof body.name === "string" ? body.name.trim() : ""
     const rawEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const rawRole = typeof body.role === "string" ? body.role.trim() : ""
+    const rawDepartment =
+      typeof body.department === "string" ? body.department.trim() : body.department === null ? "" : ""
     const redirectTo = typeof body.redirect_to === "string" ? body.redirect_to.trim() : ""
 
     if (!rawEmail) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Informe um e-mail válido.",
+        message: "Informe um e-mail v˜lido.",
       })
     }
 
     if (action !== "create" && action !== "resend") {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Ação inválida para convite.",
+        message: "A˜˜o inv˜lida para convite.",
       })
     }
 
     if (action === "create" && (!rawName || !allowedRoles.has(rawRole))) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Informe nome, e-mail e função válidos.",
+        message: "Informe nome, e-mail e fun˜˜o v˜lidos.",
       })
     }
+
+    if (action === "create" && rawDepartment.length > 120) {
+      return jsonResponse(400, {
+        code: "INVITE_BAD_REQUEST",
+        message: "Departamento deve ter no m˜ximo 120 caracteres.",
+      })
+    }
+
+    const departmentValue = rawDepartment.length > 0 ? rawDepartment : null
 
     const inviteUser = async () => {
       const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(rawEmail, {
@@ -119,12 +130,12 @@ Deno.serve(async (req) => {
         if (msg.includes("already") || msg.includes("exists")) {
           return jsonResponse(409, {
             code: "AUTH_USER_ALREADY_EXISTS",
-            message: "Já existe conta Auth para este e-mail.",
+            message: "J˜ existe conta Auth para este e-mail.",
           })
         }
         return jsonResponse(500, {
           code: "INVITE_UNKNOWN_ERROR",
-          message: inviteError?.message ?? "Falha ao convidar usuário no Auth.",
+          message: inviteError?.message ?? "Falha ao convidar usu˜rio no Auth.",
         })
       }
       return invited.user
@@ -145,7 +156,7 @@ Deno.serve(async (req) => {
       if (!existingMember) {
         return jsonResponse(409, {
           code: "TEAM_MEMBER_NOT_FOUND",
-          message: "Membro da equipe não encontrado para este e-mail.",
+          message: "Membro da equipe n˜o encontrado para este e-mail.",
         })
       }
       const inviteResult = await inviteUser()
@@ -171,7 +182,7 @@ Deno.serve(async (req) => {
     if (existingMember) {
       return jsonResponse(409, {
         code: "TEAM_MEMBER_EXISTS",
-        message: "Já existe membro da equipe com este e-mail.",
+        message: "J˜ existe membro da equipe com este e-mail.",
       })
     }
 
@@ -205,9 +216,10 @@ Deno.serve(async (req) => {
         name: rawName,
         email: rawEmail,
         role: rawRole,
+        department: departmentValue,
         updated_by: callerUser.user.id,
       })
-      .select("id,user_id,name,email,role,created_at,updated_at,updated_by")
+      .select("id,user_id,name,email,role,department,created_at,updated_at,updated_by")
       .single()
 
     if (memberError) {
@@ -222,7 +234,7 @@ Deno.serve(async (req) => {
       invitation_sent: true,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha inesperada na função."
+    const message = error instanceof Error ? error.message : "Falha inesperada na fun˜˜o."
     return jsonResponse(500, {
       code: "INVITE_UNKNOWN_ERROR",
       message,

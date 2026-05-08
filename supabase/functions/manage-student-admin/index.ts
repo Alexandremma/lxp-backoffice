@@ -62,11 +62,15 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const name = typeof body.name === "string" ? body.name.trim() : ""
       const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+      const phoneRaw = typeof body.phone === "string" ? body.phone.trim() : ""
+      const birthDateRaw = typeof body.birth_date === "string" ? body.birth_date.trim() : ""
       const redirectTo = typeof body.redirect_to === "string" ? body.redirect_to.trim() : ""
       const courseIds = Array.isArray(body.course_ids)
         ? body.course_ids.filter((id: unknown) => typeof id === "string")
         : []
       const status = typeof body.status === "string" ? body.status : "active"
+      const phone = phoneRaw || null
+      const birthDate = birthDateRaw || null
 
       if (!name || !email || courseIds.length === 0) {
         return jsonResponse(400, { code: "INVALID_PAYLOAD", message: "Dados inválidos para criar aluno." })
@@ -94,6 +98,8 @@ Deno.serve(async (req) => {
           user_id: invited.user.id,
           name,
           email,
+          phone,
+          birth_date: birthDate,
           role: "student",
         })
         .select("id")

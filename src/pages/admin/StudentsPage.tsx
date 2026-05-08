@@ -257,10 +257,12 @@ const StudentsPage = () => {
   const handleSaveStudent = async (data: StudentFormData) => {
     try {
       await createStudent.mutateAsync({
-        name: data.name,
-        email: data.email,
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
         courseIds: data.courseIds,
         status: data.status,
+        phone: data.phone?.trim() || undefined,
+        birthDate: data.birthDate || undefined,
         redirectTo: lxpAlunosSetPasswordUrl,
       })
       toast.success("Aluno criado com convite enviado por e-mail.")
@@ -286,9 +288,9 @@ const StudentsPage = () => {
     try {
       await updateStudentProfile.mutateAsync({
         profileId: profileEditStudent.id,
-        name: values.name,
+        name: values.name.trim(),
         email: profileEditStudent.email,
-        phone: values.phone,
+        phone: values.phone?.trim() || undefined,
         birthDate: values.birthDate,
       })
       await setStudentAccess.mutateAsync({

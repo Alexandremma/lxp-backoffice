@@ -42,8 +42,7 @@ export type TeamMemberDialogMember = {
   name: string
   email: string
   role: TeamRole
-  status: "active" | "inactive"
-  department?: string
+  department?: string | null
   createdAt?: string
   avatar?: string
 }
@@ -52,8 +51,7 @@ const teamMemberSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Email inválido"),
   role: z.enum(["admin", "coordinator", "secretary", "professor", "tutor", "financial", "commercial"] as const),
-  department: z.string().optional(),
-  status: z.enum(["active", "inactive"] as const),
+  department: z.string().max(120, "Máximo 120 caracteres"),
 })
 
 export type TeamMemberFormData = z.infer<typeof teamMemberSchema>
@@ -92,7 +90,6 @@ export function TeamMemberDialog({
       email: "",
       role: "professor",
       department: "",
-      status: "active",
     },
   })
 
@@ -102,8 +99,7 @@ export function TeamMemberDialog({
         name: member.name,
         email: member.email,
         role: member.role,
-        department: member.department || "",
-        status: member.status as "active" | "inactive",
+        department: member.department ?? "",
       })
     } else {
       form.reset({
@@ -111,7 +107,6 @@ export function TeamMemberDialog({
         email: "",
         role: "professor",
         department: "",
-        status: "active",
       })
     }
   }, [member, form])
@@ -202,38 +197,16 @@ export function TeamMemberDialog({
 
               <FormField
                 control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="inactive">Inativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="department"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
                     <FormLabel>Departamento (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Tecnologia, Acadêmico..." {...field} disabled={isSubmitting} />
+                      <Input
+                        placeholder="Ex.: Pedagógico, Financeiro"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
