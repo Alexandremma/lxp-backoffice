@@ -178,6 +178,26 @@ Deno.serve(async (req) => {
     const inviteResult = await inviteUser()
     if (inviteResult instanceof Response) return inviteResult
 
+    // Backoffice usa lxp_profiles no auth guard. Garantimos perfil admin
+    // para permitir acesso imediato ao login administrativo ap?s definir senha.
+    const { error: profileUpsertError } = await supabaseAdmin
+      .from("lxp_profiles")
+      .upsert(
+        {
+          user_id: inviteResult.id,
+          name: rawName,
+          email: rawEmail,
+          role: "admin",
+        },
+        { onConflict: "user_id" },
+      )
+    if (profileUpsertError) {
+      return jsonResponse(500, {
+        code: "INVITE_UNKNOWN_ERROR",
+        message: profileUpsertError.message,
+      })
+    }
+
     const { data: member, error: memberError } = await supabaseAdmin
       .from("backoffice_team_members")
       .insert({

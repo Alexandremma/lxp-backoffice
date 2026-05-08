@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_EADSTOCK_API_KEY?: string
   readonly VITE_EADSTOCK_API_SECRET?: string
   readonly VITE_LXP_ALUNOS_LOGIN_URL?: string
+  readonly VITE_LXP_ALUNOS_SET_PASSWORD_URL?: string
+  readonly VITE_BACKOFFICE_SET_PASSWORD_URL?: string
 }
 
 interface ImportMeta {

@@ -17,6 +17,7 @@ import AITutorPage from "./pages/admin/AITutorPage";
 import CertificatesPage from "./pages/admin/CertificatesPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import TeamPage from "./pages/admin/TeamPage";
+import AdminSetPassword from "./pages/admin/AdminSetPassword";
 import TicketsPage from "./pages/admin/TicketsPage";
 import ProductsPage from "./pages/admin/ProductsPage";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -43,6 +44,7 @@ const App = () => (
             <Routes>
               {/* Login admin */}
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/definir-senha" element={<AdminSetPassword />} />
 
               {/* Dashboard (admin) */}
               <Route

@@ -68,6 +68,10 @@ import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import { useResendTeamInviteAdmin } from "@/hooks/mutations/useResendTeamInviteAdmin"
 
 type TeamRole = TeamMemberAdminRow["role"]
+const DEFAULT_BACKOFFICE_SET_PASSWORD_URL = "https://lxp-backoffice.vercel.app/admin/definir-senha"
+const backofficeSetPasswordUrl = (
+    import.meta.env.VITE_BACKOFFICE_SET_PASSWORD_URL ?? DEFAULT_BACKOFFICE_SET_PASSWORD_URL
+).trim()
 
 const roleConfig: Record<
     TeamRole,
@@ -178,7 +182,7 @@ const TeamPage = () => {
                     name: values.name,
                     email: values.email,
                     role: values.role as TeamRole,
-                    redirectTo: `${window.location.origin}/admin/login`,
+                    redirectTo: backofficeSetPasswordUrl,
                 })
                 toast.success("Membro adicionado e convite enviado por e-mail.")
             }
@@ -198,7 +202,7 @@ const TeamPage = () => {
         try {
             await resendInvite.mutateAsync({
                 email: member.email,
-                redirectTo: `${window.location.origin}/admin/login`,
+                redirectTo: backofficeSetPasswordUrl,
             })
             toast.success("Convite reenviado por e-mail.")
         } catch (err: unknown) {

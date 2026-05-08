@@ -76,8 +76,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import { supabase } from "@/lib/supabaseClient"
 
-const DEFAULT_LXP_ALUNOS_LOGIN_URL = "https://lxp-alunos.vercel.app/login"
-const lxpAlunosLoginUrl = (import.meta.env.VITE_LXP_ALUNOS_LOGIN_URL ?? DEFAULT_LXP_ALUNOS_LOGIN_URL).trim()
+const DEFAULT_LXP_ALUNOS_SET_PASSWORD_URL = "https://lxp-alunos.vercel.app/definir-senha"
+const lxpAlunosSetPasswordUrl = (
+  import.meta.env.VITE_LXP_ALUNOS_SET_PASSWORD_URL ?? DEFAULT_LXP_ALUNOS_SET_PASSWORD_URL
+).trim()
 
 function courseRowToStudent(row: CourseStudentRow): Student {
   return {
@@ -259,7 +261,7 @@ const StudentsPage = () => {
         email: data.email,
         courseIds: data.courseIds,
         status: data.status,
-        redirectTo: lxpAlunosLoginUrl,
+        redirectTo: lxpAlunosSetPasswordUrl,
       })
       toast.success("Aluno criado com convite enviado por e-mail.")
       setDialogOpen(false)
@@ -342,7 +344,7 @@ const StudentsPage = () => {
 
   const handleResetPassword = async (student: Student, e: React.MouseEvent) => {
     e.stopPropagation()
-    const redirectTo = lxpAlunosLoginUrl
+    const redirectTo = lxpAlunosSetPasswordUrl
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(student.email, { redirectTo })
     if (resetErr) {
       toast.error("Não foi possível enviar o e-mail de redefinição de senha.")
