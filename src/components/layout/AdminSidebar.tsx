@@ -4,16 +4,12 @@ import {
   Users,
   UserCog,
   BookOpen,
-  CreditCard,
-  TicketCheck,
   Gamepad2,
-  Bot,
   Award,
   Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Package,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -32,11 +28,7 @@ const navigationItems: NavItem[] = [
   { title: "Alunos", url: "/admin/alunos", icon: Users },
   { title: "Equipe", url: "/admin/equipe", icon: UserCog },
   { title: "Cursos", url: "/admin/cursos", icon: BookOpen },
-  { title: "Produtos", url: "/admin/produtos", icon: Package },
-  { title: "Financeiro", url: "/admin/financeiro", icon: CreditCard },
-  { title: "Tickets", url: "/admin/tickets", icon: TicketCheck },
   { title: "Gamificação", url: "/admin/gamificacao", icon: Gamepad2 },
-  { title: "AI Tutor", url: "/admin/ai-tutor", icon: Bot },
   { title: "Certificados", url: "/admin/certificados", icon: Award },
   { title: "Geral", url: "/admin/configuracoes", icon: Settings },
 ]
