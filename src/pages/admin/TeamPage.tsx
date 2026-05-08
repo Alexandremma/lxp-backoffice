@@ -96,7 +96,7 @@ function toTeamMemberDialogModel(row: TeamMemberAdminRow): TeamMemberDialogMembe
         name: row.name,
         email: row.email,
         role: row.role,
-        status: "active",
+        department: row.department,
     }
 }
 
@@ -117,10 +117,13 @@ const TeamPage = () => {
     const members = data ?? []
 
     const filteredMembers = useMemo(() => {
+        const q = search.toLowerCase()
         return members.filter((member) => {
+            const dept = (member.department ?? "").toLowerCase()
             const matchesSearch =
-                member.name.toLowerCase().includes(search.toLowerCase()) ||
-                member.email.toLowerCase().includes(search.toLowerCase())
+                member.name.toLowerCase().includes(q) ||
+                member.email.toLowerCase().includes(q) ||
+                dept.includes(q)
             const matchesRole = roleFilter === "all" || member.role === roleFilter
             return matchesSearch && matchesRole
         })
@@ -166,22 +169,25 @@ const TeamPage = () => {
     }
 
     const handleSaveDialog = async (values: TeamMemberFormData) => {
+        const departmentNorm = values.department.trim() || null
         try {
             if (editingMember) {
                 await upsertMember.mutateAsync({
                     mode: "update",
                     id: editingMember.id,
-                    name: values.name,
-                    email: values.email,
+                    name: values.name.trim(),
+                    email: values.email.trim().toLowerCase(),
                     role: values.role as TeamRole,
+                    department: departmentNorm,
                 })
                 toast.success("Membro atualizado com sucesso.")
             } else {
                 await upsertMember.mutateAsync({
                     mode: "create",
-                    name: values.name,
-                    email: values.email,
+                    name: values.name.trim(),
+                    email: values.email.trim().toLowerCase(),
                     role: values.role as TeamRole,
+                    department: departmentNorm,
                     redirectTo: backofficeSetPasswordUrl,
                 })
                 toast.success("Membro adicionado e convite enviado por e-mail.")
@@ -341,6 +347,7 @@ const TeamPage = () => {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Membro</TableHead>
+                                <TableHead>Departamento</TableHead>
                                 <TableHead>Função</TableHead>
                                 <TableHead>Desde</TableHead>
                                 <TableHead>Última atualização</TableHead>
@@ -367,6 +374,11 @@ const TeamPage = () => {
                                                         <p className="text-sm text-muted-foreground">{member.email}</p>
                                                     </div>
                                                 </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="text-sm text-muted-foreground">
+                                                    {member.department?.trim() ? member.department : "—"}
+                                                </span>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -426,7 +438,7 @@ const TeamPage = () => {
                                 })
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                                         {hasActiveFilters
                                             ? "Nenhum membro encontrado para os filtros atuais."
                                             : 'Nenhum membro cadastrado ainda. Clique em "Novo Membro" para começar.'}

@@ -7,6 +7,7 @@ export type TeamMemberAdminRow = {
     name: string
     email: string
     role: "admin" | "coordinator" | "secretary" | "professor" | "tutor" | "financial" | "commercial"
+    department: string | null
     createdAt: string
     updatedAt: string
     updatedBy: string | null
@@ -32,6 +33,7 @@ type InviteFunctionResponse = {
         name: string | null
         email: string | null
         role: TeamMemberAdminRow["role"] | null
+        department: string | null
         created_at: string
         updated_at: string
         updated_by: string | null
@@ -46,6 +48,7 @@ function toTeamMemberAdminRow(row: InviteFunctionResponse["member"]): TeamMember
         name: row.name ?? "Sem nome",
         email: row.email ?? "",
         role: (row.role ?? "admin") as TeamMemberAdminRow["role"],
+        department: row.department ?? null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         updatedBy: row.updated_by,
@@ -78,7 +81,7 @@ async function normalizeFunctionError(error: unknown): Promise<never> {
 export async function getTeamMembersAdmin(): Promise<TeamMemberAdminRow[]> {
     const { data, error } = await supabase
         .from("backoffice_team_members")
-        .select("id,user_id,name,email,role,created_at,updated_at,updated_by")
+        .select("id,user_id,name,email,role,department,created_at,updated_at,updated_by")
         .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -89,6 +92,7 @@ export async function getTeamMembersAdmin(): Promise<TeamMemberAdminRow[]> {
         name: (row.name as string | null) ?? "Sem nome",
         email: (row.email as string | null) ?? "",
         role: ((row.role as string | null) ?? "admin") as TeamMemberAdminRow["role"],
+        department: (row.department as string | null) ?? null,
         createdAt: row.created_at as string,
         updatedAt: row.updated_at as string,
         updatedBy: (row.updated_by as string | null) ?? null,
@@ -99,6 +103,7 @@ export async function createTeamMemberAdmin(params: {
     name: string
     email: string
     role: TeamMemberAdminRow["role"]
+    department?: string | null
     redirectTo?: string
 }): Promise<TeamInviteResult> {
     const { data, error } = await supabase.functions.invoke<InviteFunctionResponse>("invite-team-member", {
@@ -106,6 +111,7 @@ export async function createTeamMemberAdmin(params: {
             name: params.name,
             email: params.email,
             role: params.role,
+            department: params.department ?? null,
             redirect_to: params.redirectTo,
         },
     })
@@ -137,6 +143,7 @@ export async function updateTeamMemberAdmin(params: {
     name: string
     email: string
     role: TeamMemberAdminRow["role"]
+    department?: string | null
 }): Promise<void> {
     const { data: authData } = await supabase.auth.getUser()
     const { error } = await supabase
@@ -145,6 +152,7 @@ export async function updateTeamMemberAdmin(params: {
             name: params.name,
             email: params.email,
             role: params.role,
+            department: params.department ?? null,
             updated_at: new Date().toISOString(),
             updated_by: authData.user?.id ?? null,
         })

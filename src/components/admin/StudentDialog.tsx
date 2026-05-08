@@ -35,12 +35,25 @@ import type { StudentAdmin } from "@/types/studentAdmin"
 import { ChevronDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+function formatPhoneBr(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11)
+  if (!digits) return ""
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 const studentSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Email inválido"),
   courseIds: z.array(z.string()).min(1, "Selecione pelo menos um curso"),
   status: z.enum(["active", "inactive", "blocked"] as const),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .refine((v) => !v || v.replace(/\D/g, "").length >= 10, "Telefone inválido")
+    .optional(),
+  birthDate: z.string().optional(),
 })
 
 export type StudentFormData = z.infer<typeof studentSchema>
@@ -79,6 +92,7 @@ export function StudentDialog({
       courseIds: [],
       status: "active",
       phone: "",
+      birthDate: "",
     },
   })
 
@@ -90,6 +104,7 @@ export function StudentDialog({
         courseIds: student.enrollments.map(e => e.courseId),
         status: student.status as "active" | "inactive" | "blocked",
         phone: "",
+        birthDate: "",
       })
     } else {
       form.reset({
@@ -98,6 +113,7 @@ export function StudentDialog({
         courseIds: [],
         status: "active",
         phone: "",
+        birthDate: "",
       })
     }
   }, [student, form])
@@ -292,7 +308,26 @@ export function StudentDialog({
                   <FormItem>
                     <FormLabel>Telefone (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="(99) 99999-9999" {...field} disabled={isSubmitting} />
+                      <Input
+                        placeholder="(99) 99999-9999"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(formatPhoneBr(e.target.value))}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de nascimento (opcional)</FormLabel>
+                    <FormControl>
+                      <Input type="date" value={field.value ?? ""} onChange={field.onChange} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

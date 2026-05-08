@@ -16,11 +16,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import type { StudentAdmin } from "@/types/studentAdmin"
 
+function formatPhoneBr(value: string): string {
+    const digits = value.replace(/\D/g, "").slice(0, 11)
+    if (!digits) return ""
+    if (digits.length <= 2) return `(${digits}`
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 const profileSchema = z.object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
     email: z.string().email("E-mail inválido"),
     status: z.enum(["active", "inactive", "blocked"] as const),
-    phone: z.string().max(30, "Telefone muito longo").optional(),
+    phone: z
+        .string()
+        .max(30, "Telefone muito longo")
+        .refine((v) => !v || v.replace(/\D/g, "").length >= 10, "Telefone inválido")
+        .optional(),
     birthDate: z.string().optional(),
 })
 
@@ -106,7 +119,11 @@ export function StudentProfileEditDialog({
                                     <FormItem>
                                         <FormLabel>Telefone</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="(99) 99999-9999" {...field} />
+                                            <Input
+                                                placeholder="(99) 99999-9999"
+                                                value={field.value ?? ""}
+                                                onChange={(e) => field.onChange(formatPhoneBr(e.target.value))}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

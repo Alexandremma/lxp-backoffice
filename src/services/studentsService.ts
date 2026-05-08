@@ -48,6 +48,8 @@ export async function createStudentAdmin(params: {
     email: string
     courseIds: string[]
     status: "active" | "inactive" | "blocked"
+    phone?: string
+    birthDate?: string
     redirectTo?: string
 }): Promise<void> {
     const { error } = await supabase.functions.invoke("manage-student-admin", {
@@ -57,6 +59,8 @@ export async function createStudentAdmin(params: {
             email: params.email,
             course_ids: params.courseIds,
             status: params.status,
+            phone: params.phone ?? null,
+            birth_date: params.birthDate ?? null,
             redirect_to: params.redirectTo,
         },
     })

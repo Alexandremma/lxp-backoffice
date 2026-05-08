@@ -12,6 +12,7 @@ type UpsertPayload =
           name: string
           email: string
           role: TeamMemberAdminRow["role"]
+          department?: string | null
           redirectTo?: string
       }
     | {
@@ -20,6 +21,7 @@ type UpsertPayload =
           name: string
           email: string
           role: TeamMemberAdminRow["role"]
+          department?: string | null
       }
 
 export function useUpsertTeamMemberAdmin() {
