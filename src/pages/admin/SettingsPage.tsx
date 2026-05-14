@@ -102,7 +102,7 @@ const SettingsPage = () => {
 
       <Tabs defaultValue="account" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="account">Conta & Plano</TabsTrigger>
+          <TabsTrigger value="account">Geral</TabsTrigger>
           <TabsTrigger value="institution">Dados da Instituição</TabsTrigger>
           <TabsTrigger value="email">Configurações de Email</TabsTrigger>
           <TabsTrigger value="integrations">Integrações</TabsTrigger>

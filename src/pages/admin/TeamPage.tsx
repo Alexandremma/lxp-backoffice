@@ -240,14 +240,6 @@ const TeamPage = () => {
                 </Button>
             </PageHeader>
 
-            <Alert variant="info" className="mb-6">
-                <AlertTitle>Fluxo de convite</AlertTitle>
-                <AlertDescription>
-                    Ao criar membro, enviamos convite por e-mail e vinculamos o usuário ao{" "}
-                    <code>backoffice_team_members</code> automaticamente.
-                </AlertDescription>
-            </Alert>
-
             {isError && (
                 <Alert variant="destructive" className="mb-6">
                     <AlertCircle className="h-4 w-4" />

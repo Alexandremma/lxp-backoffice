@@ -1,4 +1,5 @@
 import { Bell, Search, Menu, Moon, Sun } from "lucide-react"
+import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -94,9 +95,11 @@ const TopBar = ({ onMenuClick, showMenuButton = false }: TopBarProps) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
-            <DropdownMenuItem>Meus Certificados</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/admin/configuracoes" className="cursor-pointer">
+                Configurações
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">
               Sair

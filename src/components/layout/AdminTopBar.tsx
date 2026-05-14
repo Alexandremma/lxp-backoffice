@@ -1,4 +1,5 @@
 import { Bell, Search, Menu } from "lucide-react"
+import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -105,9 +106,11 @@ const AdminTopBar = ({ onMenuClick, showMenuButton = false }: AdminTopBarProps) 
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
-            <DropdownMenuItem>Logs de Atividade</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/admin/configuracoes" className="cursor-pointer">
+                Configurações
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
