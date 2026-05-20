@@ -3,6 +3,8 @@
  * @see INTEGRACAO_ALICE_EADSTOCK.md
  */
 
+import { resolveAliceBaseUrl } from "@/lib/resolveAliceBaseUrl"
+
 export type AliceDisciplineRents = {
   disciplineId: number
   disciplineName: string
@@ -26,18 +28,13 @@ type AliceRentsResponse = {
   pagination?: { total?: number }
 }
 
-function normalizeBaseUrl(baseUrl?: string): string {
-  if (!baseUrl) return ""
-  if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) return baseUrl.replace(/\/$/, "")
-  return `https://${baseUrl.replace(/\/$/, "")}`
-}
-
 export function isAliceConfigured(): boolean {
   const key = import.meta.env.VITE_ALICE_API_KEY?.trim()
   const secret = import.meta.env.VITE_ALICE_API_SECRET?.trim()
   return Boolean(key && secret)
 }
 
+/** Só Basic + Accept — headers X-Api-Key disparam preflight e a Alice não os libera no CORS do browser. */
 function buildAliceApiHeaders(): HeadersInit {
   const apiKey = import.meta.env.VITE_ALICE_API_KEY?.trim()
   const secret = import.meta.env.VITE_ALICE_API_SECRET?.trim()
@@ -46,8 +43,6 @@ function buildAliceApiHeaders(): HeadersInit {
   return {
     Accept: "application/json",
     Authorization: `Basic ${basic}`,
-    "X-Api-Key": apiKey,
-    "X-Secret-Key": secret,
   }
 }
 
@@ -56,7 +51,7 @@ export async function fetchAliceDisciplineCatalog(params?: {
   limit?: number
   search?: string
 }): Promise<{ items: AliceDisciplineRents[]; total: number }> {
-  const base = normalizeBaseUrl(import.meta.env.VITE_ALICE_BASE_URL ?? "https://alice.eadstock.com.br")
+  const base = resolveAliceBaseUrl(import.meta.env.VITE_ALICE_BASE_URL)
   if (!isAliceConfigured()) return { items: [], total: 0 }
 
   const qs = new URLSearchParams()
@@ -65,10 +60,21 @@ export async function fetchAliceDisciplineCatalog(params?: {
   const search = params?.search?.trim()
   if (search && search.length >= 2) qs.set("search", search)
 
-  const response = await fetch(`${base}/api/rents?${qs}`, {
-    method: "GET",
-    headers: buildAliceApiHeaders(),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${base}/api/rents?${qs}`, {
+      method: "GET",
+      headers: buildAliceApiHeaders(),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      throw new Error(
+        "Não foi possível contactar a API Alice (rede ou CORS). Confira o deploy e, se persistir, peça à B42 liberar CORS para o domínio do backoffice.",
+      )
+    }
+    throw err
+  }
 
   if (!response.ok) {
     throw new Error(`Alice /api/rents falhou (${response.status}). Verifique VITE_ALICE_* no deploy.`)
