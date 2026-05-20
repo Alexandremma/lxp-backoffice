@@ -25,7 +25,7 @@ export const CLIENT_INTAKE_TOPIC_CATEGORIES: string[] = [
   "Integração biblioteca / EAD Stock / Alice",
   "Certificados e documentos legais",
   "Métricas, gamificação e produto aluno",
-  "Acesso, Auth, homologação e governança",
+  // "Acesso, Auth, homologação e governança",
   "Catálogo, matrícula e operações",
 ]
 
@@ -38,7 +38,7 @@ export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
       "**Autenticação:** Keycloak **ou** API Key; com API Key os headers são `X-API-Key` e `X-API-Secret`, sendo o secret enviado com **hash SHA256** (ainda falta o passo a passo byte-a-byte).",
       "**Duas APIs / bases:** **Eadstock** — stage `stageapi.eadstock.com.br`, prod/dev `api.eadstock.com.br`. **Gael** — stage `stageapigael.eadstock.com.br`, prod/dev `apigael.eadstock.com.br`.",
       "**E-book no iframe (posição atual do time B42):** com a **`url_caderno_digital`** da unidade (vinda de `GET /disciplinas/get/{id}` → `unidades[]`), **URL absoluta** (prefixo/base quando o campo for relativo) e **whitelist** do domínio do LXP Alunos no lado do material, **já é possível renderizar o e-book** no iframe — confirmação verbal do desenvolvedor.",
-      "**Caminho alternativo (mensagem anterior):** em outro momento indicaram que uma URL **`alice_url`** poderia vir do endpoint **`/rents/list`** (API Eadstock), com trecho a “alinhar certinho”. Tratar como **segundo cenário** (ex.: conteúdo com Alice/contrato) até haver exemplo de request/response — ver tópico seguinte na seção Integração.",
+      "**Alice (2026-05-20):** API em `alice.eadstock.com.br` — `GET /api/rents`, launch via **POST** `/?c=<hash>` + HMAC. Doc: **`INTEGRACAO_ALICE_EADSTOCK.md`**.",
       "**Paginação:** estrutura Laravel-style (`current_page`, `per_page`, `total`, `from`, `to`, `last_page`, URLs de próxima/anterior, etc.). `pageSize` aceito: `[10, 20, 42, 100, 200]`; **`-1`** traz todos os itens.",
       "**Ordem das aulas:** usar **`pivot.order`** (equivalente ao `order` em `disciplina_unidades`).",
       "**Visibilidade:** campo **`disciplina_situacao_id`**; no exemplo de `GET /disciplinas/get/{id}` veio `disciplinaSituacao` com **id 3**, nome **“Disponível”**, sigla **DIS**.",
@@ -59,28 +59,45 @@ export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
       "A gente já entendeu que o e-book no aluno pode sair do detalhe da disciplina, usando `url_caderno_digital`, montando URL absoluta quando vier relativo e liberando o nosso domínio na whitelist do lado de vocês. Isso resolve o desenho principal. O que ainda trava a implementação do nosso lado é fechar alguns detalhes objetivos: qual é a base oficial que a gente cola na frente do caminho quando o campo vem sem `https`; quais origins exatos do app Alunos em homologação e produção entram na whitelist; se no piloto **todo** conteúdo segue só esse fluxo ou se ainda existe caso que dependa de `rents/list` ou Alice, porque aí a gente codifica dois caminhos. Também precisamos saber se a listagem de disciplinas é de fato GET com corpo JSON ou se no servidor de vocês é POST — isso muda o cliente HTTP. Para autenticação, sem um exemplo de `curl` com o SHA256 do `X-API-Secret` a gente fica chutando e toma 401. E por fim a tabela de `disciplina_situacao_id`: hoje só temos o exemplo do 3 “Disponível”; precisamos saber o que pode aparecer para o aluno no catálogo para não publicar coisa errada.",
   },
   {
-    id: "ebook-iframe-alice",
-    category: "Integração biblioteca / EAD Stock / Alice",
-    title: "E-book na aula: fluxo principal (`url_caderno_digital`) e alternativa (`rents/list` / `alice_url`)",
+    id: "alice-api-2026-05",
+    category: "Respostas recebidas (API B42 / e-mail)",
+    title: "API Alice — credenciais, /api/rents e launch POST (maio/2026)",
     explanation: [
-      "**Fluxo principal (alinhado ao dev B42):** vínculo no curso → `GET /disciplinas/get/{id}` → `unidades[]` ordenadas por **`pivot.order`** → para cada aula, usar **`url_caderno_digital`** + **base URL** quando for caminho relativo → montar **`src`** do iframe → garantir **whitelist** (e CSP se necessário) para o domínio do **LXP Alunos**.",
-      "**O que é `url_caderno_digital`:** campo na unidade que aponta para o **material digital** (caderno/e-book), muitas vezes como caminho relativo no storage/CDN deles.",
-      "**O que é `/rents/list`:** endpoint da API **Eadstock** citado para cenários em que a URL embeddável viria de contrato/aluguel (**Alice**).",
-      "**O que é `alice_url`:** campo que **poderia** vir na resposta de `rents/list` — URL preparada para o player Alice; **não** é o mesmo que `url_caderno_digital` no JSON de detalhe que recebemos.",
-      "Enquanto **não** houver matriz de exceções, assumimos o **caderno digital** como caminho padrão do piloto; `rents/list` fica documentado como **alternativa** a fechar só se eles confirmarem conteúdos que exijam Alice.",
-    ],
-    decisionOptions: [
-      "Opção A — **Padrão:** só `url_caderno_digital` + base + whitelist; nenhum uso de `rents/list` neste release.",
-      "Opção B — **Misto:** caderno digital por padrão; `rents/list` + `alice_url` só para fornecedores/disciplinas listados (planilha de regra).",
-      "Opção C — **Só Alice:** todo embed via `rents/list` (exige contrato completo desse endpoint) — hoje não é o que o dev descreveu como suficiente para o e-book.",
+      "**Doc:** https://alice.eadstock.com.br/docs/api-telemetria — produção `https://alice.eadstock.com.br`.",
+      "**Credenciais:** dois pares (prefixos `backoffice-...` e `alunos-...`); HOST no WhatsApp = URLs do LXP na Vercel (cadastro), não base da API.",
+      "**REST:** `Authorization: Basic base64(api_key:secret_key)` ou headers `X-Api-Key` + `X-Secret-Key`.",
+      "**Listagem:** `GET /api/rents` — disciplinas agrupadas com `rents[]` (`url` / `url_completa`, `unit.id`, `?c=`). Ex.: disciplina id **38**.",
+      "**Aula (iframe):** **POST** para `https://alice.eadstock.com.br/?c=<hash>`; campo `key` = HMAC-SHA256(api_key, secret_key); obrigatórios `lis_person_name_full`, `user_id`. Ver `INTEGRACAO_ALICE_EADSTOCK.md` e `TESTE_ALICE_LAUNCH.html`.",
+      "**Telemetria:** `GET /api/telemetria/aluno` — progresso/acessos (fase 2 no LXP).",
     ],
     whatWeNeed: [
-      "Confirmação formal da opção A, B ou C acima (ou texto equivalente por e-mail/ata).",
-      "Se B ou C: exemplos reais de **`/rents/list`** (request/response) e **como** escolher entre caderno e Alice por unidade.",
-      "Lista de **origins** do LXP na whitelist do host que serve o caderno (e de Alice, se aplicável).",
+      "Confirmar `rent.unit.id` ↔ `unidades[].id` do Eadstock.",
+      "Confirmar `user_id` no POST (auth.users vs lxp_profiles.id).",
+      "Chaves stagealice quando existirem.",
     ],
     scriptForClient:
-      "Na prática da aula a gente vai abrir um iframe apontando para o material. O caminho que vocês descreveram é pegar `url_caderno_digital` no detalhe da disciplina, completar com a base quando for caminho relativo e garantir que o host do material aceite embed do nosso app — isso a gente consegue seguir. O ponto que precisa ficar explícito com vocês é: no piloto que a gente está entregando, **todos** os e-books seguem só esse modelo, ou existe disciplina ou fornecedor que ainda exige contrato por `rents/list` e URL tipo Alice? Porque se existir exceção, a gente precisa do contrato desse endpoint e de uma regra clara de quando usar cada caminho; se não existir, a gente simplifica e não investe tempo no segundo fluxo agora. Em paralelo, a lista de origins do LXP Alunos para whitelist é o que destrava o embed em hmg e prod.",
+      "Recebemos as chaves e a documentação Alice — obrigado. Vamos implementar rents + POST no iframe. Só precisamos confirmar se o id da unidade no rents é o mesmo do detalhe da disciplina no Eadstock e qual user_id vocês esperam no launch.",
+  },
+  {
+    id: "ebook-iframe-alice",
+    category: "Integração biblioteca / EAD Stock / Alice",
+    title: "E-book na aula: Alice (POST launch) vs caderno digital Eadstock",
+    explanation: [
+      "**Piloto LXP (2026-05):** abrir aula via **Alice** — `GET /api/rents` + form **POST** `/?c=<hash>` + HMAC `key` + dados do aluno no iframe (`INTEGRACAO_ALICE_EADSTOCK.md`).",
+      "**Não usar** `<iframe src=\"url_completa\">` sem POST — a B42 retorna HTML após POST estilo LTI.",
+      "**Legado Eadstock:** `url_caderno_digital` em `disciplinas/get/{id}` + CDN/whitelist — catálogo ou fallback.",
+    ],
+    decisionOptions: [
+      "Opção A — **Só Alice** no player da aula (decisão atual do piloto).",
+      "Opção B — Misto por fornecedor (exige regra B42).",
+      "Opção C — Só caderno digital (descontinuado para embed Alice).",
+    ],
+    whatWeNeed: [
+      "Implementação: `aliceAdapter`, `AliceLessonFrame` em Lesson.tsx.",
+      "Testes locais: `TESTE_ALICE_LAUNCH.html` + `.env.local` com chaves alunos.",
+    ],
+    scriptForClient:
+      "Seguimos o fluxo POST Alice que vocês enviaram no exemplo PHP. Estamos testando com a disciplina de exemplo e implementando no app alunos.",
   },
   {
     id: "api-secret-format",
@@ -177,24 +194,24 @@ export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
     scriptForClient:
       "O app já mostra progresso, XP e badges, mas ‘hora estudada’ e sequência de dias são conceitos que mudam de instituição para instituição. A gente precisa alinhar com vocês o que **conta** como hora — duração declarada da aula, tempo real na tela, uma estimativa simples — e como vocês querem fechar o dia para streak, fuso e se falta um dia zera ou não. Na mesma linha: quando vocês dizem que a trilha está 100% concluída, é só todas as aulas vistas, tem nota mínima, tem prova? Isso impacta relatório e até o que pode disparar certificado. Quanto antes a gente cravar isso, menos retrabalho depois com número discutindo com aluno e comercial.",
   },
-  {
-    id: "enrollment-external",
-    category: "Catálogo, matrícula e operações",
-    title: "Matrícula: só LXP ou também API externa",
-    explanation: [
-      "Hoje o desenho assumido é matrícula **local** no Supabase ao clicar em inscrever-se; o cliente pode exigir sincronização com sistema acadêmico externo.",
-    ],
-    decisionOptions: [
-      "Opção A — **Somente local** (como hoje): inscrição grava em `lxp_enrollments` sem callback externo.",
-      "Opção B — Após gravar localmente, chamar **webhook/API** do cliente com payload definido (idempotência e tratamento de erro).",
-      "Opção C — Matrícula **somente** via API externa (LXP só espelha status por job ou polling) — maior escopo.",
-    ],
-    whatWeNeed: [
-      "Decisão formal + se B ou C: URL, método, payload, autenticação e SLA de resposta.",
-    ],
-    scriptForClient:
-      "Hoje, quando o aluno clica em se matricular, a gravação fica no nosso Supabase. A pergunta para vocês é se isso fecha o processo de vocês ou se o sistema acadêmico ou financeiro de vocês **precisa** ser avisado na hora — por exemplo para abrir turma, fatura ou registro oficial. Se precisar, a gente precisa do contrato: URL, método, corpo mínimo, como vocês identificam o aluno na API de vocês, e o que acontece se a chamada falhar depois que o aluno já viu confirmação na tela. Se não precisar, a gente documenta que a matrícula é só LXP neste momento e segue.",
-  },
+  // {
+  //   id: "enrollment-external",
+  //   category: "Catálogo, matrícula e operações",
+  //   title: "Matrícula: só LXP ou também API externa",
+  //   explanation: [
+  //     "Hoje o desenho assumido é matrícula **local** no Supabase ao clicar em inscrever-se; o cliente pode exigir sincronização com sistema acadêmico externo.",
+  //   ],
+  //   decisionOptions: [
+  //     "Opção A — **Somente local** (como hoje): inscrição grava em `lxp_enrollments` sem callback externo.",
+  //     "Opção B — Após gravar localmente, chamar **webhook/API** do cliente com payload definido (idempotência e tratamento de erro).",
+  //     "Opção C — Matrícula **somente** via API externa (LXP só espelha status por job ou polling) — maior escopo.",
+  //   ],
+  //   whatWeNeed: [
+  //     "Decisão formal + se B ou C: URL, método, payload, autenticação e SLA de resposta.",
+  //   ],
+  //   scriptForClient:
+  //     "Hoje, quando o aluno clica em se matricular, a gravação fica no nosso Supabase. A pergunta para vocês é se isso fecha o processo de vocês ou se o sistema acadêmico ou financeiro de vocês **precisa** ser avisado na hora — por exemplo para abrir turma, fatura ou registro oficial. Se precisar, a gente precisa do contrato: URL, método, corpo mínimo, como vocês identificam o aluno na API de vocês, e o que acontece se a chamada falhar depois que o aluno já viu confirmação na tela. Se não precisar, a gente documenta que a matrícula é só LXP neste momento e segue.",
+  // },
   {
     id: "library-catalog-contract",
     category: "Catálogo, matrícula e operações",
