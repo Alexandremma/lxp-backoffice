@@ -99,7 +99,7 @@ const Dashboard = () => {
         <AdminLayout>
             <PageHeader
                 title="Dashboard"
-                description="Painel principal do Back Office (snapshot atual) - Acesso rápido às funcionalidades"
+                description="Painel principal do Back Office - Acesso rápido às funcionalidades"
             />
 
             {isError && (

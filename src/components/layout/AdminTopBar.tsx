@@ -1,7 +1,6 @@
-import { Bell, Search, Menu } from "lucide-react"
+import { Bell, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { SearchInput } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -16,31 +15,30 @@ import { mockCurrentUser } from "@/lib/mock-data"
 import { useLogout } from "@/hooks/use-logout"
 
 interface AdminTopBarProps {
-  onMenuClick?: () => void
-  showMenuButton?: boolean
+  isSidebarOpen: boolean
+  onToggleSidebar: () => void
 }
 
-const AdminTopBar = ({ onMenuClick, showMenuButton = false }: AdminTopBarProps) => {
+const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
   const { logout } = useLogout()
 
   return (
     <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        {showMenuButton && (
-          <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden">
-            <Menu className="h-5 w-5" />
-          </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleSidebar}
+        className="shrink-0 text-muted-foreground"
+        aria-label={isSidebarOpen ? "Recolher menu lateral" : "Abrir menu lateral"}
+      >
+        {isSidebarOpen ? (
+          <PanelLeftClose className="h-5 w-5" />
+        ) : (
+          <PanelLeftOpen className="h-5 w-5" />
         )}
-        <div className="hidden md:block w-80">
-          <SearchInput placeholder="Buscar alunos, cursos, tickets..." />
-        </div>
-      </div>
+      </Button>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <Search className="h-5 w-5" />
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">

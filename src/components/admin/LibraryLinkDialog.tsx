@@ -11,13 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Search,
   BookOpen,
   Clock,
   CheckCircle2,
-  ExternalLink,
   Tag,
 } from "lucide-react"
 import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
@@ -43,17 +41,13 @@ export function LibraryLinkDialog({
 }: LibraryLinkDialogProps) {
   const [search, setSearch] = useState("")
   const [selectedContent, setSelectedContent] = useState<LibraryItem | null>(null)
-  const [contentType, setContentType] = useState<"all" | "discipline">("all")
 
   const catalogStatus = getLibraryCatalogStatus()
   const { items, isLoading, error, catalogSource } = useSearchLibraryContent({
     q: search,
-    type: contentType,
     page: 1,
     pageSize: 50,
   })
-
-  const filteredContent = items
 
   const handleConfirm = () => {
     if (selectedContent) {
@@ -69,11 +63,6 @@ export function LibraryLinkDialog({
     onOpenChange(false)
   }
 
-  const handlePreview = () => {
-    if (!selectedContent?.externalUrl) return
-    window.open(selectedContent.externalUrl, "_blank", "noopener,noreferrer")
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="flex max-h-[min(90vh,52rem)] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 top-[4vh] translate-y-0 sm:w-full">
@@ -87,22 +76,14 @@ export function LibraryLinkDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar disciplinas externas ou tags..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Tabs value={contentType} onValueChange={(v) => setContentType(v as typeof contentType)}>
-              <TabsList>
-                <TabsTrigger value="all">Todos</TabsTrigger>
-                <TabsTrigger value="discipline">Disciplinas</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar disciplinas externas ou tags..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
           {!catalogStatus.alice && !catalogStatus.eadstock && (
@@ -127,8 +108,8 @@ export function LibraryLinkDialog({
                   <p className="font-medium mb-1">Buscando conteúdo...</p>
                   <p className="text-sm text-muted-foreground">Aguarde um instante</p>
                 </div>
-              ) : filteredContent.length > 0 ? (
-                filteredContent.map((content) => (
+              ) : items.length > 0 ? (
+                items.map((content) => (
                   <Card
                     key={content.id}
                     className={`cursor-pointer transition-all ${
@@ -210,30 +191,18 @@ export function LibraryLinkDialog({
           {selectedContent && (
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">Selecionado: {selectedContent.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Disciplina
-                        {selectedContent.duration ? ` • ${selectedContent.duration}` : ""}
-                        {selectedContent.lessonsCount != null && selectedContent.lessonsCount > 0
-                          ? ` • ${selectedContent.lessonsCount} aulas`
-                          : ""}
-                      </p>
-                    </div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">Selecionado: {selectedContent.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Disciplina
+                      {selectedContent.duration ? ` • ${selectedContent.duration}` : ""}
+                      {selectedContent.lessonsCount != null && selectedContent.lessonsCount > 0
+                        ? ` • ${selectedContent.lessonsCount} aulas`
+                        : ""}
+                    </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={handlePreview}
-                    disabled={!selectedContent.externalUrl}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Preview
-                  </Button>
                 </div>
               </CardContent>
             </Card>
