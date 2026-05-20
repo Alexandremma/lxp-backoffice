@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Database,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ const navigationItems: NavItem[] = [
   { title: "Cursos", url: "/admin/cursos", icon: BookOpen },
   { title: "Gamificação", url: "/admin/gamificacao", icon: Gamepad2 },
   { title: "Certificados", url: "/admin/certificados", icon: Award },
+  { title: "Modelo de dados", url: "/admin/modelo-dados", icon: Database },
   { title: "Geral", url: "/admin/configuracoes", icon: Settings },
 ]
 

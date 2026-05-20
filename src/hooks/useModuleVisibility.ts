@@ -13,6 +13,7 @@ import {
   Palette,
   Package,
   LayoutGrid,
+  Database,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -95,6 +96,12 @@ export const allModules: Omit<ModuleConfig, "visible">[] = [
     title: "Geral",
     description: "Configurações da instituição",
     icon: Settings,
+  },
+  {
+    id: "/admin/modelo-dados",
+    title: "Modelo de dados",
+    description: "Referência visual das tabelas Supabase por app",
+    icon: Database,
   },
   {
     id: "/kitchen-sink",

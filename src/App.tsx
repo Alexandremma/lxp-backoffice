@@ -24,6 +24,8 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminCoursesV1 from "./pages/admin/AdminCoursesV1";
 import AdminEnrollmentsV1 from "./pages/admin/AdminEnrollmentsV1";
 import CoursesPage from "./pages/admin/CoursesPage";
+import DataArchitecturePage from "./pages/admin/DataArchitecturePage";
+import ClientIntakePage from "./pages/admin/ClientIntakePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -125,6 +127,14 @@ const App = () => (
               <Route
                 path="/admin/configuracoes"
                 element={<ProtectedRoute element={<SettingsPage />} requiredRole="admin" />}
+              />
+              <Route
+                path="/admin/modelo-dados"
+                element={<ProtectedRoute element={<DataArchitecturePage />} requiredRole="admin" />}
+              />
+              <Route
+                path="/admin/roteiro-cliente"
+                element={<ProtectedRoute element={<ClientIntakePage />} requiredRole="admin" />}
               />
 
               {/* Catch-all */}
