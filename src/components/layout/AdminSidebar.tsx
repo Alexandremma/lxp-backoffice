@@ -8,12 +8,9 @@ import {
   Award,
   Settings,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
   Database,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { NavLink } from "@/components/NavLink"
 import { useModuleVisibility } from "@/hooks/useModuleVisibility"
 import { useLogout } from "@/hooks/use-logout"
@@ -37,15 +34,10 @@ const navigationItems: NavItem[] = [
 
 interface AdminSidebarProps {
   collapsed?: boolean
-  onCollapsedChange?: (collapsed: boolean) => void
   className?: string
 }
 
-const AdminSidebar = ({
-  collapsed = false,
-  onCollapsedChange,
-  className,
-}: AdminSidebarProps) => {
+const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
   const location = useLocation()
   const { isModuleVisible } = useModuleVisibility()
   const { logout } = useLogout()
@@ -66,46 +58,27 @@ const AdminSidebar = ({
         className
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
+      <div
+        className={cn(
+          "flex items-center h-16 border-b border-sidebar-border shrink-0",
+          collapsed ? "justify-center px-2" : "gap-3 px-4",
+        )}
+      >
+        <div className="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+          <span className="text-sm font-bold text-primary-foreground">LX</span>
+        </div>
         {!collapsed && (
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-sm font-bold text-primary-foreground">LX</span>
-            </div>
-            <div>
-              <h1 className="font-display font-semibold text-sm text-sidebar-foreground">
-                LXP Admin
-              </h1>
-              <p className="text-xs text-sidebar-foreground/60">Backoffice</p>
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto">
-            <span className="text-sm font-bold text-primary-foreground">LX</span>
+          <div className="min-w-0">
+            <h1 className="font-display font-semibold text-sm text-sidebar-foreground truncate">
+              LXP Admin
+            </h1>
+            <p className="text-xs text-sidebar-foreground/60 truncate">Backoffice</p>
           </div>
         )}
       </div>
 
-      {/* Toggle Button */}
-      <div className="flex justify-end px-2 py-2">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => onCollapsedChange?.(!collapsed)}
-          className="text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 overflow-y-auto scrollbar-thin pb-4">
+      {/* Navigation — p-3 igual ao portal do aluno (folga abaixo do header) */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
           {visibleItems.map((item) => (
             <NavLink
@@ -113,7 +86,7 @@ const AdminSidebar = ({
               to={item.url}
               end={item.url === "/"}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
                 collapsed && "justify-center px-2"
               )}
@@ -127,7 +100,7 @@ const AdminSidebar = ({
       </nav>
 
       {/* Bottom Section */}
-      <div className="p-3 border-t border-sidebar-border">
+      <div className="p-3 space-y-1 border-t border-sidebar-border">
         <button
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full",

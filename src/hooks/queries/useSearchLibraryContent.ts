@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { getLibraryContent, type LibraryContentType, type SearchLibraryResponse } from "@/services/libraryAdapter"
+import { getLibraryContent, type SearchLibraryResponse } from "@/services/libraryAdapter"
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -13,17 +13,16 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 export function useSearchLibraryContent(params: {
   q?: string
-  type?: LibraryContentType | "all"
   page?: number
   pageSize?: number
 }) {
-  const { q = "", type = "all", page = 1, pageSize = 20 } = params
+  const { q = "", page = 1, pageSize = 20 } = params
   const debouncedQ = useDebouncedValue(q, 300)
-  const key = useMemo(() => ["library", "search", { q: debouncedQ, type, page, pageSize }] as const, [debouncedQ, type, page, pageSize])
+  const key = useMemo(() => ["library", "search", { q: debouncedQ, page, pageSize }] as const, [debouncedQ, page, pageSize])
 
   const query = useQuery<SearchLibraryResponse>({
     queryKey: key,
-    queryFn: () => getLibraryContent({ q: debouncedQ, type, page, pageSize }),
+    queryFn: () => getLibraryContent({ q: debouncedQ, page, pageSize }),
     keepPreviousData: true,
   })
 
