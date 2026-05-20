@@ -22,7 +22,7 @@ import {
   Tag,
 } from "lucide-react"
 import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
-import type { LibraryItem } from "@/services/libraryAdapter"
+import { getLibraryCatalogStatus, type LibraryItem } from "@/services/libraryAdapter"
 
 type LinkableDiscipline = {
   id: string
@@ -46,11 +46,12 @@ export function LibraryLinkDialog({
   const [selectedContent, setSelectedContent] = useState<LibraryItem | null>(null)
   const [contentType, setContentType] = useState<"all" | "discipline">("all")
 
-  const { items, isLoading } = useSearchLibraryContent({
+  const catalogStatus = getLibraryCatalogStatus()
+  const { items, isLoading, error, catalogSource } = useSearchLibraryContent({
     q: search,
     type: contentType,
     page: 1,
-    pageSize: 20,
+    pageSize: 50,
   })
 
   const filteredContent = items
@@ -105,6 +106,19 @@ export function LibraryLinkDialog({
               </TabsList>
             </Tabs>
           </div>
+
+          {!catalogStatus.alice && !catalogStatus.eadstock && (
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              Configure <code>VITE_ALICE_API_KEY</code> e <code>VITE_ALICE_API_SECRET</code> (par
+              backoffice) no Vercel, ou <code>VITE_EADSTOCK_BASE_URL</code> para o catálogo Scout.
+            </p>
+          )}
+          {catalogSource === "alice" && (
+            <p className="text-xs text-muted-foreground">
+              Catálogo: Alice <code>/api/rents</code>
+              {catalogStatus.eadstock ? " (fallback Eadstock se Alice falhar)" : ""}.
+            </p>
+          )}
 
           {/* Content List */}
           <ScrollArea className="h-[400px] rounded-md border">
@@ -173,12 +187,21 @@ export function LibraryLinkDialog({
                     </CardContent>
                   </Card>
                 ))
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <p className="font-medium mb-1 text-destructive">Erro ao carregar catálogo</p>
+                  <p className="text-sm text-muted-foreground">
+                    {error instanceof Error ? error.message : String(error)}
+                  </p>
+                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <p className="font-medium mb-1">Nenhum conteúdo encontrado</p>
                   <p className="text-sm text-muted-foreground">
-                    Tente ajustar os termos de busca ou filtros
+                    {catalogStatus.alice || catalogStatus.eadstock
+                      ? "Tente outro termo (Alice: mín. 2 letras na API) ou limpe a busca."
+                      : "Variáveis de integração não configuradas neste deploy."}
                   </p>
                 </div>
               )}

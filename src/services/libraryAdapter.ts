@@ -1,5 +1,5 @@
-// TODO: Integrar autenticação final da API externa (Keycloak/API key + SHA256) após validacao final com o cliente.
-// TODO: Confirmar contrato final do endpoint que traz alice_url por aula (rents/list) para o fluxo de iframe.
+import { fetchAliceDisciplineCatalog, isAliceConfigured } from "@/services/aliceService"
+
 export type LibraryContentType = "discipline"
 
 export type LibraryItem = {
@@ -12,6 +12,8 @@ export type LibraryItem = {
   duration?: string
   modulesCount?: number
   lessonsCount?: number
+  /** Origem do catálogo exibido no modal de vínculo */
+  catalogSource?: "alice" | "eadstock"
 }
 
 export type TrailDetail = {
@@ -49,6 +51,7 @@ export type SearchLibraryParams = {
 export type SearchLibraryResponse = {
   items: LibraryItem[]
   total: number
+  catalogSource?: "alice" | "eadstock" | "none"
 }
 
 type EadstockDisciplineListItem = {
@@ -74,6 +77,17 @@ function normalizeBaseUrl(baseUrl?: string): string {
   return `https://${baseUrl}`
 }
 
+function isEadstockConfigured(): boolean {
+  return Boolean(normalizeBaseUrl(import.meta.env.VITE_EADSTOCK_BASE_URL))
+}
+
+export function getLibraryCatalogStatus(): {
+  alice: boolean
+  eadstock: boolean
+} {
+  return { alice: isAliceConfigured(), eadstock: isEadstockConfigured() }
+}
+
 export function getLibraryDisciplineUrl(disciplineId: string): string | undefined {
   const baseUrl = normalizeBaseUrl(import.meta.env.VITE_EADSTOCK_BASE_URL)
   if (!baseUrl) return undefined
@@ -85,23 +99,54 @@ function toDurationLabel(value: EadstockDisciplineListItem["carga_horaria"]): st
   return `${value}h`
 }
 
-function buildHeaders(): HeadersInit {
+function buildEadstockHeaders(): HeadersInit {
   const headers: Record<string, string> = { "Content-Type": "application/json" }
   const apiKey = import.meta.env.VITE_EADSTOCK_API_KEY
   const apiSecret = import.meta.env.VITE_EADSTOCK_API_SECRET
-
-  // TODO: Confirmar se X-API-Secret deve ser enviado bruto ou com hash SHA256.
   if (apiKey) headers["X-API-Key"] = apiKey
   if (apiSecret) headers["X-API-Secret"] = apiSecret
-
   return headers
 }
 
-export async function getLibraryContent(params: SearchLibraryParams): Promise<SearchLibraryResponse> {
+async function getLibraryContentFromAlice(params: SearchLibraryParams): Promise<SearchLibraryResponse> {
+  const q = params.q?.trim() ?? ""
+  const { items: groups, total } = await fetchAliceDisciplineCatalog({
+    page: params.page ?? 1,
+    limit: params.pageSize ?? 50,
+    search: q.length >= 2 ? q : undefined,
+  })
+
+  let mapped = groups.map((row) => ({
+    id: String(row.disciplineId),
+    name: row.disciplineName,
+    type: "discipline" as const,
+    description: "Catálogo Alice (EaDStock) — unidades disponíveis via /api/rents.",
+    externalUrl: undefined,
+    tags: ["Alice", "EaDStock"],
+    duration: undefined,
+    lessonsCount: row.rentsCount > 0 ? row.rentsCount : undefined,
+    catalogSource: "alice" as const,
+  }))
+
+  if (q.length > 0 && q.length < 2) {
+    const needle = q.toLowerCase()
+    mapped = mapped.filter(
+      (item) =>
+        item.name.toLowerCase().includes(needle) || item.id.includes(needle),
+    )
+  }
+
+  return {
+    items: mapped,
+    total: q.length > 0 && q.length < 2 ? mapped.length : total,
+    catalogSource: "alice",
+  }
+}
+
+async function getLibraryContentFromEadstock(params: SearchLibraryParams): Promise<SearchLibraryResponse> {
   const baseUrl = normalizeBaseUrl(import.meta.env.VITE_EADSTOCK_BASE_URL)
   if (!baseUrl) {
-    // TODO: Definir VITE_EADSTOCK_BASE_URL por ambiente (stage/dev/prod) para habilitar catalogo real.
-    return { items: [], total: 0 }
+    return { items: [], total: 0, catalogSource: "none" }
   }
 
   const query = new URLSearchParams()
@@ -115,18 +160,17 @@ export async function getLibraryContent(params: SearchLibraryParams): Promise<Se
   const url = `${baseUrl}/scout/disciplinas/list?${query.toString()}`
   const response = await fetch(url, {
     method: "GET",
-    headers: buildHeaders(),
+    headers: buildEadstockHeaders(),
   })
 
   if (!response.ok) {
-    throw new Error(`Falha ao consultar biblioteca externa (${response.status}).`)
+    throw new Error(`Falha ao consultar biblioteca Eadstock (${response.status}).`)
   }
 
   const payload = (await response.json()) as EadstockListResponse
   const rows = payload.data ?? []
 
   const filtered = rows.filter((row) => {
-    // TODO: Confirmar quais valores de disciplina_situacao_id representam "publicado/visivel para aluno".
     const hasAllowedStatus = row.disciplina_situacao_id == null || row.disciplina_situacao_id === 3
     const isActive = row.ativo == null || row.ativo === 1
     return hasAllowedStatus && isActive
@@ -142,8 +186,35 @@ export async function getLibraryContent(params: SearchLibraryParams): Promise<Se
       tags: row.autores_concat ? row.autores_concat.split(",").map((tag) => tag.trim()).filter(Boolean) : [],
       duration: toDurationLabel(row.carga_horaria),
       lessonsCount: row.total_unidades ?? undefined,
+      catalogSource: "eadstock",
     })),
     total: payload.total ?? filtered.length,
+    catalogSource: "eadstock",
+  }
+}
+
+/** Catálogo para o modal "Vincular disciplina": Alice (prioridade) → Eadstock. */
+export async function getLibraryContent(params: SearchLibraryParams): Promise<SearchLibraryResponse> {
+  if (isAliceConfigured()) {
+    try {
+      return await getLibraryContentFromAlice(params)
+    } catch (err) {
+      console.warn("[libraryAdapter] Alice catalog failed:", err)
+      if (isEadstockConfigured()) {
+        return getLibraryContentFromEadstock(params)
+      }
+      throw err
+    }
+  }
+
+  if (isEadstockConfigured()) {
+    return getLibraryContentFromEadstock(params)
+  }
+
+  return {
+    items: [],
+    total: 0,
+    catalogSource: "none",
   }
 }
 
@@ -167,4 +238,3 @@ export async function getModuleDetail(id: string): Promise<ModuleDetail> {
     lessons: [],
   }
 }
-

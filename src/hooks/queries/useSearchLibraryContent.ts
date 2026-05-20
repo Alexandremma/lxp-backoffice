@@ -30,6 +30,7 @@ export function useSearchLibraryContent(params: {
   return {
     items: query.data?.items ?? [],
     total: query.data?.total ?? 0,
+    catalogSource: query.data?.catalogSource,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
