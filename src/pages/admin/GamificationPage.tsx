@@ -147,14 +147,13 @@ const GamificationPage = () => {
     const existingRow = badgesQ.data?.find((b) => b.id === badgeData.id)
     const slug =
       existingRow?.slug ??
-      badgeData.name
+      (badgeData.name
         .trim()
         .toLowerCase()
         .normalize("NFD")
         .replace(/\p{M}/gu, "")
         .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "") ||
-      `badge_${Date.now()}`
+        .replace(/[^a-z0-9_]/g, "") || `badge_${Date.now()}`)
     const payload = badgeUiToDbPayload(badgeData, slug)
 
     try {
