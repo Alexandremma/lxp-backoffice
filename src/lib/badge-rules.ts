@@ -26,6 +26,13 @@ export interface TriggerConfig {
   allowCourseFilter: boolean
 }
 
+/** Métricas já avaliadas no Supabase (lxp_evaluate_student_badges). */
+export const SUPPORTED_BADGE_TRIGGERS: BadgeTriggerType[] = [
+  "lessons_completed",
+  "courses_completed",
+  "streak_days",
+]
+
 export const BADGE_TRIGGERS: Record<BadgeTriggerType, TriggerConfig> = {
   lessons_completed: {
     label: "Aulas completadas",
