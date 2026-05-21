@@ -5,24 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
+import type { GamificationBadge, GamificationLevel, XPAction } from "@/lib/mock-data"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  badgeRowToUi,
+  badgeUiToDbPayload,
+  levelRowToUi,
+  levelUiToUpsert,
+  xpRulesToUiActions,
+} from "@/lib/gamificationMappers"
 import {
   useBadgeEarnedCountsAdmin,
   useGamificationBadgesAdmin,
@@ -37,9 +30,23 @@ import {
   useUpdateXpRuleAdmin,
   useUpsertLevelAdmin,
 } from "@/hooks/mutations/useGamificationMutationsAdmin"
-import type { BadgeRow } from "@/services/gamificationAdminService"
-import { Award, Edit, Loader2, Plus, Save, Star, Trash2, TrendingUp, Zap } from "lucide-react"
+import {
+  Zap,
+  Award,
+  Star,
+  Trophy,
+  Edit,
+  Save,
+  TrendingUp,
+  Plus,
+  Trash2,
+  Loader2,
+} from "lucide-react"
 import { toast } from "sonner"
+import { BadgeDialog } from "@/components/admin/BadgeDialog"
+import { BadgeCard } from "@/components/admin/BadgeCard"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { LevelDialog } from "@/components/admin/LevelDialog"
 
 const GamificationPage = () => {
   const rulesQ = useGamificationXpRulesAdmin()
@@ -53,113 +60,188 @@ const GamificationPage = () => {
   const updateBadge = useUpdateBadgeAdmin()
   const deleteBadge = useDeleteBadgeAdmin()
 
-  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
-  const [editXpValue, setEditXpValue] = useState("")
+  const [editing, setEditing] = useState<string | null>(null)
+  const [badgeDialogOpen, setBadgeDialogOpen] = useState(false)
+  const [selectedBadge, setSelectedBadge] = useState<GamificationBadge | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [badgeToDelete, setBadgeToDelete] = useState<GamificationBadge | null>(null)
+  const [levelDialogOpen, setLevelDialogOpen] = useState(false)
+  const [selectedLevel, setSelectedLevel] = useState<GamificationLevel | null>(null)
+  const [levelDeleteDialogOpen, setLevelDeleteDialogOpen] = useState(false)
+  const [levelToDelete, setLevelToDelete] = useState<GamificationLevel | null>(null)
 
-  const [levelDialog, setLevelDialog] = useState(false)
-  const [levelNum, setLevelNum] = useState("1")
-  const [levelTitle, setLevelTitle] = useState("")
-  const [levelMinXp, setLevelMinXp] = useState("0")
+  const xpConfig = useMemo(() => xpRulesToUiActions(rulesQ.data ?? []), [rulesQ.data])
+  const levels = useMemo(
+    () => (levelsQ.data ?? []).map(levelRowToUi).sort((a, b) => a.level - b.level),
+    [levelsQ.data],
+  )
+  const badges = useMemo(() => {
+    const counts = countsQ.data ?? {}
+    return (badgesQ.data ?? []).map((row) => badgeRowToUi(row, counts[row.id] ?? 0))
+  }, [badgesQ.data, countsQ.data])
 
-  const [badgeDialog, setBadgeDialog] = useState(false)
-  const [badgeSlug, setBadgeSlug] = useState("")
-  const [badgeName, setBadgeName] = useState("")
-  const [badgeDesc, setBadgeDesc] = useState("")
-  const [badgeRuleType, setBadgeRuleType] = useState<"lessons_completed" | "disciplines_approved">("lessons_completed")
-  const [badgeThreshold, setBadgeThreshold] = useState("5")
-  const [badgeRarity, setBadgeRarity] = useState<BadgeRow["rarity"]>("common")
-
-  const rules = rulesQ.data ?? []
-  const levels = levelsQ.data ?? []
-  const badges = badgesQ.data ?? []
-  const counts = countsQ.data ?? {}
-
-  const totalXpConfigured = useMemo(() => rules.reduce((s, r) => s + (r.is_active ? r.xp_value : 0), 0), [rules])
+  const totalXPPossible = useMemo(
+    () => xpConfig.filter((a) => a.enabled).reduce((acc, action) => acc + action.xpValue, 0),
+    [xpConfig],
+  )
 
   const loading = rulesQ.isLoading || levelsQ.isLoading || badgesQ.isLoading
   const err =
     rulesQ.error?.message || levelsQ.error?.message || badgesQ.error?.message || countsQ.error?.message
 
-  const saveRuleXp = async (id: string) => {
-    const v = Number.parseInt(editXpValue, 10)
-    if (Number.isNaN(v) || v < 0 || v > 10000) {
-      toast.error("XP inválido (0–10000).")
+  const ruleIdByKey = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of rulesQ.data ?? []) {
+      m.set(r.action_key, r.id)
+    }
+    return m
+  }, [rulesQ.data])
+
+  const getCategoryColor = (category: XPAction["category"]) => {
+    switch (category) {
+      case "lesson":
+        return "bg-primary/10 text-primary"
+      case "quiz":
+        return "bg-success/10 text-success"
+      case "engagement":
+        return "bg-info/10 text-info"
+      case "social":
+        return "bg-warning/10 text-warning"
+      default:
+        return "bg-muted"
+    }
+  }
+
+  const handleSaveXP = async (action: XPAction, newValue: number) => {
+    const resolvedId = ruleIdByKey.get(action.id)
+    if (!resolvedId) {
+      toast.error("Regra ainda não existe no banco. Aplique a migration de XP (Step 17b).")
       return
     }
     try {
-      await updateXp.mutateAsync({ id, patch: { xp_value: v } })
-      toast.success("Regra atualizada.")
-      setEditingRuleId(null)
+      await updateXp.mutateAsync({ id: resolvedId, patch: { xp_value: newValue } })
+      setEditing(null)
+      toast.success("Configuração de XP atualizada!")
     } catch {
       toast.error("Não foi possível salvar.")
     }
   }
 
-  const toggleRule = async (id: string, is_active: boolean) => {
+  const handleToggleXP = async (action: XPAction) => {
+    const resolvedId = ruleIdByKey.get(action.id)
+    if (!resolvedId) {
+      toast.error("Regra não encontrada no Supabase.")
+      return
+    }
     try {
-      await updateXp.mutateAsync({ id, patch: { is_active: !is_active } })
-      toast.success(is_active ? "Regra desativada." : "Regra ativada.")
+      await updateXp.mutateAsync({ id: resolvedId, patch: { is_active: !action.enabled } })
+      toast.success(action.enabled ? "Ação desativada." : "Ação ativada.")
     } catch {
       toast.error("Não foi possível atualizar.")
     }
   }
 
-  const openAddLevel = () => {
-    setLevelNum(String((levels[levels.length - 1]?.level_number ?? 0) + 1))
-    setLevelTitle("")
-    setLevelMinXp("0")
-    setLevelDialog(true)
+  const handleSaveBadge = async (
+    badgeData: Omit<GamificationBadge, "id" | "earnedCount"> & { id?: string },
+  ) => {
+    const existingRow = badgesQ.data?.find((b) => b.id === badgeData.id)
+    const slug =
+      existingRow?.slug ??
+      (badgeData.name
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "") || `badge_${Date.now()}`)
+    const payload = badgeUiToDbPayload(badgeData, slug)
+
+    try {
+      if (badgeData.id) {
+        await updateBadge.mutateAsync({
+          id: badgeData.id,
+          patch: {
+            name: payload.name,
+            description: payload.description,
+            icon_id: payload.icon_id,
+            rarity: payload.rarity,
+            rule_type: payload.rule_type,
+            rule_threshold: payload.rule_threshold,
+            xp_reward: payload.xp_reward,
+            rule_config: payload.rule_config,
+          },
+        })
+      } else {
+        await createBadge.mutateAsync(payload)
+      }
+      setSelectedBadge(null)
+    } catch {
+      toast.error("Não foi possível salvar o badge.")
+    }
   }
 
-  const saveLevel = async () => {
-    const n = Number.parseInt(levelNum, 10)
-    const xp = Number.parseInt(levelMinXp, 10)
-    if (Number.isNaN(n) || n < 1 || Number.isNaN(xp) || xp < 0) {
-      toast.error("Nível ou XP mínimo inválido.")
-      return
-    }
-    if (!levelTitle.trim()) {
-      toast.error("Informe o título do nível.")
-      return
-    }
+  const handleEditBadge = (badge: GamificationBadge) => {
+    setSelectedBadge(badge)
+    setBadgeDialogOpen(true)
+  }
+
+  const handleDeleteBadge = (badge: GamificationBadge) => {
+    setBadgeToDelete(badge)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteBadge = async () => {
+    if (!badgeToDelete) return
     try {
-      await upsertLevel.mutateAsync({ level_number: n, title: levelTitle, min_total_xp: xp })
-      toast.success("Nível salvo.")
-      setLevelDialog(false)
+      await deleteBadge.mutateAsync(badgeToDelete.id)
+      toast.success("Badge excluído!")
+    } catch {
+      toast.error("Não foi possível excluir.")
+    }
+    setDeleteDialogOpen(false)
+    setBadgeToDelete(null)
+  }
+
+  const handleEditLevel = (level: GamificationLevel) => {
+    setSelectedLevel(level)
+    setLevelDialogOpen(true)
+  }
+
+  const handleDeleteLevel = (level: GamificationLevel) => {
+    if (levels.length <= 1) {
+      toast.error("Não é possível excluir o único nível restante")
+      return
+    }
+    setLevelToDelete(level)
+    setLevelDeleteDialogOpen(true)
+  }
+
+  const handleSaveLevel = async (levelData: GamificationLevel) => {
+    try {
+      await upsertLevel.mutateAsync(levelUiToUpsert(levelData))
+      toast.success(selectedLevel ? "Nível atualizado!" : "Nível criado!")
+      setSelectedLevel(null)
+      setLevelDialogOpen(false)
     } catch {
       toast.error("Não foi possível salvar o nível.")
     }
   }
 
-  const saveNewBadge = async () => {
-    const th = Number.parseInt(badgeThreshold, 10)
-    if (!badgeSlug.trim() || !badgeName.trim() || Number.isNaN(th) || th < 1) {
-      toast.error("Preencha slug, nome e limiar (>=1).")
-      return
-    }
+  const confirmDeleteLevel = async () => {
+    if (!levelToDelete) return
     try {
-      await createBadge.mutateAsync({
-        slug: badgeSlug,
-        name: badgeName,
-        description: badgeDesc || null,
-        rarity: badgeRarity,
-        rule_type: badgeRuleType,
-        rule_threshold: th,
-      })
-      toast.success("Badge criado.")
-      setBadgeDialog(false)
-      setBadgeSlug("")
-      setBadgeName("")
-      setBadgeDesc("")
-      setBadgeThreshold("5")
+      await deleteLevel.mutateAsync(levelToDelete.level)
+      toast.success("Nível excluído!")
     } catch {
-      toast.error("Não foi possível criar (slug duplicado?).")
+      toast.error("Não foi possível excluir.")
     }
+    setLevelDeleteDialogOpen(false)
+    setLevelToDelete(null)
   }
 
   return (
     <AdminLayout>
-      <PageHeader title="Gamificação" description="XP por ação (aula/disciplina), níveis e badges — dados no Supabase" />
+      <PageHeader title="Gamificação" description="Configure XP, badges e regras de níveis" />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
@@ -188,8 +270,8 @@ const GamificationPage = () => {
                     <Zap className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{rules.length}</p>
-                    <p className="text-sm text-muted-foreground">Regras de XP</p>
+                    <p className="text-2xl font-bold">{xpConfig.length}</p>
+                    <p className="text-sm text-muted-foreground">Ações de XP</p>
                   </div>
                 </div>
               </CardContent>
@@ -227,8 +309,8 @@ const GamificationPage = () => {
                     <Star className="h-5 w-5 text-info" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{totalXpConfigured}</p>
-                    <p className="text-sm text-muted-foreground">XP máx. (regras ativas)</p>
+                    <p className="text-2xl font-bold">{totalXPPossible}</p>
+                    <p className="text-sm text-muted-foreground">XP por Ciclo</p>
                   </div>
                 </div>
               </CardContent>
@@ -237,267 +319,230 @@ const GamificationPage = () => {
 
           <Tabs defaultValue="xp" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="xp">XP por ação</TabsTrigger>
+              <TabsTrigger value="xp">Configuração de XP</TabsTrigger>
               <TabsTrigger value="badges">Badges</TabsTrigger>
               <TabsTrigger value="levels">Níveis</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="xp">
+            <TabsContent value="xp" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Regras</CardTitle>
+                  <CardTitle>Ações que Concedem XP</CardTitle>
                   <CardDescription>
-                    Valores aplicados automaticamente ao concluir aula ou disciplina (triggers no banco).
+                    Configure quantos pontos de experiência cada ação concede
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {rules.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-lg bg-muted/30"
-                    >
-                      <div>
-                        <p className="font-medium">{r.label}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{r.action_key}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Switch checked={r.is_active} onCheckedChange={() => void toggleRule(r.id, r.is_active)} />
-                        {editingRuleId === r.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              className="w-24"
-                              value={editXpValue}
-                              onChange={(e) => setEditXpValue(e.target.value)}
-                              type="number"
-                            />
-                            <Button size="icon-sm" onClick={() => void saveRuleXp(r.id)}>
-                              <Save className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <Badge variant="secondary" className="font-mono">
-                              +{r.xp_value} XP
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => {
-                                setEditingRuleId(r.id)
-                                setEditXpValue(String(r.xp_value))
-                              }}
+                <CardContent>
+                  <div className="space-y-4">
+                    {xpConfig.map((action) => {
+                      const canPersist = Boolean(ruleIdByKey.get(action.id))
+                      return (
+                        <div
+                          key={action.id}
+                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`h-10 w-10 rounded-lg flex items-center justify-center ${getCategoryColor(action.category)}`}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                              <Zap className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{action.name}</p>
+                              <p className="text-sm text-muted-foreground">{action.description}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Switch
+                              checked={action.enabled}
+                              disabled={!canPersist || updateXp.isPending}
+                              onCheckedChange={() => void handleToggleXP(action)}
+                            />
+                            {editing === action.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  defaultValue={action.xpValue}
+                                  className="w-20"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleSaveXP(
+                                        action,
+                                        Number((e.target as HTMLInputElement).value),
+                                      )
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  size="icon-sm"
+                                  onClick={(e) => {
+                                    const input = e.currentTarget.previousSibling as HTMLInputElement
+                                    void handleSaveXP(action, Number(input.value))
+                                  }}
+                                >
+                                  <Save className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="font-mono">
+                                  +{action.xpValue} XP
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  disabled={!canPersist}
+                                  onClick={() => setEditing(action.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="badges">
-              <div className="flex justify-end mb-3">
-                <Button onClick={() => setBadgeDialog(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo badge
-                </Button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {badges.map((b) => (
-                  <Card key={b.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between gap-2">
-                        <CardTitle className="text-base">{b.name}</CardTitle>
-                        <Badge variant="outline" className="shrink-0">
-                          {b.rarity}
-                        </Badge>
-                      </div>
-                      <CardDescription className="line-clamp-2">{b.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <p className="text-muted-foreground">
-                        Regra: {b.rule_type} ≥ {b.rule_threshold}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {(counts[b.id] ?? 0).toLocaleString("pt-BR")} alunos com este badge
-                      </p>
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            const next = !b.is_active
-                            try {
-                              await updateBadge.mutateAsync({ id: b.id, patch: { is_active: next } })
-                              toast.success(next ? "Ativado." : "Desativado.")
-                            } catch {
-                              toast.error("Erro ao atualizar.")
-                            }
-                          }}
-                        >
-                          {b.is_active ? "Desativar" : "Ativar"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={async () => {
-                            if (!confirm("Excluir badge? Conquistas dos alunos serão removidas (FK cascade).")) return
-                            try {
-                              await deleteBadge.mutateAsync(b.id)
-                              toast.success("Removido.")
-                            } catch {
-                              toast.error("Não foi possível excluir.")
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            <TabsContent value="badges" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Badges</CardTitle>
+                      <CardDescription>Conquistas que os alunos podem desbloquear</CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setSelectedBadge(null)
+                        setBadgeDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Novo Badge
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {badges.map((badge) => (
+                      <BadgeCard
+                        key={badge.id}
+                        badge={badge}
+                        onEdit={handleEditBadge}
+                        onDelete={handleDeleteBadge}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
-            <TabsContent value="levels">
-              <div className="flex justify-end mb-3">
-                <Button onClick={openAddLevel}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo nível
-                </Button>
-              </div>
+            <TabsContent value="levels" className="space-y-4">
               <Card>
-                <CardContent className="pt-6 space-y-2">
-                  {levels.map((l) => (
-                    <div
-                      key={l.id}
-                      className="flex items-center justify-between border-b border-border/60 py-2 last:border-0"
-                    >
-                      <div>
-                        <span className="font-semibold mr-2">Nível {l.level_number}</span>
-                        <span className="text-muted-foreground">{l.title}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">min {l.min_total_xp} XP</span>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={levels.length <= 1}
-                          onClick={async () => {
-                            if (!confirm("Excluir este nível?")) return
-                            try {
-                              await deleteLevel.mutateAsync(l.level_number)
-                              toast.success("Nível removido.")
-                            } catch {
-                              toast.error("Erro ao excluir.")
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Configuração de Níveis</CardTitle>
+                      <CardDescription>Defina os níveis e XP necessário para cada um</CardDescription>
                     </div>
-                  ))}
+                    <Button
+                      onClick={() => {
+                        setSelectedLevel(null)
+                        setLevelDialogOpen(true)
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Novo Nível
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {levels.map((level, index) => (
+                      <div
+                        key={level.level}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30"
+                      >
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
+                          <span className="font-bold text-primary-foreground">{level.level}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{level.name}</h4>
+                            <Trophy className="h-4 w-4 text-warning" />
+                          </div>
+                          <Progress
+                            value={
+                              index < levels.length - 1
+                                ? ((level.xpRequired - (levels[index - 1]?.xpRequired || 0)) /
+                                    (levels[levels.length - 1].xpRequired || 1)) *
+                                  100
+                                : 100
+                            }
+                            className="h-2"
+                          />
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono text-lg font-bold">
+                            {level.xpRequired.toLocaleString("pt-BR")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">XP necessário</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon-sm" onClick={() => handleEditLevel(level)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleDeleteLevel(level)}
+                            disabled={levels.length <= 1}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
-          <Dialog open={levelDialog} onOpenChange={setLevelDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nível</DialogTitle>
-                <DialogDescription>Número único e XP mínimo acumulado para alcançar o nível.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div>
-                  <Label>Número</Label>
-                  <Input value={levelNum} onChange={(e) => setLevelNum(e.target.value)} type="number" />
-                </div>
-                <div>
-                  <Label>Título</Label>
-                  <Input value={levelTitle} onChange={(e) => setLevelTitle(e.target.value)} />
-                </div>
-                <div>
-                  <Label>XP mínimo total</Label>
-                  <Input value={levelMinXp} onChange={(e) => setLevelMinXp(e.target.value)} type="number" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setLevelDialog(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => void saveLevel()} disabled={upsertLevel.isPending}>
-                  Salvar
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <BadgeDialog
+            open={badgeDialogOpen}
+            onOpenChange={setBadgeDialogOpen}
+            badge={selectedBadge}
+            onSave={(data) => void handleSaveBadge(data)}
+          />
 
-          <Dialog open={badgeDialog} onOpenChange={setBadgeDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo badge</DialogTitle>
-                <DialogDescription>Slug único (ex.: minha_meta). Regras simples por contagem.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div>
-                  <Label>Slug</Label>
-                  <Input value={badgeSlug} onChange={(e) => setBadgeSlug(e.target.value)} placeholder="ex.: cinco_aulas" />
-                </div>
-                <div>
-                  <Label>Nome</Label>
-                  <Input value={badgeName} onChange={(e) => setBadgeName(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Input value={badgeDesc} onChange={(e) => setBadgeDesc(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Tipo de regra</Label>
-                  <Select value={badgeRuleType} onValueChange={(v) => setBadgeRuleType(v as typeof badgeRuleType)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lessons_completed">Aulas concluídas</SelectItem>
-                      <SelectItem value="disciplines_approved">Disciplinas aprovadas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Limiar (N)</Label>
-                  <Input value={badgeThreshold} onChange={(e) => setBadgeThreshold(e.target.value)} type="number" />
-                </div>
-                <div>
-                  <Label>Raridade</Label>
-                  <Select value={badgeRarity} onValueChange={(v) => setBadgeRarity(v as BadgeRow["rarity"])}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="common">common</SelectItem>
-                      <SelectItem value="rare">rare</SelectItem>
-                      <SelectItem value="epic">epic</SelectItem>
-                      <SelectItem value="legendary">legendary</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setBadgeDialog(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => void saveNewBadge()} disabled={createBadge.isPending}>
-                  Criar
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <DeleteConfirmDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            onConfirm={() => void confirmDeleteBadge()}
+            title="Excluir Badge"
+            description={`Tem certeza que deseja excluir o badge "${badgeToDelete?.name}"? Esta ação não pode ser desfeita.`}
+          />
+
+          <LevelDialog
+            open={levelDialogOpen}
+            onOpenChange={setLevelDialogOpen}
+            level={selectedLevel}
+            onSave={(data) => void handleSaveLevel(data)}
+            existingLevels={levels}
+          />
+
+          <DeleteConfirmDialog
+            open={levelDeleteDialogOpen}
+            onOpenChange={setLevelDeleteDialogOpen}
+            onConfirm={() => void confirmDeleteLevel()}
+            title="Excluir Nível"
+            description={`Tem certeza que deseja excluir o nível ${levelToDelete?.level} "${levelToDelete?.name}"? Esta ação não pode ser desfeita.`}
+          />
         </>
       )}
     </AdminLayout>

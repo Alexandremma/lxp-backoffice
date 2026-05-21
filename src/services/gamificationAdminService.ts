@@ -18,6 +18,17 @@ export type LevelRow = {
   is_active: boolean
 }
 
+export type BadgeRuleConfigJson = {
+  rules: Array<{
+    id: string
+    trigger: string
+    operator: string
+    value: number | boolean
+    courseId?: string
+  }>
+  matchMode: "all" | "any"
+}
+
 export type BadgeRow = {
   id: string
   slug: string
@@ -30,6 +41,7 @@ export type BadgeRow = {
   xp_reward: number
   sort_order: number
   is_active: boolean
+  rule_config: BadgeRuleConfigJson | null
 }
 
 export async function listXpRulesAdmin(): Promise<XpRuleRow[]> {
@@ -89,7 +101,9 @@ export async function deleteLevelByNumberAdmin(levelNumber: number): Promise<voi
 export async function listBadgesAdmin(): Promise<BadgeRow[]> {
   const { data, error } = await supabase
     .from("lxp_gamification_badges")
-    .select("id,slug,name,description,icon_id,rarity,rule_type,rule_threshold,xp_reward,sort_order,is_active")
+    .select(
+      "id,slug,name,description,icon_id,rarity,rule_type,rule_threshold,xp_reward,sort_order,is_active,rule_config",
+    )
     .order("sort_order", { ascending: true })
   if (error) throw error
   return (data ?? []) as BadgeRow[]
@@ -105,6 +119,7 @@ export async function createBadgeAdmin(input: {
   rule_threshold: number
   xp_reward?: number
   sort_order?: number
+  rule_config?: BadgeRuleConfigJson | null
 }): Promise<void> {
   const { error } = await supabase.from("lxp_gamification_badges").insert({
     slug: input.slug.trim().toLowerCase().replace(/\s+/g, "_"),
@@ -117,6 +132,7 @@ export async function createBadgeAdmin(input: {
     xp_reward: input.xp_reward ?? 0,
     sort_order: input.sort_order ?? 99,
     is_active: true,
+    rule_config: input.rule_config ?? null,
   })
   if (error) throw error
 }
@@ -126,7 +142,16 @@ export async function updateBadgeAdmin(
   patch: Partial<
     Pick<
       BadgeRow,
-      "name" | "description" | "icon_id" | "rarity" | "rule_type" | "rule_threshold" | "xp_reward" | "sort_order" | "is_active"
+      | "name"
+      | "description"
+      | "icon_id"
+      | "rarity"
+      | "rule_type"
+      | "rule_threshold"
+      | "xp_reward"
+      | "sort_order"
+      | "is_active"
+      | "rule_config"
     >
   >,
 ): Promise<void> {

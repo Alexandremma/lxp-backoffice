@@ -10,7 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { BadgeRule, BadgeTriggerType, BadgeOperator } from "@/lib/mock-data"
-import { BADGE_TRIGGERS, BADGE_OPERATORS, generateConditionText } from "@/lib/badge-rules"
+import {
+  BADGE_TRIGGERS,
+  BADGE_OPERATORS,
+  SUPPORTED_BADGE_TRIGGERS,
+  generateConditionText,
+} from "@/lib/badge-rules"
 import { Plus, X } from "lucide-react"
 
 interface BadgeRuleBuilderProps {
@@ -48,11 +53,15 @@ export const BadgeRuleBuilder = ({
     )
   }
 
-  const triggerKeys = Object.keys(BADGE_TRIGGERS) as BadgeTriggerType[]
+  const triggerKeys = SUPPORTED_BADGE_TRIGGERS
   const operatorKeys = Object.keys(BADGE_OPERATORS) as BadgeOperator[]
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Métricas ativas no servidor: aulas concluídas, disciplinas aprovadas e dias consecutivos de acesso.
+        Fórum, quiz e outras regras serão habilitadas em atualizações futuras.
+      </p>
       <div className="space-y-3">
         {rules.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
