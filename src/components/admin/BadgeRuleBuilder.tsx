@@ -59,8 +59,8 @@ export const BadgeRuleBuilder = ({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Métricas ativas no servidor: aulas concluídas, disciplinas aprovadas e dias consecutivos de acesso.
-        Fórum, quiz e outras regras serão habilitadas em atualizações futuras.
+        Métricas ativas: aulas, disciplinas, streak, comentários, respostas, certificados e XP total.
+        Quiz e tempo de estudo ainda não medidos no servidor.
       </p>
       <div className="space-y-3">
         {rules.length === 0 ? (
