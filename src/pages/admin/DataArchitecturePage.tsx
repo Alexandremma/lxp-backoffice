@@ -77,14 +77,22 @@ const DataArchitecturePage = () => {
           </div>
           <PageHeader
             title="Modelo de dados (referência visual)"
-            description="Visão didática das tabelas: abas **LXP Backoffice** e **LXP Alunos** = schema `public` no Supabase; aba **B42** = modelo conceitual da biblioteca externa (API EAD Stock/Gael) alinhado ao ERD e aos endpoints de disciplina/unidade."
+            description="Schema `public` no Supabase (migrations Steps 14–23): certificados, gamificação (`rule_config`, XP, níveis), acesso diário, comentários e anotações na aula. Abas Backoffice/Alunos = LXP; aba B42 = EAD Stock/Gael + Alice (`INTEGRACAO_ALICE_EADSTOCK.md`)."
             actions={
-              <Badge
-                variant="outline"
-                className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
-              >
-                RLS por padrão
-              </Badge>
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  variant="outline"
+                  className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
+                >
+                  RLS por padrão
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500/40 bg-emerald-500/5 font-mono text-[11px] text-emerald-500"
+                >
+                  Atualizado · mai/2026
+                </Badge>
+              </div>
             }
           />
         </div>

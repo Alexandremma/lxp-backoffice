@@ -12,16 +12,18 @@ const ClientIntakePage = () => {
       <div className="mx-auto max-w-4xl space-y-8">
         <PageHeader
           title="Roteiro — informações e decisões com o cliente"
-          description="Checklist para reuniões: integração (EAD Stock / Gael / Alice), certificados, métricas, Auth e catálogo. Comece pela seção Respostas recebidas (consolidado do e-mail + payloads); as demais seções trazem o que ainda falta fechar."
+          description="Checklist para reuniões e homologação. Comece por **Produto entregue** (gamificação, Alice, matriz de permissões); depois **Respostas recebidas** e seções de integração, certificados, métricas, Auth e catálogo."
         />
 
         <p className="-mt-4 text-sm text-muted-foreground">
-          Referências principais:{" "}
+          Referências:{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md</code>,{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">HOMOLOGACAO_CLIENTE_LXP_UAT.md</code>,{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">INTEGRACAO_ALICE_EADSTOCK.md</code>,{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">MATRIZ_PERMISSOES_BACKOFFICE_INSTRUCOES.md</code>,{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">XP_SINCRONIA_AUDITORIA.md</code>,{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">INTEGRACAO_B42_RESPOSTAS_CLIENTE.md</code>,{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">DECISOES_PENDENTES_CLIENTE_B42.md</code>,{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">DOC_PEDIDO_INTEGRACOES_BIBLIOTECA_E_EBOOKS.md</code>,{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">CONTINUACAO_CERTIFICADO_GAMIFICACAO.md</code>,{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">HOMOLOGACAO_CLIENTE_LXP_UAT.md</code>.
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">DECISOES_PENDENTES_CLIENTE_B42.md</code>.
         </p>
 
         <div className="space-y-10">

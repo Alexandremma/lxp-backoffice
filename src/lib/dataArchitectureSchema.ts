@@ -1,5 +1,6 @@
 /**
- * Documentação visual (mock) do modelo de dados — mesmo schema `public` no Supabase.
+ * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
+ * Atualizado com migrations Steps 14–23 (certificados, gamificação, acesso diário, comentários, anotações).
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -39,7 +40,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe administrativa, certificados (templates/assinaturas), regras de gamificação e estrutura de cursos. Escrita privilegiada via papéis admin e Edge Functions onde aplicável.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates/assinaturas/emissões), catálogo de **ações de XP**, badges com `rule_config`, níveis e estrutura de cursos. Admin edita via UI em `/admin/gamificacao`; RPC `lxp_reevaluate_all_student_badges` (somente admin). Migrations aplicadas até **Step 23**.",
     tables: [
       {
         name: "backoffice_team_members",
@@ -136,10 +137,17 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_gamification_xp_rules",
-        purpose: "Regras de pontos por ação (ex.: aula concluída, disciplina aprovada).",
+        purpose:
+          "Catálogo de ações de XP. Triggers leem `xp_value` na hora do evento; o app aluno exibe `lesson_complete` na UI (sincronizado).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Regra." },
-          { name: "action_key", kind: "column", sqlType: "text", description: "Chave estável consumida por triggers/app." },
+          {
+            name: "action_key",
+            kind: "column",
+            sqlType: "text",
+            description:
+              "lesson_complete | daily_login | streak_7_days | lesson_comment | lesson_comment_reply | discipline_complete | badge_reward (bônus ao ganhar badge).",
+          },
           { name: "label", kind: "column", sqlType: "text", description: "Rótulo para UI admin." },
           { name: "category", kind: "column", sqlType: "text", description: "Agrupamento (lesson, quiz, etc.)." },
           { name: "xp_value", kind: "column", sqlType: "integer", description: "Pontos concedidos por ocorrência." },
@@ -164,7 +172,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_gamification_badges",
-        purpose: "Conquistas configuráveis (limiar de aulas/disciplinas, raridade, ícone).",
+        purpose:
+          "Conquistas com `rule_config` (várias métricas, modo E/OU). Motor `lxp_evaluate_student_badges` concede ou **revoga** awards (Step 21).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Badge." },
           { name: "slug", kind: "column", sqlType: "text", description: "Identificador estável único." },
@@ -172,9 +181,20 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "description", kind: "column", sqlType: "text", description: "Texto para o aluno." },
           { name: "icon_id", kind: "column", sqlType: "text", description: "Chave do ícone na UI." },
           { name: "rarity", kind: "column", sqlType: "text", description: "common | rare | epic | legendary." },
-          { name: "rule_type", kind: "column", sqlType: "text", description: "Tipo de regra (aulas concluídas, disciplinas aprovadas…)." },
-          { name: "rule_threshold", kind: "column", sqlType: "integer", description: "Meta numérica da regra." },
-          { name: "xp_reward", kind: "column", sqlType: "integer", description: "XP extra opcional ao conceder." },
+          { name: "rule_type", kind: "column", sqlType: "text", description: "Legado (fallback se `rule_config` vazio)." },
+          { name: "rule_threshold", kind: "column", sqlType: "integer", description: "Legado (limiar simples)." },
+          {
+            name: "rule_config",
+            kind: "column",
+            sqlType: "jsonb",
+            description: "Regras compostas: `rules[]` + `matchMode` all|any; triggers: aulas, disciplinas, streak, comentários, certificados, XP total.",
+          },
+          {
+            name: "xp_reward",
+            kind: "column",
+            sqlType: "integer",
+            description: "Bônus XP ao desbloquear (Step 23 → evento `badge_reward`; 0 = só troféu).",
+          },
           { name: "sort_order", kind: "column", sqlType: "integer", description: "Ordem na vitrine." },
           { name: "is_active", kind: "column", sqlType: "boolean", description: "Se pode ser conquistada." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
@@ -248,7 +268,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Alunos",
     schemaHighlight: "student.*",
     intro:
-      "Perfil do aluno, matrículas, progresso de aulas e disciplinas, gamificação em runtime (eventos e conquistas) e certificados emitidos para o portfólio. Leitura e escrita sob RLS como estudante.",
+      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio. Conteúdo da aula via **Alice** (`GET /api/rents` + POST launch). Homolog: `HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md`.",
     tables: [
       {
         name: "lxp_profiles",
@@ -352,7 +372,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             fkRef: "public.lxp_profiles",
             description: "Aluno que recebeu XP.",
           },
-          { name: "action_key", kind: "column", sqlType: "text", description: "Chave alinhada a lxp_gamification_xp_rules." },
+          {
+            name: "action_key",
+            kind: "column",
+            sqlType: "text",
+            description: "Chave da regra ou `badge_reward` para bônus de badge.",
+          },
           { name: "xp_delta", kind: "column", sqlType: "integer", description: "Pontos creditados neste evento." },
           { name: "ref", kind: "column", sqlType: "jsonb", description: "Contexto (aula, disciplina, ids externos)." },
           { name: "idempotency_key", kind: "column", sqlType: "text", description: "Evita duplicar o mesmo ganho." },
@@ -379,6 +404,67 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             description: "Badge conquistada.",
           },
           { name: "earned_at", kind: "column", sqlType: "timestamptz", description: "Quando foi concedida." },
+        ],
+      },
+      {
+        name: "lxp_student_daily_access",
+        purpose: "Um registro por (aluno, dia) para streak de login e XP de acesso diário / marco de 7 dias.",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Registro de acesso." },
+          {
+            name: "student_profile_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Aluno.",
+          },
+          { name: "access_date", kind: "column", sqlType: "date", description: "Dia (America/Sao_Paulo); unique com student." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Inserção (trigger de XP no INSERT)." },
+        ],
+      },
+      {
+        name: "lxp_lesson_comments",
+        purpose: "Discussão na aula (público entre alunos); XP 15 (post) / 30 (resposta) via trigger.",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Comentário." },
+          {
+            name: "student_profile_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Autor.",
+          },
+          { name: "external_discipline_id", kind: "column", sqlType: "text", description: "Disciplina (trailId)." },
+          { name: "external_unit_id", kind: "column", sqlType: "text", description: "Aula (lessonId)." },
+          {
+            name: "parent_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_lesson_comments",
+            description: "Null = comentário raiz; preenchido = resposta.",
+          },
+          { name: "body", kind: "column", sqlType: "text", description: "Texto (1–2000 caracteres)." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última edição." },
+        ],
+      },
+      {
+        name: "lxp_lesson_notes",
+        purpose: "Anotações privadas do aluno por aula (somente o autor vê via RLS).",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Nota." },
+          {
+            name: "student_profile_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Dono da anotação.",
+          },
+          { name: "external_discipline_id", kind: "column", sqlType: "text", description: "Disciplina." },
+          { name: "external_unit_id", kind: "column", sqlType: "text", description: "Aula." },
+          { name: "body", kind: "column", sqlType: "text", description: "Conteúdo (1–5000 caracteres)." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],
       },
       {
@@ -419,8 +505,18 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "B42",
     schemaHighlight: "biblioteca.*",
     intro:
-      "Modelo relacional da **biblioteca de conteúdo** consumida pela API (EAD Stock / Gael), conforme ERD e exemplos de `GET /scout/disciplinas/list` e `GET /disciplinas/get/{id}`. Não existe no Supabase do LXP — é o domínio de dados do catálogo externo; nosso vínculo interno continua em `lxp_course_library_links.library_content_id` → `disciplinas.id`.",
+      "Catálogo externo (EAD Stock / Gael) + **Alice** (`alice.eadstock.com.br`: `GET /api/rents`, launch POST `/?c=`). No LXP Alunos o player usa Alice quando configurado (`VITE_ALICE_*`). Vínculo interno: `lxp_course_library_links.library_content_id` → `disciplinas.id`. Ver `INTEGRACAO_ALICE_EADSTOCK.md`.",
     tables: [
+      {
+        name: "alice · /api/rents",
+        schemaLabel: "alice.api",
+        purpose: "Listagem de disciplinas/unidades com hash de launch (não persiste no Supabase LXP).",
+        columns: [
+          { name: "discipline.id", kind: "column", sqlType: "json", description: "ID da disciplina no catálogo." },
+          { name: "rents[]", kind: "column", sqlType: "json", description: "Unidades com `unit.id`, `url`, `?c=` para POST." },
+          { name: "launch", kind: "column", sqlType: "POST", description: "Form POST para `/?c=<hash>` + HMAC `key` + dados do aluno." },
+        ],
+      },
       {
         name: "disciplinas",
         schemaLabel: "b42.api",
