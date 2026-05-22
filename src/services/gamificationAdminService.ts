@@ -167,6 +167,13 @@ export async function deleteBadgeAdmin(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function reevaluateAllStudentBadgesAdmin(): Promise<number> {
+  const { data, error } = await supabase.rpc("lxp_reevaluate_all_student_badges")
+  if (error) throw error
+  const payload = data as { students_processed?: number } | null
+  return payload?.students_processed ?? 0
+}
+
 export async function getBadgeEarnedCountsAdmin(): Promise<Record<string, number>> {
   const { data, error } = await supabase
     .from("lxp_student_badge_awards")

@@ -26,6 +26,7 @@ import {
   useCreateBadgeAdmin,
   useDeleteBadgeAdmin,
   useDeleteLevelAdmin,
+  useReevaluateAllBadgesAdmin,
   useUpdateBadgeAdmin,
   useUpdateXpRuleAdmin,
   useUpsertLevelAdmin,
@@ -41,6 +42,7 @@ import {
   Plus,
   Trash2,
   Loader2,
+  RefreshCw,
 } from "lucide-react"
 import { toast } from "sonner"
 import { BadgeDialog } from "@/components/admin/BadgeDialog"
@@ -59,6 +61,7 @@ const GamificationPage = () => {
   const createBadge = useCreateBadgeAdmin()
   const updateBadge = useUpdateBadgeAdmin()
   const deleteBadge = useDeleteBadgeAdmin()
+  const reevaluateBadges = useReevaluateAllBadgesAdmin()
 
   const [editing, setEditing] = useState<string | null>(null)
   const [badgeDialogOpen, setBadgeDialogOpen] = useState(false)
@@ -415,15 +418,35 @@ const GamificationPage = () => {
                       <CardTitle>Badges</CardTitle>
                       <CardDescription>Conquistas que os alunos podem desbloquear</CardDescription>
                     </div>
-                    <Button
-                      onClick={() => {
-                        setSelectedBadge(null)
-                        setBadgeDialogOpen(true)
-                      }}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Novo Badge
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        disabled={reevaluateBadges.isPending}
+                        onClick={() => {
+                          void reevaluateBadges.mutateAsync().then((n) => {
+                            toast.success(`Badges reavaliados para ${n} aluno(s).`)
+                          }).catch(() => {
+                            toast.error("Não foi possível reavaliar os badges.")
+                          })
+                        }}
+                      >
+                        {reevaluateBadges.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Reavaliar todos os alunos
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSelectedBadge(null)
+                          setBadgeDialogOpen(true)
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Novo Badge
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

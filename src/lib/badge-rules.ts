@@ -31,6 +31,10 @@ export const SUPPORTED_BADGE_TRIGGERS: BadgeTriggerType[] = [
   "lessons_completed",
   "courses_completed",
   "streak_days",
+  "forum_posts",
+  "forum_replies",
+  "certificates_earned",
+  "xp_earned",
 ]
 
 export const BADGE_TRIGGERS: Record<BadgeTriggerType, TriggerConfig> = {
@@ -83,16 +87,16 @@ export const BADGE_TRIGGERS: Record<BadgeTriggerType, TriggerConfig> = {
     allowCourseFilter: false,
   },
   forum_posts: {
-    label: "Posts no fórum",
-    description: "Quantidade de tópicos criados",
+    label: "Comentários na aula",
+    description: "Comentários principais (sem resposta)",
     icon: MessageSquare,
     valueType: "number",
     unit: "posts",
     allowCourseFilter: true,
   },
   forum_replies: {
-    label: "Respostas no fórum",
-    description: "Quantidade de respostas em tópicos",
+    label: "Ajudar colega",
+    description: "Respostas a comentários de outros alunos",
     icon: MessagesSquare,
     valueType: "number",
     unit: "respostas",

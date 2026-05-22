@@ -4,6 +4,7 @@ import {
   createBadgeAdmin,
   deleteBadgeAdmin,
   deleteLevelByNumberAdmin,
+  reevaluateAllStudentBadgesAdmin,
   updateBadgeAdmin,
   updateXpRuleAdmin,
   upsertLevelAdmin,
@@ -62,6 +63,14 @@ export function useDeleteBadgeAdmin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteBadgeAdmin(id),
+    onSuccess: () => invalidateGamification(qc),
+  })
+}
+
+export function useReevaluateAllBadgesAdmin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => reevaluateAllStudentBadgesAdmin(),
     onSuccess: () => invalidateGamification(qc),
   })
 }
