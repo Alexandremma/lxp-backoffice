@@ -183,8 +183,8 @@ export const BadgeDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,880px)] w-full max-w-[540px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[540px]">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>{badge ? "Editar Badge" : "Novo Badge"}</DialogTitle>
           <DialogDescription>
             {badge
@@ -193,16 +193,17 @@ export const BadgeDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           {/* Preview */}
           <div className="flex justify-center">
             <div
-              className={`w-40 rounded-xl border-2 p-4 text-center ${rarityConfig.borderColor} ${rarityConfig.bgColor}`}
+              className={`w-32 rounded-xl border-2 p-3 text-center ${rarityConfig.borderColor} ${rarityConfig.bgColor}`}
             >
               <div
-                className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl ${rarityConfig.iconBg}`}
+                className={`mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl ${rarityConfig.iconBg}`}
               >
-                <SelectedIcon className={`h-7 w-7 ${rarityConfig.textColor}`} />
+                <SelectedIcon className={`h-6 w-6 ${rarityConfig.textColor}`} />
               </div>
               <p className="text-sm font-semibold truncate">
                 {formData.name || "Nome do Badge"}
@@ -321,8 +322,9 @@ export const BadgeDialog = ({
               />
             </div>
           </div>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t bg-background px-6 py-4">
             <Button
               type="button"
               variant="outline"
