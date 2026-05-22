@@ -18,10 +18,7 @@ interface BadgeCardProps {
 export const BadgeCard = ({ badge, onEdit, onDelete }: BadgeCardProps) => {
   const Icon = getBadgeIcon(badge.icon)
   const config = RARITY_CONFIG[badge.rarity]
-  const xpReward = badge.xpReward || 
-    (badge.rarity === "legendary" ? 1000 : 
-     badge.rarity === "epic" ? 300 : 
-     badge.rarity === "rare" ? 150 : 75)
+  const xpReward = badge.xpReward ?? 0
 
   return (
     <div
@@ -66,13 +63,17 @@ export const BadgeCard = ({ badge, onEdit, onDelete }: BadgeCardProps) => {
         {badge.description}
       </p>
 
-      {/* XP Badge */}
-      <div
-        className={`mt-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium ${config.borderColor} ${config.textColor}`}
-      >
-        <Zap className="h-4 w-4" />
-        <span>+{xpReward} XP</span>
-      </div>
+      {/* Bônus XP ao desbloquear (campo xp_reward no banco) */}
+      {xpReward > 0 ? (
+        <div
+          className={`mt-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium ${config.borderColor} ${config.textColor}`}
+        >
+          <Zap className="h-4 w-4" />
+          <span>+{xpReward} XP</span>
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-muted-foreground">Sem bônus de XP</p>
+      )}
 
       {/* Stats */}
       <p className="mt-3 text-xs text-muted-foreground">

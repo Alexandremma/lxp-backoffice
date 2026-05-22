@@ -3,7 +3,8 @@
  * Fonte: documentos na raiz do monorepo + respostas por e-mail / payloads da API B42 (2026).
  * Referências: DECISOES_PENDENTES_CLIENTE_B42, INTEGRACAO_B42_RESPOSTAS_CLIENTE,
  * DOC_PEDIDO_INTEGRACOES_BIBLIOTECA_E_EBOOKS, CONTINUACAO_CERTIFICADO_GAMIFICACAO,
- * HOMOLOGACAO_CLIENTE_LXP_UAT.
+ * HOMOLOGACAO_CLIENTE_LXP_UAT, HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE,
+ * MATRIZ_PERMISSOES_BACKOFFICE_INSTRUCOES, XP_SINCRONIA_AUDITORIA, INTEGRACAO_ALICE_EADSTOCK.
  */
 
 export type ClientIntakeTopic = {
@@ -21,15 +22,67 @@ export type ClientIntakeTopic = {
 }
 
 export const CLIENT_INTAKE_TOPIC_CATEGORIES: string[] = [
+  "Produto entregue (homologação — maio/2026)",
   "Respostas recebidas (API B42 / e-mail)",
   "Integração biblioteca / EAD Stock / Alice",
   "Certificados e documentos legais",
   "Métricas, gamificação e produto aluno",
-  // "Acesso, Auth, homologação e governança",
+  "Acesso, Auth, homologação e governança",
   "Catálogo, matrícula e operações",
 ]
 
 export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
+  {
+    id: "homolog-gamification-delivered",
+    category: "Produto entregue (homologação — maio/2026)",
+    title: "Gamificação e engajamento — entregue para validação do cliente",
+    explanation: [
+      "**Backoffice** (`/admin/gamificacao`): abas Pontos (ações de XP), Conquistas (badges com `rule_config` E/OU), Níveis; botão **Reavaliar todos os alunos** (RPC `lxp_reevaluate_all_student_badges`).",
+      "**Alunos:** XP por aula/disciplina/login/comentários; streak = dias **consecutivos de login** (`lxp_student_daily_access`); badges no portfólio; discussão na aula (15 XP post / 30 XP resposta); anotações privadas por aula.",
+      "**Sincronia XP:** valores exibidos na trilha vêm de `lxp_gamification_xp_rules` (não mais fixo 10); bônus de badge via `xp_reward` → evento `badge_reward` (Step 23). Ver `XP_SINCRONIA_AUDITORIA.md`.",
+      "**Homologação:** roteiro de testes em `HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md`; contas `admin@lxp.edu.br` / `student@lxp.edu.br` (senha `B42@123456`). URLs: backoffice e alunos na Vercel.",
+      "**Fase 2 (não entregue):** curtidas em comentários, papel instrutor na discussão, telemetria Alice, SMTP real em Configurações.",
+    ],
+    whatWeNeed: [
+      "Cliente executar checklist de homologação e registrar aprovações / bugs.",
+      "Confirmar regras pedagógicas de streak (login) e marcos de 7 dias (+100 XP) — ou pedir alteração.",
+      "Priorizar fase 2 (likes, instrutor) se necessário para go-live.",
+    ],
+    scriptForClient:
+      "Entregamos o pacote de gamificação e engajamento para vocês validarem em homologação: painel admin completo, app aluno com XP real, sequência de login, conquistas compostas, comentários e anotações na aula. Enviamos um documento passo a passo de testes — pedimos que o time de vocês rode o checklist e nos devolva o que aprova e o que precisa ajuste. Streak hoje é por login diário, não por aula concluída; se a instituição quiser outra regra, precisamos decidir antes de produção.",
+  },
+  {
+    id: "homolog-alice-player",
+    category: "Produto entregue (homologação — maio/2026)",
+    title: "Player da aula — Alice (POST launch) em homologação",
+    explanation: [
+      "**Implementado** no LXP Alunos: `GET /api/rents` + iframe com **POST** `https://alice.eadstock.com.br/?c=<hash>` + HMAC `key` + dados do aluno (`INTEGRACAO_ALICE_EADSTOCK.md`).",
+      "Chaves separadas backoffice vs alunos; HOST cadastrado na Alice = URLs Vercel do piloto.",
+      "Telemetria Alice (`GET /api/telemetria/aluno`) permanece **fase 2** para progresso automático.",
+    ],
+    whatWeNeed: [
+      "Cliente testar disciplina piloto (ex.: id 38) e confirmar launch OK em homologação.",
+      "Confirmar mapeamento `rent.unit.id` ↔ unidade Eadstock e `user_id` esperado no POST.",
+    ],
+    scriptForClient:
+      "O player da aula no app aluno já segue o fluxo POST que vocês documentaram. Pedimos que testem com a disciplina de exemplo em homologação e nos digam se o conteúdo abre corretamente. Ainda precisamos só confirmar o id da unidade e qual user_id vocês esperam no launch para fechar qualquer divergência com o catálogo Eadstock.",
+  },
+  {
+    id: "permissions-matrix-sent",
+    category: "Produto entregue (homologação — maio/2026)",
+    title: "Matriz de permissões do backoffice — enviada; RBAC aguardando retorno",
+    explanation: [
+      "Planilha **`MATRIZ_PERMISSOES_BACKOFFICE_LXP.csv`** + instruções em **`MATRIZ_PERMISSOES_BACKOFFICE_INSTRUCOES.md`** enviadas ao cliente por e-mail.",
+      "Hoje o backoffice usa papéis amplos (admin autenticado); **RBAC fino por tela/ação** só após o cliente devolver a matriz preenchida (sim/não por perfil).",
+      "Itens sensíveis: exclusão de alunos, emissão de certificados, gamificação global, equipe admin.",
+    ],
+    whatWeNeed: [
+      "Matriz devolvida com perfis institucionais (coordenação, secretaria, TI, etc.) e colunas sim/não.",
+      "Decisão se haverá perfil somente leitura e quem pode convidar usuários do backoffice.",
+    ],
+    scriptForClient:
+      "Enviamos a planilha de permissões do painel administrativo para vocês marcarem quem pode fazer o quê em cada área. Enquanto não voltar preenchida, seguimos com acesso amplo para quem é admin no piloto. Assim que recebermos a matriz, implementamos o controle fino no backoffice.",
+  },
   {
     id: "integration-answered-summary",
     category: "Respostas recebidas (API B42 / e-mail)",
@@ -93,11 +146,11 @@ export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
       "Opção C — Só caderno digital (descontinuado para embed Alice).",
     ],
     whatWeNeed: [
-      "Implementação: `aliceAdapter`, `AliceLessonFrame` em Lesson.tsx.",
-      "Testes locais: `TESTE_ALICE_LAUNCH.html` + `.env.local` com chaves alunos.",
+      "Validação do cliente em homologação (disciplina piloto).",
+      "Regra explícita se algum fornecedor ainda exige só `url_caderno_digital` (Opção B).",
     ],
     scriptForClient:
-      "Seguimos o fluxo POST Alice que vocês enviaram no exemplo PHP. Estamos testando com a disciplina de exemplo e implementando no app alunos.",
+      "O player no app alunos já usa POST Alice conforme o exemplo de vocês. Precisamos que validem em homologação e nos digam se algum conteúdo do piloto ainda deve abrir só pelo caderno digital Eadstock em vez da Alice.",
   },
   {
     id: "api-secret-format",
@@ -178,21 +231,40 @@ export const CLIENT_INTAKE_TOPICS: ClientIntakeTopic[] = [
   {
     id: "gamification-metrics",
     category: "Métricas, gamificação e produto aluno",
-    title: "Métricas no app: o que conta como estudo, horas e streak",
+    title: "Métricas no app: horas (pendente) vs streak e XP (implementado)",
     explanation: [
-      "O MVP de gamificação já grava XP por aula/disciplina e badges. Dashboard ainda pode combinar estimativas (ex.: horas) com dados reais — a **definição pedagógica** evita retrabalho e discussão de números com o cliente.",
+      "**Implementado (maio/2026):** XP total = soma de `lxp_student_xp_events`; ações configuráveis em `/admin/gamificacao` (aula, login diário, marco 7 dias, comentário/resposta, disciplina, bônus de badge); **streak = login consecutivo** (fuso America/Sao_Paulo, registro em `lxp_student_daily_access`); badges com regras compostas e reavaliação admin.",
+      "**Pendente definição pedagógica:** “horas estudadas” no dashboard — hoje pode misturar estimativa com dados reais; cliente deve escolher fórmula antes de relatório oficial.",
+      "**Trilha 100%:** progresso por aulas concluídas no LXP; certificado e badge podem usar critérios distintos (`rule_config`).",
     ],
     decisionOptions: [
       "Opção A — Horas = soma de durações declaradas das aulas concluídas (metadado da API externa ou cadastro interno).",
       "Opção B — Horas = tempo de sessão medido no front (complexidade e privacidade maiores).",
       "Opção C — Manter **estimativa simples** (ex.: 0,5 h por aula) até haver instrumentação oficial.",
+      "Streak — **Manter login** (implementado) ou migrar para “dia com aula concluída” (mudança de produto + dados).",
     ],
     whatWeNeed: [
-      "Regra oficial para “horas estudadas” e para **streak** (fuso horário, corte do dia, tolerância).",
-      "Se “trilha concluída” exige 100% das aulas, nota mínima ou outro critério.",
+      "Regra oficial para “horas estudadas” (A, B ou C acima).",
+      "Confirmação escrita: streak por **login** está ok para a instituição, ou pedido de mudança.",
+      "Critério de trilha/certificado: só 100% aulas, nota mínima, prova externa, etc.",
     ],
     scriptForClient:
-      "O app já mostra progresso, XP e badges, mas ‘hora estudada’ e sequência de dias são conceitos que mudam de instituição para instituição. A gente precisa alinhar com vocês o que **conta** como hora — duração declarada da aula, tempo real na tela, uma estimativa simples — e como vocês querem fechar o dia para streak, fuso e se falta um dia zera ou não. Na mesma linha: quando vocês dizem que a trilha está 100% concluída, é só todas as aulas vistas, tem nota mínima, tem prova? Isso impacta relatório e até o que pode disparar certificado. Quanto antes a gente cravar isso, menos retrabalho depois com número discutindo com aluno e comercial.",
+      "XP, níveis, conquistas e sequência de dias já estão no ar em homologação: a sequência conta quando o aluno **entra** na plataforma no dia, com fuso de São Paulo, e o marco de 7 dias dá bônus de XP configurável. O que ainda precisamos de vocês é fechar como vocês querem mostrar **horas estudadas** no painel — soma de duração das aulas, tempo na tela, ou estimativa — e confirmar se a regra de streak por login atende a política pedagógica de vocês. Também vale alinhar o que significa trilha 100% concluída para certificado e relatórios.",
+  },
+  {
+    id: "gamification-comments-phase2",
+    category: "Métricas, gamificação e produto aluno",
+    title: "Discussão na aula — fase 2 (likes e instrutor)",
+    explanation: [
+      "**Entregue:** comentários e respostas reais (`lxp_lesson_comments`), XP por trigger, edição/exclusão pelo autor; anotações privadas (`lxp_lesson_notes`).",
+      "**Adiado (acordo com cliente):** curtidas e destaque de comentário do instrutor — UI de like oculta; badges de fórum usam contagem de posts, não likes.",
+    ],
+    whatWeNeed: [
+      "Cliente priorizar likes e papel instrutor para go-live ou manter fora do escopo inicial.",
+      "Se instrutor: definir quem é instrutor (perfil backoffice, flag na turma, etc.).",
+    ],
+    scriptForClient:
+      "A aba de discussão na aula já funciona com comentários e respostas entre alunos, com pontos configuráveis, e anotações privadas. Curtidas e comentário fixado do professor ficaram para uma segunda fase, como combinamos, para não atrasar o piloto. Se isso for obrigatório no go-live, precisamos que vocês priorizem e digam como identificam o instrutor no sistema de vocês.",
   },
   // {
   //   id: "enrollment-external",

@@ -123,7 +123,7 @@ export const BadgeDialog = ({
         description: badge.description,
         icon: badge.icon,
         rarity: badge.rarity,
-        xpReward: badge.xpReward || 100,
+        xpReward: badge.xpReward ?? 0,
         rules: badge.ruleConfig?.rules || [],
         matchMode: badge.ruleConfig?.matchMode || "all",
       })
@@ -211,12 +211,16 @@ export const BadgeDialog = ({
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                 {formData.description || "Descrição"}
               </p>
-              <div
-                className={`mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${rarityConfig.borderColor} ${rarityConfig.textColor}`}
-              >
-                <Zap className="h-3 w-3" />
-                <span>+{formData.xpReward} XP</span>
-              </div>
+              {formData.xpReward > 0 ? (
+                <div
+                  className={`mt-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${rarityConfig.borderColor} ${rarityConfig.textColor}`}
+                >
+                  <Zap className="h-3 w-3" />
+                  <span>+{formData.xpReward} XP</span>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">Sem bônus de XP</p>
+              )}
             </div>
           </div>
 
@@ -296,7 +300,10 @@ export const BadgeDialog = ({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="xpReward">Recompensa XP</Label>
+              <Label htmlFor="xpReward">Bônus XP ao desbloquear</Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                XP extra creditado quando o aluno ganha este badge (0 = só a conquista).
+              </p>
               <Input
                 id="xpReward"
                 type="number"

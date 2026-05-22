@@ -37,6 +37,12 @@ export const XP_ACTION_CATALOG: {
     description: "Responder um comentário na seção de comentários da aula",
     category: "social",
   },
+  {
+    action_key: "discipline_complete",
+    name: "Disciplina concluída",
+    description: "Aprovar/concluir todas as aulas de uma disciplina",
+    category: "lesson",
+  },
 ]
 
 export const XP_ACTION_KEYS = new Set(XP_ACTION_CATALOG.map((a) => a.action_key))

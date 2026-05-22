@@ -313,7 +313,7 @@ const GamificationPage = () => {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{totalXPPossible}</p>
-                    <p className="text-sm text-muted-foreground">XP por Ciclo</p>
+                    <p className="text-sm text-muted-foreground">Soma das ações ativas (1× cada)</p>
                   </div>
                 </div>
               </CardContent>
