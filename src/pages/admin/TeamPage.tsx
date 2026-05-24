@@ -37,7 +37,6 @@ import {
     ChevronsRight,
     ChevronLeft,
     ChevronRight,
-    Copy,
     Edit,
     GraduationCap,
     HeadphonesIcon,
@@ -148,15 +147,6 @@ const TeamPage = () => {
     const safePage = Math.max(1, Math.min(page, totalPages))
     const start = (safePage - 1) * pageSize
     const paginatedMembers = filteredMembers.slice(start, start + pageSize)
-
-    const handleCopyEmail = async (email: string) => {
-        try {
-            await navigator.clipboard.writeText(email)
-            toast.success("E-mail copiado.")
-        } catch {
-            toast.error("Não foi possível copiar o e-mail.")
-        }
-    }
 
     const handleOpenCreate = () => {
         setEditingMember(null)
@@ -401,10 +391,6 @@ const TeamPage = () => {
                                                         <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
                                                             <Edit className="h-4 w-4 mr-2" />
                                                             Editar
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => void handleCopyEmail(member.email)}>
-                                                            <Copy className="h-4 w-4 mr-2" />
-                                                            Copiar e-mail
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => (window.location.href = `mailto:${member.email}`)}>
                                                             <Mail className="h-4 w-4 mr-2" />

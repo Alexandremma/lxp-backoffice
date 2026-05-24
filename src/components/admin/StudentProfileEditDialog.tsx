@@ -66,7 +66,9 @@ export function StudentProfileEditDialog({
                 email: student.email,
                 status: student.status,
                 phone: student.phone ?? "",
-                birthDate: student.birthDate ?? "",
+                birthDate: student.birthDate
+                    ? String(student.birthDate).slice(0, 10)
+                    : "",
             })
         }
     }, [student, open, form])

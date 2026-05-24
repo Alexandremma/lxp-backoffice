@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
@@ -12,12 +12,15 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+
 const disciplineSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
   code: z.string().min(1, "Código é obrigatório").max(20),
   workload: z.number().min(1, "Carga horária deve ser maior que 0").max(500),
   credits: z.number().min(0, "Créditos não pode ser negativo").max(100),
   professor: z.string().max(100).optional(),
+  isActive: z.boolean(),
 })
 
 type DisciplineFormData = z.infer<typeof disciplineSchema>
@@ -31,8 +34,16 @@ interface DisciplineDialogProps {
     workload: number
     credits: number
     professor?: string
+    status?: "active" | "inactive"
   } | null
-  onSave: (data: { name: string; code: string; workload: number; credits: number; professor?: string }) => void
+  onSave: (data: {
+    name: string
+    code: string
+    workload: number
+    credits: number
+    professor?: string
+    status: "active" | "inactive"
+  }) => void
 }
 
 export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: DisciplineDialogProps) {
@@ -42,6 +53,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<DisciplineFormData>({
     resolver: zodResolver(disciplineSchema),
@@ -51,6 +63,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
       workload: 60,
       credits: 4,
       professor: "",
+      isActive: true,
     },
   })
 
@@ -63,6 +76,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
           workload: discipline.workload,
           credits: discipline.credits,
           professor: discipline.professor || "",
+          isActive: (discipline.status ?? "active") === "active",
         })
       } else {
         reset({
@@ -71,6 +85,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
           workload: 60,
           credits: 4,
           professor: "",
+          isActive: true,
         })
       }
     }
@@ -83,6 +98,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
       workload: data.workload,
       credits: data.credits,
       professor: data.professor || undefined,
+      status: data.isActive ? "active" : "inactive",
     })
     onOpenChange(false)
   }
@@ -157,6 +173,22 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
               id="professor"
               placeholder="Ex: Prof. Dr. Carlos Eduardo"
               {...register("professor")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="isActive">Disciplina ativa para alunos</Label>
+              <p className="text-xs text-muted-foreground">
+                Inativa exibe &quot;Disciplina inativa&quot; no app do aluno (sem acesso às aulas).
+              </p>
+            </div>
+            <Controller
+              name="isActive"
+              control={control}
+              render={({ field }) => (
+                <Switch id="isActive" checked={field.value} onCheckedChange={field.onChange} />
+              )}
             />
           </div>
 
