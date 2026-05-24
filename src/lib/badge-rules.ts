@@ -15,7 +15,7 @@ import {
   User,
   LucideIcon,
 } from "lucide-react"
-import { BadgeTriggerType, BadgeOperator, BadgeRule } from "./mock-data"
+import type { BadgeOperator, BadgeRule, BadgeTriggerType } from "@/types/gamification"
 
 export interface TriggerConfig {
   label: string

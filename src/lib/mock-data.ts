@@ -1122,15 +1122,18 @@ export const mockEnrollmentQueue: EnrollmentQueueItem[] = [
 // PHASE 8: Configurations
 // ============================================
 
-// Gamification
-export interface XPAction {
-  id: string
-  name: string
-  description: string
-  xpValue: number
-  category: "lesson" | "quiz" | "engagement" | "social"
-  enabled: boolean
-}
+// Gamification (types live in @/types/gamification)
+export type {
+  XPAction,
+  BadgeTriggerType,
+  BadgeOperator,
+  BadgeRule,
+  BadgeRuleConfig,
+  GamificationBadge,
+  GamificationLevel,
+} from "@/types/gamification"
+
+import type { GamificationBadge, GamificationLevel, XPAction } from "@/types/gamification"
 
 export const mockXPConfig: XPAction[] = [
   { id: "xp_001", name: "Aula Assistida", description: "Completar uma aula/vídeo", xpValue: 10, category: "lesson", enabled: true },
@@ -1141,53 +1144,6 @@ export const mockXPConfig: XPAction[] = [
   { id: "xp_006", name: "Comentário no Fórum", description: "Participar em discussões", xpValue: 15, category: "social", enabled: true },
   { id: "xp_007", name: "Ajudar Colega", description: "Resposta marcada como útil", xpValue: 30, category: "social", enabled: true },
 ]
-
-// ============================================
-// Badge Rule System Types
-// ============================================
-
-export type BadgeTriggerType = 
-  | "lessons_completed"
-  | "courses_completed"
-  | "quizzes_passed"
-  | "quiz_score"
-  | "xp_earned"
-  | "streak_days"
-  | "forum_posts"
-  | "forum_replies"
-  | "certificates_earned"
-  | "level_reached"
-  | "time_spent"
-  | "login_count"
-  | "first_login"
-  | "profile_complete"
-
-export type BadgeOperator = "gte" | "lte" | "eq" | "gt" | "lt"
-
-export interface BadgeRule {
-  id: string
-  trigger: BadgeTriggerType
-  operator: BadgeOperator
-  value: number | boolean
-  courseId?: string
-}
-
-export interface BadgeRuleConfig {
-  rules: BadgeRule[]
-  matchMode: "all" | "any"
-}
-
-export interface GamificationBadge {
-  id: string
-  name: string
-  description: string
-  icon: string
-  condition: string
-  rarity: "common" | "rare" | "epic" | "legendary"
-  earnedCount: number
-  xpReward?: number
-  ruleConfig?: BadgeRuleConfig
-}
 
 export const mockBadges: GamificationBadge[] = [
   { 
@@ -1278,12 +1234,6 @@ export const mockBadges: GamificationBadge[] = [
     }
   },
 ]
-
-export interface GamificationLevel {
-  level: number
-  name: string
-  xpRequired: number
-}
 
 export const mockLevels: GamificationLevel[] = [
   { level: 1, name: "Iniciante", xpRequired: 0 },

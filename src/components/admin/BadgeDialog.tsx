@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GamificationBadge, BadgeRule } from "@/lib/mock-data"
+import type { BadgeRule, GamificationBadge } from "@/types/gamification"
 import { generateConditionText } from "@/lib/badge-rules"
 import { BadgeRuleBuilder } from "./BadgeRuleBuilder"
 import { toast } from "sonner"
