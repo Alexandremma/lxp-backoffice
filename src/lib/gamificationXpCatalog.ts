@@ -1,4 +1,4 @@
-import type { XPAction } from "@/lib/mock-data"
+import type { XPAction } from "@/types/gamification"
 
 /** Catálogo de ações exibidas na aba "Configuração de XP" (ordem do cliente). */
 export const XP_ACTION_CATALOG: {

@@ -1,8 +1,13 @@
 import { generateConditionText } from "@/lib/badge-rules"
-import type { BadgeRuleConfig, GamificationBadge, GamificationLevel, XPAction } from "@/lib/mock-data"
+import type {
+  BadgeRuleConfig,
+  BadgeTriggerType,
+  GamificationBadge,
+  GamificationLevel,
+  XPAction,
+} from "@/types/gamification"
 import { XP_ACTION_CATALOG } from "@/lib/gamificationXpCatalog"
 import type { BadgeRow, LevelRow, XpRuleRow } from "@/services/gamificationAdminService"
-import type { BadgeTriggerType } from "@/lib/mock-data"
 
 export function xpRulesToUiActions(rules: XpRuleRow[]): XPAction[] {
   const byKey = new Map(rules.map((r) => [r.action_key, r]))

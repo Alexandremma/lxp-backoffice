@@ -1,4 +1,4 @@
-import { GamificationBadge } from "@/lib/mock-data"
+import type { GamificationBadge } from "@/types/gamification"
 import { getBadgeIcon, RARITY_CONFIG } from "./BadgeDialog"
 import { Zap, MoreVertical, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"

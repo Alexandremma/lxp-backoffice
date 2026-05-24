@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { GamificationLevel } from "@/lib/mock-data"
+import type { GamificationLevel } from "@/types/gamification"
 import { toast } from "sonner"
 import { Trophy } from "lucide-react"
 

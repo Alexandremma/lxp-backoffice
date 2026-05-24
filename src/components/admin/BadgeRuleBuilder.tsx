@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BadgeRule, BadgeTriggerType, BadgeOperator } from "@/lib/mock-data"
+import type { BadgeOperator, BadgeRule, BadgeTriggerType } from "@/types/gamification"
 import {
   BADGE_TRIGGERS,
   BADGE_OPERATORS,

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import type { GamificationBadge, GamificationLevel, XPAction } from "@/lib/mock-data"
+import type { GamificationBadge, GamificationLevel, XPAction } from "@/types/gamification"
 import {
   badgeRowToUi,
   badgeUiToDbPayload,
