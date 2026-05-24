@@ -18,6 +18,7 @@ import {
   Plus,
   MoreHorizontal,
   Link2,
+  Unlink2,
   Edit,
   Trash2,
   BookOpen,
@@ -41,6 +42,7 @@ import { useCreateCourseDiscipline } from "@/hooks/queries/useCreateCourseDiscip
 import { useUpdateCourseDiscipline } from "@/hooks/queries/useUpdateCourseDiscipline"
 import { useDeleteCourseDiscipline } from "@/hooks/queries/useDeleteCourseDiscipline"
 import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
+import { useUnlinkCourseContent } from "@/hooks/queries/useUnlinkCourseContent"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 interface CourseGradesTabProps {
@@ -83,6 +85,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
   const updateDisciplineMutation = useUpdateCourseDiscipline(courseId)
   const deleteDisciplineMutation = useDeleteCourseDiscipline(courseId)
   const linkContentMutation = useLinkCourseContent(courseId)
+  const unlinkContentMutation = useUnlinkCourseContent(courseId)
 
   useEffect(() => {
     if (!error) return
@@ -151,6 +154,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
     workload: number
     credits: number
     professor?: string
+    status: "active" | "inactive"
   }) => {
     if (!selectedGradeId) return
 
@@ -189,6 +193,20 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
   const handleLinkLibrary = (discipline: CourseDisciplineAdmin) => {
     setLinkDiscipline(discipline)
     setLinkDialogOpen(true)
+  }
+
+  const handleUnlinkLibrary = async (discipline: CourseDisciplineAdmin) => {
+    const linkId = discipline.linkedLibraryLinkId
+    if (!linkId) {
+      toast.error("Esta disciplina não possui vínculo para remover.")
+      return
+    }
+    try {
+      await unlinkContentMutation.mutateAsync(linkId)
+      toast.success("Vínculo da disciplina removido com sucesso.")
+    } catch (e) {
+      toast.error(getAdminErrorMessage("courses-content", e))
+    }
   }
 
   const getLinkErrorMessage = (err: unknown): string => {
@@ -294,7 +312,12 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                               <div className="flex items-center gap-3">
                                 <BookOpen className="h-5 w-5 text-muted-foreground" />
                                 <div>
-                                  <p className="font-medium">{discipline.name}</p>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium">{discipline.name}</p>
+                                    {discipline.status === "inactive" && (
+                                      <Badge variant="secondary">Inativa</Badge>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                                     <span className="font-mono">{discipline.code}</span>
                                     <span className="flex items-center gap-1">
@@ -341,6 +364,12 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                                     <Link2 className="h-4 w-4 mr-2" />
                                     {discipline.linkedTrailId ? "Substituir vínculo" : "Vincular Disciplina"}
                                   </DropdownMenuItem>
+                                  {discipline.linkedTrailId && (
+                                    <DropdownMenuItem onClick={() => void handleUnlinkLibrary(discipline)}>
+                                      <Unlink2 className="h-4 w-4 mr-2" />
+                                      Desvincular Disciplina
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={() => handleEditDiscipline(discipline, grade.id)}>
                                     <Edit className="h-4 w-4 mr-2" />
                                     Editar Disciplina

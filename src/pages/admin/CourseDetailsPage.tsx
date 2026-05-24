@@ -111,7 +111,6 @@ const CourseDetailsPage = () => {
         description: updatedData.description,
         category: updatedData.category,
         status: updatedData.status,
-        external_library_id: updatedData.externalLibraryId?.trim() || null,
       })
       .eq("id", courseId)
 
@@ -181,80 +180,56 @@ const CourseDetailsPage = () => {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Informações do Curso</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Categoria</p>
-                    <p className="font-medium">{categoryConfig[course.category].label}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <p className="font-medium">{statusConfig[course.status].label}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Grades Totais</p>
-                    <p className="font-medium">{course.periods}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Criado em</p>
-                    <p className="font-medium">
-                      {new Date(course.createdAt).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Curso</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Categoria</p>
+                  <p className="font-medium">{categoryConfig[course.category].label}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Descrição</p>
-                  <p className="text-sm">{course.description}</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium">{statusConfig[course.status].label}</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Biblioteca Externa</CardTitle>
-                <CardDescription>
-                  Disciplinas externas vinculadas ao curso
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {course.externalLibraryId ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
-                      <Link2 className="h-5 w-5 text-success" />
-                      <div>
-                        <p className="font-medium text-success">Vinculado</p>
-                        <p className="text-sm text-muted-foreground">
-                          ID: {course.externalLibraryId}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Gerencie os vínculos na aba Disciplinas Externas
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Link2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <p className="font-medium mb-1">Nenhuma biblioteca vinculada</p>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Vincule disciplinas externas para disponibilizar aos alunos
-                    </p>
-                    <Button variant="outline" size="sm" onClick={() => setActiveTab("content")}>
-                      <Link2 className="h-4 w-4 mr-2" />
-                      Vincular Disciplina
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Grades Totais</p>
+                  <p className="font-medium">{course.periods}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Criado em</p>
+                  <p className="font-medium">
+                    {new Date(course.createdAt).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Descrição</p>
+                <p className="text-sm">{course.description}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Vínculos com biblioteca externa são gerenciados por disciplina nas abas{" "}
+                <button
+                  type="button"
+                  className="text-primary underline-offset-2 hover:underline"
+                  onClick={() => setActiveTab("grades")}
+                >
+                  Grades
+                </button>{" "}
+                e{" "}
+                <button
+                  type="button"
+                  className="text-primary underline-offset-2 hover:underline"
+                  onClick={() => setActiveTab("content")}
+                >
+                  Disciplinas Externas
+                </button>
+                .
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Recent Activity */}
           <Card>

@@ -53,6 +53,7 @@ export type CourseDisciplineAdmin = {
     status: "active" | "inactive"
     linkedTrailId?: string
     linkedTrailName?: string
+    linkedLibraryLinkId?: string
 }
 
 export type CoursePeriodAdmin = {
@@ -598,12 +599,15 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
     }>
 
     const disciplineIds = disciplineRows.map((d) => d.id)
-    const linksByDisciplineId = new Map<string, { contentId?: string; contentName?: string }>()
+    const linksByDisciplineId = new Map<
+        string,
+        { linkId: string; contentId?: string; contentName?: string }
+    >()
 
     if (disciplineIds.length > 0) {
         const { data: linksData, error: linksError } = await supabase
             .from("lxp_course_library_links")
-            .select("course_discipline_id,library_content_id,library_content_name,linked_at")
+            .select("id,course_discipline_id,library_content_id,library_content_name,linked_at")
             .in("course_discipline_id", disciplineIds)
             .order("linked_at", { ascending: false })
 
@@ -611,12 +615,14 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
 
         ;(linksData ?? []).forEach(
             (link: {
+                id: string
                 course_discipline_id: string
                 library_content_id: string
                 library_content_name: string | null
             }) => {
                 if (linksByDisciplineId.has(link.course_discipline_id)) return
                 linksByDisciplineId.set(link.course_discipline_id, {
+                    linkId: link.id,
                     contentId: link.library_content_id,
                     contentName: link.library_content_name ?? undefined,
                 })
@@ -639,6 +645,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
             status: row.status ?? "active",
             linkedTrailId: link?.contentId,
             linkedTrailName: link?.contentName,
+            linkedLibraryLinkId: link?.linkId,
         })
         disciplinesByPeriodId.set(row.course_period_id, arr)
     })
@@ -711,7 +718,14 @@ export async function deleteCoursePeriodAdmin(periodId: string): Promise<void> {
 
 export async function createCourseDisciplineAdmin(
     periodId: string,
-    data: { name: string; code: string; workload: number; credits: number; professor?: string },
+    data: {
+        name: string
+        code: string
+        workload: number
+        credits: number
+        professor?: string
+        status?: "active" | "inactive"
+    },
 ): Promise<void> {
     const { error } = await supabase.from("lxp_course_disciplines").insert({
         course_period_id: periodId,
@@ -720,14 +734,21 @@ export async function createCourseDisciplineAdmin(
         workload: data.workload,
         credits: data.credits,
         professor: data.professor ?? null,
-        status: "active",
+        status: data.status ?? "active",
     })
     if (error) throw error
 }
 
 export async function updateCourseDisciplineAdmin(
     disciplineId: string,
-    data: { name: string; code: string; workload: number; credits: number; professor?: string },
+    data: {
+        name: string
+        code: string
+        workload: number
+        credits: number
+        professor?: string
+        status?: "active" | "inactive"
+    },
 ): Promise<void> {
     const { error } = await supabase
         .from("lxp_course_disciplines")
@@ -737,10 +758,19 @@ export async function updateCourseDisciplineAdmin(
             workload: data.workload,
             credits: data.credits,
             professor: data.professor ?? null,
+            ...(data.status !== undefined ? { status: data.status } : {}),
             updated_at: new Date().toISOString(),
         })
         .eq("id", disciplineId)
 
+    if (error) throw error
+}
+
+export async function unlinkCourseContentByDisciplineAdmin(disciplineId: string): Promise<void> {
+    const { error } = await supabase
+        .from("lxp_course_library_links")
+        .delete()
+        .eq("course_discipline_id", disciplineId)
     if (error) throw error
 }
 

@@ -127,7 +127,6 @@ const CoursesPage = () => {
           description: updated.description,
           category: updated.category,
           status: updated.status,
-          externalLibraryId: updated.externalLibraryId,
         })
         toast.success("Curso atualizado com sucesso")
       } else {
@@ -138,7 +137,6 @@ const CoursesPage = () => {
           category: updated.category,
           status: updated.status,
           periods: updated.periods,
-          externalLibraryId: updated.externalLibraryId,
         })
         toast.success("Curso criado com sucesso")
       }
@@ -182,8 +180,7 @@ const CoursesPage = () => {
     const totalCourses = courses.length
     const activeCourses = courses.filter((c) => c.status === "active").length
     const totalStudents = courses.reduce((sum, c) => sum + (c.totalStudents ?? 0), 0)
-    const linkedToLibrary = courses.filter((c) => !!c.externalLibraryId).length
-    return { totalCourses, activeCourses, totalStudents, linkedToLibrary }
+    return { totalCourses, activeCourses, totalStudents }
   }, [courses])
 
   return (
@@ -217,7 +214,7 @@ const CoursesPage = () => {
       />
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -284,28 +281,6 @@ const CoursesPage = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-secondary/10">
-                <Link2 className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                {isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-7 w-14" />
-                    <Skeleton className="h-4 w-36" />
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold">{stats.linkedToLibrary}</p>
-                    <p className="text-sm text-muted-foreground">Vinculados à Biblioteca</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Filters */}
@@ -363,7 +338,6 @@ const CoursesPage = () => {
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Períodos</TableHead>
                 <TableHead className="text-center">Alunos</TableHead>
-                <TableHead>Biblioteca</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -381,13 +355,12 @@ const CoursesPage = () => {
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-4 w-10 mx-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
                 ))
               ) : filteredCourses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-6 text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="p-6 text-sm text-muted-foreground">
                     {hasActiveFilters
                       ? "Nenhum curso encontrado com os filtros atuais."
                       : "Nenhum curso cadastrado ainda. Clique em \"Novo Curso\" para começar."}
@@ -421,16 +394,6 @@ const CoursesPage = () => {
                     <TableCell className="text-center">{course.periods}</TableCell>
                     <TableCell className="text-center">
                       {course.totalStudents.toLocaleString("pt-BR")}
-                    </TableCell>
-                    <TableCell>
-                      {course.externalLibraryId ? (
-                        <Badge variant="outline" className="gap-1">
-                          <Link2 className="h-3 w-3" />
-                          Vinculado
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Não vinculado</span>
-                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

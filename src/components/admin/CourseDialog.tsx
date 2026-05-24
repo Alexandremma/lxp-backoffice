@@ -50,7 +50,6 @@ export function CourseDialog({
   const [category, setCategory] = useState<CourseAdmin["category"]>("graduation")
   const [status, setStatus] = useState<CourseAdmin["status"]>("draft")
   const [periods, setPeriods] = useState(8)
-  const [externalLibraryId, setExternalLibraryId] = useState("")
 
   const isEditing = !!course
 
@@ -62,14 +61,12 @@ export function CourseDialog({
         setCategory(course.category)
         setStatus(course.status)
         setPeriods(course.periods)
-        setExternalLibraryId(course.externalLibraryId || "")
       } else {
         setName("")
         setDescription("")
         setCategory("graduation")
         setStatus("draft")
         setPeriods(8)
-        setExternalLibraryId("")
       }
     }
   }, [open, course])
@@ -82,7 +79,6 @@ export function CourseDialog({
       category,
       status,
       periods,
-      externalLibraryId: externalLibraryId.trim() || undefined,
     })
     onOpenChange(false)
   }
@@ -160,7 +156,7 @@ export function CourseDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {!isEditing && (
               <div className="space-y-2">
                 <Label htmlFor="periods">Total de Grades</Label>
                 <Input
@@ -170,20 +166,9 @@ export function CourseDialog({
                   max={20}
                   value={periods}
                   onChange={(e) => setPeriods(Number(e.target.value))}
-                  disabled={isEditing}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="externalLibraryId">ID da Biblioteca (opcional)</Label>
-                <Input
-                  id="externalLibraryId"
-                  value={externalLibraryId}
-                  onChange={(e) => setExternalLibraryId(e.target.value)}
-                  placeholder="Ex: lib_adm_001"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           <DialogFooter>

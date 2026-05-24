@@ -291,7 +291,7 @@ const StudentsPage = () => {
         name: values.name.trim(),
         email: profileEditStudent.email,
         phone: values.phone?.trim() || undefined,
-        birthDate: values.birthDate,
+        birthDate: values.birthDate?.trim() ? values.birthDate.trim() : undefined,
       })
       await setStudentAccess.mutateAsync({
         profileId: profileEditStudent.id,
