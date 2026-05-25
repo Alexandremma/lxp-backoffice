@@ -2,7 +2,6 @@ import { useMemo, useState } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,24 +15,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Award, Calendar, Download, Edit, FileText, Loader2, Plus, Search, User } from "lucide-react"
+import { toast } from "sonner"
+
 import { useCertificateTemplatesAdmin } from "@/hooks/queries/useCertificateTemplatesAdmin"
 import { useCertificateSignaturesAdmin } from "@/hooks/queries/useCertificateSignaturesAdmin"
 import { useCertificateIssuesAdmin } from "@/hooks/queries/useCertificateIssuesAdmin"
 import {
   useCreateCertificateTemplateAdmin,
+  useSetDefaultCertificateTemplateAdmin,
   useUpdateCertificateTemplateAdmin,
 } from "@/hooks/mutations/useCertificateTemplateMutationsAdmin"
-import { useCreateCertificateSignatureAdmin } from "@/hooks/mutations/useCreateCertificateSignatureAdmin"
-import type { CertificateIssueAdminRow, CertificateTemplateRow } from "@/services/certificatesAdminService"
-import { Award, Download, Eye, Plus, Edit, FileText, Search, Calendar, User, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import {
+  getSignatureImagePublicUrl,
+  type CertificateIssueAdminRow,
+  type CertificateSignatureRow,
+  type CertificateTemplateRow,
+} from "@/services/certificatesAdminService"
+import { openCertificatePrintWindow } from "@/lib/certificatePrint"
+
+import { TemplateCard } from "@/components/admin/certificates/TemplateCard"
+import { TemplateEditorDialog } from "@/components/admin/certificates/TemplateEditorDialog"
+import {
+  SignatureFormDialog,
+  SignatureLibraryGrid,
+} from "@/components/admin/certificates/SignatureLibrary"
+import { CertificatePreviewFrame } from "@/components/admin/certificates/CertificatePreviewFrame"
 
 type EmissionTableRow = {
   id: string
@@ -42,27 +49,25 @@ type EmissionTableRow = {
   templateName: string
   issuedAt: string
   validationCode: string
+  raw: CertificateIssueAdminRow
 }
 
 const CertificatesPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [previewTemplate, setPreviewTemplate] = useState<CertificateTemplateRow | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<CertificateTemplateRow | null>(null)
+  const [newTemplateOpen, setNewTemplateOpen] = useState(false)
+  const [newTemplateName, setNewTemplateName] = useState("")
+  const [newTemplateInstitution, setNewTemplateInstitution] = useState("B42 Edtech")
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false)
+  const [editingSignature, setEditingSignature] = useState<CertificateSignatureRow | null>(null)
 
   const templatesQ = useCertificateTemplatesAdmin()
   const signaturesQ = useCertificateSignaturesAdmin()
   const issuesQ = useCertificateIssuesAdmin()
   const createTemplate = useCreateCertificateTemplateAdmin()
   const updateTemplate = useUpdateCertificateTemplateAdmin()
-  const createSignature = useCreateCertificateSignatureAdmin()
-
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState("")
-  const [newTemplateDescription, setNewTemplateDescription] = useState("")
-
-  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false)
-  const [sigTemplateId, setSigTemplateId] = useState<string>("")
-  const [sigName, setSigName] = useState("")
-  const [sigTitle, setSigTitle] = useState("")
+  const setDefaultTemplate = useSetDefaultCertificateTemplateAdmin()
 
   const templates = templatesQ.data ?? []
   const signatures = signaturesQ.data ?? []
@@ -70,13 +75,14 @@ const CertificatesPage = () => {
 
   const emissionRows: EmissionTableRow[] = useMemo(
     () =>
-      issues.map((i: CertificateIssueAdminRow) => ({
+      issues.map((i) => ({
         id: i.id,
         studentName: i.student_name,
         courseName: i.discipline_label,
         templateName: i.template_name ?? "—",
         issuedAt: i.issued_at,
         validationCode: i.validation_code,
+        raw: i,
       })),
     [issues],
   )
@@ -87,6 +93,48 @@ const CertificatesPage = () => {
       e.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.validationCode.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  const handleDownloadIssue = (row: EmissionTableRow) => {
+    const snap = row.raw.snapshot
+    if (snap && typeof snap === "object") {
+      const s = snap as Record<string, unknown>
+      const signaturesFromSnap = Array.isArray(s.signatures)
+        ? (s.signatures as Array<Record<string, unknown>>).map((entry) => ({
+            signerName: String(entry.signer_name ?? entry.signerName ?? ""),
+            signerTitle: String(entry.signer_title ?? entry.signerTitle ?? ""),
+            imageUrl:
+              (entry.image_url as string | null | undefined) ??
+              (entry.imageUrl as string | null | undefined) ??
+              null,
+          }))
+        : []
+      openCertificatePrintWindow({
+        studentName: String(s.student_name ?? row.studentName),
+        disciplineName: String(s.discipline_name ?? row.courseName),
+        issuedAt: String(s.issued_at ?? row.issuedAt),
+        validationCode: String(s.validation_code ?? row.validationCode),
+        workloadHours:
+          s.workload_hours != null && Number.isFinite(Number(s.workload_hours))
+            ? Number(s.workload_hours)
+            : null,
+        institutionName: (s.institution_name as string | undefined) ?? "B42 Edtech",
+        institutionLogoUrl: (s.institution_logo_url as string | null | undefined) ?? null,
+        signatures: signaturesFromSnap,
+        validateBaseUrl: window.location.origin,
+      })
+      return
+    }
+    toast.warning(
+      "Emissão legada sem snapshot. Abrindo PDF com os dados atuais do banco.",
+    )
+    openCertificatePrintWindow({
+      studentName: row.studentName,
+      disciplineName: row.courseName,
+      issuedAt: row.issuedAt,
+      validationCode: row.validationCode,
+      validateBaseUrl: window.location.origin,
+    })
+  }
 
   const emissionColumns: Column<EmissionTableRow>[] = [
     {
@@ -116,8 +164,13 @@ const CertificatesPage = () => {
     {
       key: "actions",
       header: "",
-      cell: () => (
-        <Button variant="ghost" size="icon-sm" onClick={() => toast.info("Download PDF: em integração.")}>
+      cell: (row) => (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => handleDownloadIssue(row)}
+          title="Baixar PDF deste certificado"
+        >
           <Download className="h-4 w-4" />
         </Button>
       ),
@@ -131,14 +184,9 @@ const CertificatesPage = () => {
     return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
   }).length
 
-  const loading =
-    templatesQ.isLoading || signaturesQ.isLoading || issuesQ.isLoading
+  const loading = templatesQ.isLoading || signaturesQ.isLoading || issuesQ.isLoading
   const errorMsg =
     templatesQ.error?.message ?? signaturesQ.error?.message ?? issuesQ.error?.message
-
-  const previewSignatures = previewTemplate
-    ? signatures.filter((s) => s.template_id === previewTemplate.id)
-    : []
 
   const handleCreateTemplate = async () => {
     const name = newTemplateName.trim()
@@ -147,58 +195,70 @@ const CertificatesPage = () => {
       return
     }
     try {
-      await createTemplate.mutateAsync({ name, description: newTemplateDescription.trim() || null })
-      toast.success("Template criado.")
-      setTemplateDialogOpen(false)
+      const created = await createTemplate.mutateAsync({
+        name,
+        institution_name: newTemplateInstitution.trim() || "B42 Edtech",
+      })
+      toast.success("Template criado. Abra o editor para personalizar.")
+      setNewTemplateOpen(false)
       setNewTemplateName("")
-      setNewTemplateDescription("")
+      setNewTemplateInstitution("B42 Edtech")
+      setEditingTemplate(created)
     } catch (e) {
       toast.error("Não foi possível criar o template.")
       console.error(e)
     }
   }
 
-  const handleToggleTemplate = async (t: CertificateTemplateRow) => {
+  const handleToggleTemplate = async (t: CertificateTemplateRow, next: boolean) => {
     try {
-      await updateTemplate.mutateAsync({ id: t.id, patch: { is_active: !t.is_active } })
-      toast.success(t.is_active ? "Template inativado." : "Template ativado.")
+      await updateTemplate.mutateAsync({ id: t.id, patch: { is_active: next } })
+      toast.success(next ? "Template ativado." : "Template inativado.")
     } catch (e) {
       toast.error("Não foi possível atualizar o template.")
       console.error(e)
     }
   }
 
-  const handleCreateSignature = async () => {
-    if (!sigTemplateId) {
-      toast.error("Selecione um template.")
-      return
-    }
-    const signer_name = sigName.trim()
-    const signer_title = sigTitle.trim()
-    if (!signer_name || !signer_title) {
-      toast.error("Preencha nome e cargo do signatário.")
-      return
-    }
+  const handleSetDefaultTemplate = async (template: CertificateTemplateRow) => {
     try {
-      await createSignature.mutateAsync({
-        template_id: sigTemplateId,
-        signer_name,
-        signer_title,
-      })
-      toast.success("Assinatura cadastrada.")
-      setSignatureDialogOpen(false)
-      setSigName("")
-      setSigTitle("")
-      setSigTemplateId("")
+      await setDefaultTemplate.mutateAsync(template.id)
+      toast.success(`"${template.name}" virou o template padrão das emissões.`)
     } catch (e) {
-      toast.error("Não foi possível salvar a assinatura.")
+      toast.error("Não foi possível definir o template padrão.")
       console.error(e)
+    }
+  }
+
+  const previewPayloadFor = (t: CertificateTemplateRow) => {
+    const slotSigs = (signaturesQ.data ?? [])
+      .filter((s) => s.template_id === t.id) // legacy fallback
+      .slice(0, 2)
+      .map((s) => ({
+        signerName: s.signer_name,
+        signerTitle: s.signer_title,
+        imageUrl: getSignatureImagePublicUrl(s.image_path),
+      }))
+    return {
+      studentName: "Nome do Aluno",
+      disciplineName: "Disciplina de Exemplo",
+      issuedAt: new Date().toISOString(),
+      validationCode: "B42-PREVIEW00000001",
+      workloadHours: 60,
+      institutionName: t.institution_name || "B42 Edtech",
+      institutionLogoUrl: getSignatureImagePublicUrl(t.institution_logo_path),
+      signatures: slotSigs,
+      validateBaseUrl: window.location.origin,
+      autoPrint: false,
     }
   }
 
   return (
     <AdminLayout>
-      <PageHeader title="Certificados" description="Templates, assinaturas e histórico de emissão (Supabase)" />
+      <PageHeader
+        title="Certificados"
+        description="Templates institucionais, biblioteca de assinaturas e histórico de emissões."
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
@@ -286,59 +346,32 @@ const CertificatesPage = () => {
             <TabsList>
               <TabsTrigger value="templates">Templates</TabsTrigger>
               <TabsTrigger value="emissions">Histórico de emissões</TabsTrigger>
-              <TabsTrigger value="signatures">Assinaturas</TabsTrigger>
+              <TabsTrigger value="signatures">Biblioteca de assinaturas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="templates" className="space-y-4">
               <div className="flex justify-end">
-                <Button onClick={() => setTemplateDialogOpen(true)}>
+                <Button onClick={() => setNewTemplateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Novo template
                 </Button>
               </div>
               {templates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum template cadastrado.</p>
+                <p className="text-sm text-muted-foreground">
+                  Nenhum template cadastrado. Crie um para emitir certificados.
+                </p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {templates.map((template) => (
-                    <Card key={template.id} className="overflow-hidden">
-                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-b">
-                        <Award className="h-16 w-16 text-primary/50" />
-                      </div>
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold">{template.name}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {template.description?.trim() || "Sem descrição"}
-                            </p>
-                          </div>
-                          <Badge variant={template.is_active ? "success-muted" : "ghost"}>
-                            {template.is_active ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-2 mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setPreviewTemplate(template)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Preview
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title={template.is_active ? "Inativar" : "Ativar"}
-                            onClick={() => void handleToggleTemplate(template)}
-                            disabled={updateTemplate.isPending}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      onPreview={() => setPreviewTemplate(template)}
+                      onEdit={() => setEditingTemplate(template)}
+                      onSetDefault={() => void handleSetDefaultTemplate(template)}
+                      onToggleActive={(next) => void handleToggleTemplate(template, next)}
+                      disabled={updateTemplate.isPending || setDefaultTemplate.isPending}
+                    />
                   ))}
                 </div>
               )}
@@ -358,160 +391,130 @@ const CertificatesPage = () => {
             </TabsContent>
 
             <TabsContent value="signatures" className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  Assinaturas formam uma biblioteca compartilhada. Vincule-as a templates via editor.
+                </p>
                 <Button
                   onClick={() => {
-                    if (templates.length === 0) {
-                      toast.error("Crie um template antes de adicionar assinaturas.")
-                      return
-                    }
-                    setSigTemplateId(templates[0].id)
+                    setEditingSignature(null)
                     setSignatureDialogOpen(true)
                   }}
-                  disabled={templates.length === 0}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Nova assinatura
                 </Button>
               </div>
-              {signatures.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma assinatura cadastrada.</p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {signatures.map((signature) => (
-                    <Card key={signature.id}>
-                      <CardContent className="pt-4">
-                        <div className="flex items-start gap-4">
-                          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
-                            {signature.signer_name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold truncate">{signature.signer_name}</h4>
-                            <p className="text-sm text-muted-foreground">{signature.signer_title}</p>
-                            <p className="text-xs text-muted-foreground mt-1 truncate">
-                              Template: {signature.template_name}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+              <SignatureLibraryGrid
+                signatures={signatures}
+                onEdit={(sig) => {
+                  setEditingSignature(sig)
+                  setSignatureDialogOpen(true)
+                }}
+              />
             </TabsContent>
           </Tabs>
 
-          <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+          {/* Novo template (passo 1: nome + instituição → abre o editor) */}
+          <Dialog open={newTemplateOpen} onOpenChange={setNewTemplateOpen}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Novo template</DialogTitle>
-                <DialogDescription>Nome e descrição opcional. Depois você pode vincular assinaturas.</DialogDescription>
+                <DialogDescription>
+                  Defina o nome e a instituição. Após criar, abrimos o editor com preview ao vivo.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-name">Nome</Label>
+                  <Label htmlFor="tpl-new-name">Nome</Label>
                   <Input
-                    id="tpl-name"
+                    id="tpl-new-name"
                     value={newTemplateName}
                     onChange={(e) => setNewTemplateName(e.target.value)}
                     placeholder="Ex.: Certificado de conclusão"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tpl-desc">Descrição (opcional)</Label>
+                  <Label htmlFor="tpl-new-inst">Nome da instituição</Label>
                   <Input
-                    id="tpl-desc"
-                    value={newTemplateDescription}
-                    onChange={(e) => setNewTemplateDescription(e.target.value)}
+                    id="tpl-new-inst"
+                    value={newTemplateInstitution}
+                    onChange={(e) => setNewTemplateInstitution(e.target.value)}
+                    placeholder="B42 Edtech"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setNewTemplateOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={() => void handleCreateTemplate()} disabled={createTemplate.isPending}>
-                  {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+                <Button
+                  onClick={() => void handleCreateTemplate()}
+                  disabled={createTemplate.isPending}
+                >
+                  {createTemplate.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Criar e personalizar"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          <Dialog open={signatureDialogOpen} onOpenChange={setSignatureDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nova assinatura</DialogTitle>
-                <DialogDescription>Vinculada a um template existente.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div className="space-y-2">
-                  <Label>Template</Label>
-                  <Select value={sigTemplateId} onValueChange={setSigTemplateId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sig-name">Nome do signatário</Label>
-                  <Input id="sig-name" value={sigName} onChange={(e) => setSigName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sig-title">Cargo / título</Label>
-                  <Input id="sig-title" value={sigTitle} onChange={(e) => setSigTitle(e.target.value)} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setSignatureDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => void handleCreateSignature()} disabled={createSignature.isPending}>
-                  {createSignature.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
+          {/* Preview rápido (somente leitura) */}
           <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
-                <DialogDescription>Visualização simplificada (layout final com cliente)</DialogDescription>
+                <DialogDescription>
+                  Dados de exemplo. O certificado real é montado com o snapshot da emissão.
+                </DialogDescription>
               </DialogHeader>
-              <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex flex-col items-center justify-center p-8 border">
-                <Award className="h-20 w-20 text-primary mb-4" />
-                <h2 className="text-2xl font-bold text-center mb-2">Certificado</h2>
-                <p className="text-center text-muted-foreground mb-6 text-sm max-w-md">
-                  {previewTemplate?.description?.trim() || "Template ativo para emissões futuras."}
-                </p>
-                <div className="flex flex-wrap gap-8 mt-8 justify-center">
-                  {previewSignatures.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhuma assinatura neste template.</p>
-                  ) : (
-                    previewSignatures.map((sig) => (
-                      <div key={sig.id} className="text-center">
-                        <div className="h-12 border-b border-foreground mb-2 w-32 mx-auto" />
-                        <p className="font-medium text-sm">{sig.signer_name}</p>
-                        <p className="text-xs text-muted-foreground">{sig.signer_title}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {previewTemplate && (
+                <CertificatePreviewFrame
+                  payload={previewPayloadFor(previewTemplate)}
+                  className="w-full h-[640px] border rounded-lg bg-white"
+                />
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
+                  Fechar
+                </Button>
+                {previewTemplate && (
+                  <Button
+                    onClick={() => {
+                      openCertificatePrintWindow({
+                        ...previewPayloadFor(previewTemplate),
+                        autoPrint: true,
+                      })
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Gerar PDF (impressão)
+                  </Button>
+                )}
+              </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Editor com preview ao vivo */}
+          <TemplateEditorDialog
+            open={!!editingTemplate}
+            template={editingTemplate}
+            signaturesLibrary={signatures}
+            onOpenChange={(o) => !o && setEditingTemplate(null)}
+          />
+
+          {/* Form de assinatura (criar/editar) */}
+          <SignatureFormDialog
+            open={signatureDialogOpen}
+            signature={editingSignature}
+            onOpenChange={(o) => {
+              setSignatureDialogOpen(o)
+              if (!o) setEditingSignature(null)
+            }}
+          />
         </>
       )}
     </AdminLayout>

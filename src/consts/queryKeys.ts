@@ -20,6 +20,8 @@ export const queryKeys = {
         templates: ["certificates", "templates"] as const,
         signatures: ["certificates", "signatures"] as const,
         issues: ["certificates", "issues"] as const,
+        templateSignatures: (templateId: string) =>
+            ["certificates", "template-signatures", templateId] as const,
     },
     gamification: {
         xpRules: ["gamification", "xp-rules"] as const,
