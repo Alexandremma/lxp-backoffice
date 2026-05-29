@@ -136,7 +136,6 @@ const CoursesPage = () => {
           description: updated.description,
           category: updated.category,
           status: updated.status,
-          periods: updated.periods,
         })
         toast.success("Curso criado com sucesso")
       }
