@@ -92,6 +92,8 @@ function courseRowToStudent(row: CourseStudentRow): Student {
     lastAccess: row.lastAccess ?? new Date().toISOString(),
     createdAt: row.createdAt ?? new Date().toISOString(),
     avatar: row.avatar,
+    phone: row.phone ?? null,
+    birthDate: row.birthDate ?? null,
   }
 }
 
@@ -290,8 +292,8 @@ const StudentsPage = () => {
         profileId: profileEditStudent.id,
         name: values.name.trim(),
         email: profileEditStudent.email,
-        phone: values.phone?.trim() || undefined,
-        birthDate: values.birthDate?.trim() ? values.birthDate.trim() : undefined,
+        phone: values.phone?.trim() ?? "",
+        birthDate: values.birthDate?.trim() ?? "",
       })
       await setStudentAccess.mutateAsync({
         profileId: profileEditStudent.id,

@@ -27,6 +27,7 @@ import {
   useUpdateCertificateTemplateAdmin,
 } from "@/hooks/mutations/useCertificateTemplateMutationsAdmin"
 import {
+  enrichSnapshotRecord,
   getSignatureImagePublicUrl,
   type CertificateIssueAdminRow,
   type CertificateSignatureRow,
@@ -94,46 +95,55 @@ const CertificatesPage = () => {
       e.validationCode.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const handleDownloadIssue = (row: EmissionTableRow) => {
-    const snap = row.raw.snapshot
-    if (snap && typeof snap === "object") {
-      const s = snap as Record<string, unknown>
-      const signaturesFromSnap = Array.isArray(s.signatures)
-        ? (s.signatures as Array<Record<string, unknown>>).map((entry) => ({
-            signerName: String(entry.signer_name ?? entry.signerName ?? ""),
-            signerTitle: String(entry.signer_title ?? entry.signerTitle ?? ""),
-            imageUrl:
-              (entry.image_url as string | null | undefined) ??
-              (entry.imageUrl as string | null | undefined) ??
-              null,
-          }))
-        : []
-      openCertificatePrintWindow({
-        studentName: String(s.student_name ?? row.studentName),
-        disciplineName: String(s.discipline_name ?? row.courseName),
-        issuedAt: String(s.issued_at ?? row.issuedAt),
-        validationCode: String(s.validation_code ?? row.validationCode),
-        workloadHours:
-          s.workload_hours != null && Number.isFinite(Number(s.workload_hours))
-            ? Number(s.workload_hours)
-            : null,
-        institutionName: (s.institution_name as string | undefined) ?? "B42 Edtech",
-        institutionLogoUrl: (s.institution_logo_url as string | null | undefined) ?? null,
-        signatures: signaturesFromSnap,
+  const snapshotToPrintPayload = (s: Record<string, unknown>, row: EmissionTableRow) => {
+    const signaturesFromSnap = Array.isArray(s.signatures)
+      ? (s.signatures as Array<Record<string, unknown>>).map((entry) => ({
+          signerName: String(entry.signer_name ?? entry.signerName ?? ""),
+          signerTitle: String(entry.signer_title ?? entry.signerTitle ?? ""),
+          imageUrl:
+            (entry.image_url as string | null | undefined) ??
+            (entry.imageUrl as string | null | undefined) ??
+            null,
+        }))
+      : []
+    return {
+      studentName: String(s.student_name ?? row.studentName),
+      disciplineName: String(s.discipline_name ?? row.courseName),
+      issuedAt: String(s.issued_at ?? row.issuedAt),
+      validationCode: String(s.validation_code ?? row.validationCode),
+      workloadHours:
+        s.workload_hours != null && Number.isFinite(Number(s.workload_hours))
+          ? Number(s.workload_hours)
+          : null,
+      institutionName: (s.institution_name as string | undefined) ?? "B42 Edtech",
+      institutionLogoUrl: (s.institution_logo_url as string | null | undefined) ?? null,
+      signatures: signaturesFromSnap,
+      validateBaseUrl: window.location.origin,
+    }
+  }
+
+  const handleDownloadIssue = async (row: EmissionTableRow) => {
+    try {
+      const snap = row.raw.snapshot
+      if (snap && typeof snap === "object") {
+        const enriched = await enrichSnapshotRecord(snap, row.raw.template_id)
+        await openCertificatePrintWindow(snapshotToPrintPayload(enriched, row))
+        return
+      }
+      toast.warning(
+        "Emissão legada sem snapshot. Abrindo PDF com os dados atuais do banco.",
+      )
+      await openCertificatePrintWindow({
+        studentName: row.studentName,
+        disciplineName: row.courseName,
+        issuedAt: row.issuedAt,
+        validationCode: row.validationCode,
         validateBaseUrl: window.location.origin,
       })
-      return
+    } catch (e) {
+      toast.error("Não foi possível gerar o PDF do certificado.")
+      console.error(e)
     }
-    toast.warning(
-      "Emissão legada sem snapshot. Abrindo PDF com os dados atuais do banco.",
-    )
-    openCertificatePrintWindow({
-      studentName: row.studentName,
-      disciplineName: row.courseName,
-      issuedAt: row.issuedAt,
-      validationCode: row.validationCode,
-      validateBaseUrl: window.location.origin,
-    })
   }
 
   const emissionColumns: Column<EmissionTableRow>[] = [
@@ -168,7 +178,7 @@ const CertificatesPage = () => {
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => handleDownloadIssue(row)}
+          onClick={() => void handleDownloadIssue(row)}
           title="Baixar PDF deste certificado"
         >
           <Download className="h-4 w-4" />
@@ -484,9 +494,12 @@ const CertificatesPage = () => {
                 {previewTemplate && (
                   <Button
                     onClick={() => {
-                      openCertificatePrintWindow({
+                      void openCertificatePrintWindow({
                         ...previewPayloadFor(previewTemplate),
                         autoPrint: true,
+                      }).catch((e) => {
+                        toast.error("Não foi possível abrir a impressão.")
+                        console.error(e)
                       })
                     }}
                   >

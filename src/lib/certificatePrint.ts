@@ -1,3 +1,5 @@
+import { embedCertificatePrintImages } from "@/lib/certificateImageEmbed"
+
 export type CertificatePrintSignature = {
   signerName: string
   signerTitle: string
@@ -14,9 +16,7 @@ export type CertificatePrintPayload = {
   institutionName?: string
   institutionLogoUrl?: string | null
   signatures?: CertificatePrintSignature[]
-  /** URL base da página pública de validação. Default = `window.location.origin` */
   validateBaseUrl?: string
-  /** Se true, dispara window.print() ao carregar (default). Use false em preview/iframe. */
   autoPrint?: boolean
 }
 
@@ -75,10 +75,24 @@ export function buildCertificatePrintHtml(payload: CertificatePrintPayload): str
           <p class="sig-title">Instituição</p>
         </div>`
 
-  const autoPrintScript =
+  const printScript =
     payload.autoPrint === false
       ? ""
-      : "<script>window.onload = function() { window.print(); };</script>"
+      : `<script>
+function waitForImages(done) {
+  var imgs = Array.prototype.slice.call(document.images || []);
+  if (!imgs.length) { done(); return; }
+  var pending = imgs.length;
+  function tick() { if (--pending <= 0) done(); }
+  imgs.forEach(function(img) {
+    if (img.complete) tick();
+    else { img.onload = tick; img.onerror = tick; }
+  });
+}
+window.onload = function() {
+  waitForImages(function() { window.print(); });
+};
+</script>`
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -92,7 +106,7 @@ export function buildCertificatePrintHtml(payload: CertificatePrintPayload): str
     .logo { text-align: center; margin: 0 0 16px; }
     .logo img { max-height: 64px; max-width: 220px; object-fit: contain; }
     .institution { text-align: center; font-size: 14px; letter-spacing: 0.08em; color: #4c1d95; text-transform: uppercase; margin: 0 0 24px; font-weight: 600; }
-    h1 { font-size: 28px; text-align: center; margin: 0 0 8px; }
+    h1 { font-size: 28px; text-align: center; margin: 0 0 8px; letter-spacing: 0.04em; }
     .subtitle { text-align: center; color: #555; margin: 8px 0 24px; }
     .student { font-size: 32px; text-align: center; color: #4c1d95; margin: 24px 0; font-weight: bold; }
     .discipline { font-size: 22px; text-align: center; margin: 8px 0 24px; }
@@ -104,7 +118,7 @@ export function buildCertificatePrintHtml(payload: CertificatePrintPayload): str
     .sig-img { max-height: 56px; max-width: 160px; object-fit: contain; margin-bottom: 8px; }
     .sig-name { font-size: 14px; font-weight: 600; margin: 0; }
     .sig-title { font-size: 12px; color: #666; margin: 4px 0 0; }
-    @media print { body { padding: 0; } }
+    @media print { body { padding: 0; } .frame { border-width: 2px; } }
   </style>
 </head>
 <body>
@@ -121,20 +135,18 @@ export function buildCertificatePrintHtml(payload: CertificatePrintPayload): str
     <p class="code"><strong>Código de validação:</strong> ${escapeHtml(payload.validationCode)}</p>
     <div class="sigs">${signatureBlocks}</div>
   </div>
-  ${autoPrintScript}
+  ${printScript}
 </body>
 </html>`
 }
 
-export function openCertificatePrintWindow(payload: CertificatePrintPayload): void {
+export async function openCertificatePrintWindow(payload: CertificatePrintPayload): Promise<void> {
+  const embedded = await embedCertificatePrintImages(payload)
   const html = buildCertificatePrintHtml({
-    ...payload,
+    ...embedded,
     autoPrint: payload.autoPrint ?? true,
     validateBaseUrl: payload.validateBaseUrl ?? window.location.origin,
   })
-  // Blob URL evita o bug de janela `about:blank` em Chromium/Edge quando se
-  // usa `window.open("", ...)` + `document.write` (especialmente com
-  // `noopener,noreferrer`). O HTML embute `window.print()` no onload.
   const blob = new Blob([html], { type: "text/html;charset=utf-8" })
   const blobUrl = URL.createObjectURL(blob)
   const win = window.open(blobUrl, "_blank", "width=900,height=700")

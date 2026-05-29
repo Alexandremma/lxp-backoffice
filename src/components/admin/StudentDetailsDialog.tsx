@@ -224,10 +224,10 @@ export function StudentDetailsDialog({
                     <div>
                       <p className="text-sm text-muted-foreground">Telefone</p>
                       <p className="font-medium">
-                        {dataMode ? (
-                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
+                        {student.phone?.trim() ? (
+                          student.phone
                         ) : (
-                          "(11) 99999-9999"
+                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
                         )}
                       </p>
                     </div>
@@ -237,10 +237,12 @@ export function StudentDetailsDialog({
                     <div>
                       <p className="text-sm text-muted-foreground">Data de Nascimento</p>
                       <p className="font-medium">
-                        {dataMode ? (
-                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
+                        {student.birthDate ? (
+                          format(new Date(`${String(student.birthDate).slice(0, 10)}T12:00:00`), "dd/MM/yyyy", {
+                            locale: ptBR,
+                          })
                         ) : (
-                          "15/03/1998"
+                          <span className="text-muted-foreground font-normal">Não cadastrado</span>
                         )}
                       </p>
                     </div>

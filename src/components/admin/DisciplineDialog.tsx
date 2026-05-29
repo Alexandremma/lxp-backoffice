@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { getDisciplineCoverPublicUrl } from "@/services/coursesService"
+import { toast } from "sonner"
 
 const disciplineSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
@@ -54,9 +55,17 @@ interface DisciplineDialogProps {
     status?: "active" | "inactive"
   } | null
   onSave: (data: DisciplineDialogSavePayload) => void | Promise<void>
+  /** Disciplina possui vínculo em lxp_course_library_links — obrigatório para ativar no app do aluno. */
+  hasLibraryLink?: boolean
 }
 
-export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: DisciplineDialogProps) {
+export function DisciplineDialog({
+  open,
+  onOpenChange,
+  discipline,
+  onSave,
+  hasLibraryLink = false,
+}: DisciplineDialogProps) {
   const isEditing = !!discipline
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
@@ -77,7 +86,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
       credits: 4,
       professor: "",
       description: "",
-      isActive: true,
+      isActive: false,
     },
   })
 
@@ -109,7 +118,7 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
         credits: 4,
         professor: "",
         description: "",
-        isActive: true,
+        isActive: false,
       })
     }
   }, [open, discipline, reset])
@@ -126,6 +135,10 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
   }, [coverFile])
 
   const onSubmit = async (data: DisciplineFormData) => {
+    if (data.isActive && !hasLibraryLink) {
+      toast.error("Vincule uma disciplina externa antes de ativar para os alunos.")
+      return
+    }
     await onSave({
       name: data.name,
       code: data.code,
@@ -262,14 +275,21 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
             <div className="space-y-0.5">
               <Label htmlFor="isActive">Disciplina ativa para alunos</Label>
               <p className="text-xs text-muted-foreground">
-                Inativa exibe &quot;Disciplina inativa&quot; no app do aluno (sem acesso às aulas).
+                {hasLibraryLink
+                  ? "Inativa exibe \"Disciplina inativa\" no app do aluno (sem acesso às aulas)."
+                  : "Disponível para alunos após vincular conteúdo externo na grade (aba Vincular Disciplina)."}
               </p>
             </div>
             <Controller
               name="isActive"
               control={control}
               render={({ field }) => (
-                <Switch id="isActive" checked={field.value} onCheckedChange={field.onChange} />
+                <Switch
+                  id="isActive"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={!hasLibraryLink}
+                />
               )}
             />
           </div>

@@ -32,6 +32,8 @@ export type CourseStudentRow = {
     lastAccess?: string | null
     /** ISO — perfil criado em */
     createdAt?: string
+    phone?: string | null
+    birthDate?: string | null
     enrollments: CourseEnrollment[]
 }
 
@@ -747,7 +749,7 @@ export async function createCourseDisciplineAdmin(
             credits: data.credits,
             professor: data.professor ?? null,
             description: data.description?.trim() || null,
-            status: data.status ?? "active",
+            status: data.status ?? "inactive",
         })
         .select("id")
         .single()
@@ -933,8 +935,24 @@ export async function linkCourseContentAdmin(
 }
 
 export async function unlinkCourseContentAdmin(linkId: string): Promise<void> {
+    const { data: linkRow, error: fetchError } = await supabase
+        .from("lxp_course_library_links")
+        .select("course_discipline_id")
+        .eq("id", linkId)
+        .maybeSingle()
+    if (fetchError) throw fetchError
+
     const { error } = await supabase.from("lxp_course_library_links").delete().eq("id", linkId)
     if (error) throw error
+
+    const disciplineId = linkRow?.course_discipline_id as string | undefined
+    if (disciplineId) {
+        const { error: inactiveError } = await supabase
+            .from("lxp_course_disciplines")
+            .update({ status: "inactive", updated_at: new Date().toISOString() })
+            .eq("id", disciplineId)
+        if (inactiveError) throw inactiveError
+    }
 }
 
 async function syncCoursePeriodsCount(courseId: string): Promise<void> {

@@ -172,7 +172,9 @@ export function TemplateEditorDialog({
   }
 
   const handlePrintPreview = () => {
-    openCertificatePrintWindow({ ...previewPayload, autoPrint: true })
+    void openCertificatePrintWindow({ ...previewPayload, autoPrint: true }).catch((err) => {
+      console.error(err)
+    })
   }
 
   return (

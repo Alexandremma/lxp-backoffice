@@ -215,7 +215,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
     }
     try {
       await unlinkContentMutation.mutateAsync(linkId)
-      toast.success("Vínculo da disciplina removido com sucesso.")
+      toast.success("Vínculo removido. A disciplina foi marcada como inativa para os alunos.")
     } catch (e) {
       toast.error(getAdminErrorMessage("courses-content", e))
     }
@@ -444,6 +444,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         open={disciplineDialogOpen}
         onOpenChange={setDisciplineDialogOpen}
         discipline={selectedDiscipline}
+        hasLibraryLink={Boolean(selectedDiscipline?.linkedTrailId)}
         onSave={handleSaveDiscipline}
       />
 
@@ -460,7 +461,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
               libraryContentId: selectedContent.id,
               libraryContentName: selectedContent.name,
             })
-            toast.success("Disciplina externa vinculada com sucesso.")
+            toast.success("Disciplina externa vinculada. Você pode ativar a disciplina para os alunos.")
             setLinkDialogOpen(false)
           } catch (e) {
             toast.error(getLinkErrorMessage(e))

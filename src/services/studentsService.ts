@@ -12,8 +12,10 @@ export async function updateStudentProfileAdmin(params: {
         p_profile_id: params.profileId,
         p_name: params.name,
         p_email: params.email,
-        p_phone: params.phone !== undefined ? (params.phone.trim() || null) : null,
+        p_phone: params.phone?.trim() ?? "",
         p_birth_date: params.birthDate?.trim() ? params.birthDate.trim() : null,
+        p_touch_phone: params.phone !== undefined,
+        p_touch_birth_date: params.birthDate !== undefined,
     })
     if (error) throw error
 }
