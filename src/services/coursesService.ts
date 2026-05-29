@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabaseClient"
 import type { CourseAdmin, CourseStatus } from "@/types/courseAdmin"
 import { getLibraryDisciplineUrl } from "@/services/libraryAdapter"
 
+const DISCIPLINE_COVERS_BUCKET = "discipline-covers"
+
 type CourseDbRow = {
     id: string
     name: string
@@ -50,10 +52,18 @@ export type CourseDisciplineAdmin = {
     workload: number
     credits: number
     professor?: string
+    description?: string
+    coverImagePath?: string
     status: "active" | "inactive"
     linkedTrailId?: string
     linkedTrailName?: string
     linkedLibraryLinkId?: string
+}
+
+export function getDisciplineCoverPublicUrl(path: string | null | undefined): string | null {
+    if (!path?.trim()) return null
+    const { data } = supabase.storage.from(DISCIPLINE_COVERS_BUCKET).getPublicUrl(path.trim())
+    return data.publicUrl || null
 }
 
 export type CoursePeriodAdmin = {
@@ -228,13 +238,10 @@ export type UpsertCourseAdminPayload = {
     description: string
     category: CourseAdmin["category"]
     status: CourseStatus
-    periods: number
     externalLibraryId?: string
 }
 
 export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Promise<void> {
-    const normalizedPeriods = Math.max(1, Math.min(20, Math.trunc(payload.periods || 1)))
-
     const { data: createdCourse, error: courseError } = await supabase
         .from("lxp_courses")
         .insert({
@@ -242,7 +249,7 @@ export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Prom
             description: payload.description.trim(),
             category: payload.category,
             status: payload.status,
-            periods: normalizedPeriods,
+            periods: 1,
             external_library_id: payload.externalLibraryId?.trim() || null,
         })
         .select("id")
@@ -251,14 +258,12 @@ export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Prom
     if (courseError) throw courseError
 
     const courseId = (createdCourse as { id: string }).id
-    const periodsToInsert = Array.from({ length: normalizedPeriods }, (_, idx) => ({
+    const { error: periodsError } = await supabase.from("lxp_course_periods").insert({
         course_id: courseId,
-        number: idx + 1,
-        name: `${idx + 1}º Período`,
-        status: idx === 0 && payload.status === "active" ? "current" : "upcoming",
-    }))
-
-    const { error: periodsError } = await supabase.from("lxp_course_periods").insert(periodsToInsert)
+        number: 1,
+        name: "1º Período",
+        status: payload.status === "active" ? "current" : "upcoming",
+    })
     if (periodsError) throw periodsError
 }
 
@@ -581,7 +586,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
     const periodIds = periodRows.map((p) => p.id)
     const { data: disciplinesData, error: disciplinesError } = await supabase
         .from("lxp_course_disciplines")
-        .select("id,course_period_id,name,code,workload,credits,professor,status")
+        .select("id,course_period_id,name,code,workload,credits,professor,status,description,cover_image_path")
         .in("course_period_id", periodIds)
         .order("created_at", { ascending: true })
 
@@ -596,6 +601,8 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
         credits: number
         professor: string | null
         status: "active" | "inactive"
+        description: string | null
+        cover_image_path: string | null
     }>
 
     const disciplineIds = disciplineRows.map((d) => d.id)
@@ -642,6 +649,8 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
             workload: row.workload ?? 0,
             credits: row.credits ?? 0,
             professor: row.professor ?? undefined,
+            description: row.description?.trim() || undefined,
+            coverImagePath: row.cover_image_path ?? undefined,
             status: row.status ?? "active",
             linkedTrailId: link?.contentId,
             linkedTrailName: link?.contentName,
@@ -724,18 +733,60 @@ export async function createCourseDisciplineAdmin(
         workload: number
         credits: number
         professor?: string
+        description?: string
         status?: "active" | "inactive"
     },
-): Promise<void> {
-    const { error } = await supabase.from("lxp_course_disciplines").insert({
-        course_period_id: periodId,
-        name: data.name,
-        code: data.code,
-        workload: data.workload,
-        credits: data.credits,
-        professor: data.professor ?? null,
-        status: data.status ?? "active",
-    })
+): Promise<string> {
+    const { data: row, error } = await supabase
+        .from("lxp_course_disciplines")
+        .insert({
+            course_period_id: periodId,
+            name: data.name,
+            code: data.code,
+            workload: data.workload,
+            credits: data.credits,
+            professor: data.professor ?? null,
+            description: data.description?.trim() || null,
+            status: data.status ?? "active",
+        })
+        .select("id")
+        .single()
+    if (error) throw error
+    return (row as { id: string }).id
+}
+
+export async function uploadDisciplineCoverAdmin(disciplineId: string, file: File): Promise<string> {
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"
+    const path = `disciplines/${disciplineId}/cover.${ext}`
+    const up = await supabase.storage
+        .from(DISCIPLINE_COVERS_BUCKET)
+        .upload(path, file, { upsert: true, contentType: file.type })
+    if (up.error) throw up.error
+    const { error } = await supabase
+        .from("lxp_course_disciplines")
+        .update({ cover_image_path: path, updated_at: new Date().toISOString() })
+        .eq("id", disciplineId)
+    if (error) throw error
+    return path
+}
+
+export async function removeDisciplineCoverAdmin(disciplineId: string): Promise<void> {
+    const { data: row, error: getErr } = await supabase
+        .from("lxp_course_disciplines")
+        .select("cover_image_path")
+        .eq("id", disciplineId)
+        .maybeSingle()
+    if (getErr) throw getErr
+
+    const path = (row as { cover_image_path?: string | null } | null)?.cover_image_path
+    if (path?.trim()) {
+        await supabase.storage.from(DISCIPLINE_COVERS_BUCKET).remove([path.trim()])
+    }
+
+    const { error } = await supabase
+        .from("lxp_course_disciplines")
+        .update({ cover_image_path: null, updated_at: new Date().toISOString() })
+        .eq("id", disciplineId)
     if (error) throw error
 }
 
@@ -747,6 +798,7 @@ export async function updateCourseDisciplineAdmin(
         workload: number
         credits: number
         professor?: string
+        description?: string
         status?: "active" | "inactive"
     },
 ): Promise<void> {
@@ -758,6 +810,7 @@ export async function updateCourseDisciplineAdmin(
             workload: data.workload,
             credits: data.credits,
             professor: data.professor ?? null,
+            description: data.description?.trim() || null,
             ...(data.status !== undefined ? { status: data.status } : {}),
             updated_at: new Date().toISOString(),
         })

@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { getDisciplineCoverPublicUrl } from "@/services/coursesService"
 
 const disciplineSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
@@ -20,10 +22,23 @@ const disciplineSchema = z.object({
   workload: z.number().min(1, "Carga horária deve ser maior que 0").max(500),
   credits: z.number().min(0, "Créditos não pode ser negativo").max(100),
   professor: z.string().max(100).optional(),
+  description: z.string().max(2000).optional(),
   isActive: z.boolean(),
 })
 
 type DisciplineFormData = z.infer<typeof disciplineSchema>
+
+export type DisciplineDialogSavePayload = {
+  name: string
+  code: string
+  workload: number
+  credits: number
+  professor?: string
+  description?: string
+  status: "active" | "inactive"
+  coverFile?: File | null
+  removeCover?: boolean
+}
 
 interface DisciplineDialogProps {
   open: boolean
@@ -34,20 +49,18 @@ interface DisciplineDialogProps {
     workload: number
     credits: number
     professor?: string
+    description?: string
+    coverImagePath?: string
     status?: "active" | "inactive"
   } | null
-  onSave: (data: {
-    name: string
-    code: string
-    workload: number
-    credits: number
-    professor?: string
-    status: "active" | "inactive"
-  }) => void
+  onSave: (data: DisciplineDialogSavePayload) => void | Promise<void>
 }
 
 export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: DisciplineDialogProps) {
   const isEditing = !!discipline
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
+  const [removeCover, setRemoveCover] = useState(false)
 
   const {
     register,
@@ -63,54 +76,78 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
       workload: 60,
       credits: 4,
       professor: "",
+      description: "",
       isActive: true,
     },
   })
 
+  const persistedCoverUrl = discipline?.coverImagePath
+    ? getDisciplineCoverPublicUrl(discipline.coverImagePath)
+    : null
+  const previewUrl = localPreviewUrl ?? (removeCover ? null : persistedCoverUrl)
+
   useEffect(() => {
-    if (open) {
-      if (discipline) {
-        reset({
-          name: discipline.name,
-          code: discipline.code,
-          workload: discipline.workload,
-          credits: discipline.credits,
-          professor: discipline.professor || "",
-          isActive: (discipline.status ?? "active") === "active",
-        })
-      } else {
-        reset({
-          name: "",
-          code: "",
-          workload: 60,
-          credits: 4,
-          professor: "",
-          isActive: true,
-        })
-      }
+    if (!open) return
+    setCoverFile(null)
+    setLocalPreviewUrl(null)
+    setRemoveCover(false)
+    if (discipline) {
+      reset({
+        name: discipline.name,
+        code: discipline.code,
+        workload: discipline.workload,
+        credits: discipline.credits,
+        professor: discipline.professor || "",
+        description: discipline.description || "",
+        isActive: (discipline.status ?? "active") === "active",
+      })
+    } else {
+      reset({
+        name: "",
+        code: "",
+        workload: 60,
+        credits: 4,
+        professor: "",
+        description: "",
+        isActive: true,
+      })
     }
   }, [open, discipline, reset])
 
-  const onSubmit = (data: DisciplineFormData) => {
-    onSave({
+  useEffect(() => {
+    if (!coverFile) {
+      setLocalPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(coverFile)
+    setLocalPreviewUrl(url)
+    setRemoveCover(false)
+    return () => URL.revokeObjectURL(url)
+  }, [coverFile])
+
+  const onSubmit = async (data: DisciplineFormData) => {
+    await onSave({
       name: data.name,
       code: data.code,
       workload: data.workload,
       credits: data.credits,
       professor: data.professor || undefined,
+      description: data.description?.trim() || undefined,
       status: data.isActive ? "active" : "inactive",
+      coverFile,
+      removeCover,
     })
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar Disciplina" : "Nova Disciplina"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nome da Disciplina</Label>
             <Input
@@ -174,6 +211,51 @@ export function DisciplineDialog({ open, onOpenChange, discipline, onSave }: Dis
               placeholder="Ex: Prof. Dr. Carlos Eduardo"
               {...register("professor")}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Textarea
+              id="description"
+              placeholder="Texto exibido abaixo do título na página da disciplina no portal do aluno. Se vazio, usa a descrição do curso."
+              rows={3}
+              {...register("description")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Visível apenas para o aluno. Não inclua detalhes técnicos de integração.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cover">Imagem de capa (opcional)</Label>
+            {previewUrl && (
+              <div className="relative rounded-lg overflow-hidden border h-32">
+                <img src={previewUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <Input
+              id="cover"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+            />
+            {(persistedCoverUrl || localPreviewUrl) && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCoverFile(null)
+                  setLocalPreviewUrl(null)
+                  setRemoveCover(true)
+                }}
+              >
+                Remover imagem
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Usada como fundo no topo da página da disciplina (PNG, JPEG ou WebP, até 5 MB).
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border p-3">

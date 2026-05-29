@@ -195,7 +195,7 @@ const CourseDetailsPage = () => {
                   <p className="font-medium">{statusConfig[course.status].label}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Grades Totais</p>
+                  <p className="text-sm text-muted-foreground">Períodos cadastrados</p>
                   <p className="font-medium">{course.periods}</p>
                 </div>
                 <div>

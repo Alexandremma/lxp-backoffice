@@ -1,23 +1,38 @@
 import { supabase } from "@/lib/supabaseClient"
 
+const SIGNATURES_BUCKET = "certificate-signatures"
+
 export type CertificateTemplateRow = {
   id: string
   name: string
   description: string | null
   is_active: boolean
+  is_default: boolean
+  institution_name: string
+  institution_logo_path: string | null
   created_at: string
   updated_at: string
 }
 
 export type CertificateSignatureRow = {
   id: string
-  template_id: string
   signer_name: string
   signer_title: string
   image_path: string | null
   sort_order: number
   created_at: string
-  template_name?: string
+  /** legacy / fase 2 — pode ser null agora */
+  template_id?: string | null
+}
+
+export type TemplateSignatureSlot = {
+  template_id: string
+  signature_id: string
+  slot: number
+  sort_order: number
+  signer_name: string
+  signer_title: string
+  image_path: string | null
 }
 
 export type CertificateIssueAdminRow = {
@@ -27,12 +42,31 @@ export type CertificateIssueAdminRow = {
   student_name: string
   discipline_label: string
   template_name: string | null
+  snapshot: Record<string, unknown> | null
 }
+
+/* ---------------------------- helpers de Storage --------------------------- */
+
+function signatureStoragePublicUrl(imagePath: string | null | undefined): string | null {
+  if (!imagePath?.trim()) return null
+  const { data } = supabase.storage.from(SIGNATURES_BUCKET).getPublicUrl(imagePath.trim())
+  return data.publicUrl || null
+}
+
+export function getSignatureImagePublicUrl(imagePath: string | null | undefined): string | null {
+  return signatureStoragePublicUrl(imagePath)
+}
+
+/* ------------------------------- templates -------------------------------- */
+
+const TEMPLATE_COLS =
+  "id,name,description,is_active,is_default,institution_name,institution_logo_path,created_at,updated_at"
 
 export async function listCertificateTemplatesAdmin(): Promise<CertificateTemplateRow[]> {
   const { data, error } = await supabase
     .from("lxp_certificate_templates")
-    .select("id,name,description,is_active,created_at,updated_at")
+    .select(TEMPLATE_COLS)
+    .order("is_default", { ascending: false })
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as CertificateTemplateRow[]
@@ -41,15 +75,17 @@ export async function listCertificateTemplatesAdmin(): Promise<CertificateTempla
 export async function createCertificateTemplateAdmin(input: {
   name: string
   description?: string | null
+  institution_name?: string | null
 }): Promise<CertificateTemplateRow> {
   const { data, error } = await supabase
     .from("lxp_certificate_templates")
     .insert({
       name: input.name.trim(),
       description: input.description?.trim() || null,
+      institution_name: input.institution_name?.trim() || "B42 Edtech",
       is_active: true,
     })
-    .select("id,name,description,is_active,created_at,updated_at")
+    .select(TEMPLATE_COLS)
     .single()
   if (error) throw error
   return data as CertificateTemplateRow
@@ -57,7 +93,12 @@ export async function createCertificateTemplateAdmin(input: {
 
 export async function updateCertificateTemplateAdmin(
   id: string,
-  patch: Partial<Pick<CertificateTemplateRow, "name" | "description" | "is_active">>,
+  patch: Partial<
+    Pick<
+      CertificateTemplateRow,
+      "name" | "description" | "is_active" | "is_default" | "institution_name" | "institution_logo_path"
+    >
+  >,
 ): Promise<void> {
   const { error } = await supabase
     .from("lxp_certificate_templates")
@@ -69,49 +110,213 @@ export async function updateCertificateTemplateAdmin(
   if (error) throw error
 }
 
+export async function setDefaultCertificateTemplateAdmin(templateId: string): Promise<void> {
+  const clear = await supabase
+    .from("lxp_certificate_templates")
+    .update({ is_default: false, updated_at: new Date().toISOString() })
+    .eq("is_default", true)
+  if (clear.error) throw clear.error
+
+  const { error } = await supabase
+    .from("lxp_certificate_templates")
+    .update({ is_default: true, is_active: true, updated_at: new Date().toISOString() })
+    .eq("id", templateId)
+  if (error) throw error
+}
+
+export async function uploadInstitutionLogo(
+  templateId: string,
+  file: File,
+): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png"
+  const path = `templates/${templateId}/logo.${ext}`
+  const up = await supabase.storage
+    .from(SIGNATURES_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type })
+  if (up.error) throw up.error
+  const patch = await supabase
+    .from("lxp_certificate_templates")
+    .update({ institution_logo_path: path, updated_at: new Date().toISOString() })
+    .eq("id", templateId)
+  if (patch.error) throw patch.error
+  return path
+}
+
+/* ------------------------- assinaturas (biblioteca) ------------------------ */
+
 export async function listCertificateSignaturesAdmin(): Promise<CertificateSignatureRow[]> {
   const { data, error } = await supabase
     .from("lxp_certificate_signatures")
-    .select("id,template_id,signer_name,signer_title,image_path,sort_order,created_at")
-    .order("template_id", { ascending: true })
-    .order("sort_order", { ascending: true })
+    .select("id,signer_name,signer_title,image_path,sort_order,created_at,template_id")
+    .order("signer_name", { ascending: true })
   if (error) throw error
-  const rows = (data ?? []) as Omit<CertificateSignatureRow, "template_name">[]
-  if (rows.length === 0) return []
-
-  const templateIds = [...new Set(rows.map((r) => r.template_id))]
-  const { data: templates, error: tErr } = await supabase
-    .from("lxp_certificate_templates")
-    .select("id,name")
-    .in("id", templateIds)
-  if (tErr) throw tErr
-  const nameById = new Map((templates ?? []).map((t: { id: string; name: string }) => [t.id, t.name]))
-
-  return rows.map((r) => ({
-    ...r,
-    template_name: nameById.get(r.template_id) ?? "—",
-  }))
+  return (data ?? []) as CertificateSignatureRow[]
 }
 
 export async function createCertificateSignatureAdmin(input: {
-  template_id: string
   signer_name: string
   signer_title: string
   sort_order?: number
+  image_file?: File | null
+}): Promise<CertificateSignatureRow> {
+  const { data: row, error: insErr } = await supabase
+    .from("lxp_certificate_signatures")
+    .insert({
+      signer_name: input.signer_name.trim(),
+      signer_title: input.signer_title.trim(),
+      sort_order: input.sort_order ?? 0,
+    })
+    .select("id,signer_name,signer_title,image_path,sort_order,created_at,template_id")
+    .single()
+  if (insErr) throw insErr
+  if (!row) throw new Error("Falha ao criar assinatura.")
+
+  if (input.image_file) {
+    const ext = input.image_file.name.split(".").pop()?.toLowerCase() || "png"
+    const path = `library/${row.id}.${ext}`
+    const up = await supabase.storage
+      .from(SIGNATURES_BUCKET)
+      .upload(path, input.image_file, { upsert: true, contentType: input.image_file.type })
+    if (up.error) throw up.error
+    const patch = await supabase
+      .from("lxp_certificate_signatures")
+      .update({ image_path: path })
+      .eq("id", row.id)
+      .select("id,signer_name,signer_title,image_path,sort_order,created_at,template_id")
+      .single()
+    if (patch.error) throw patch.error
+    return patch.data as CertificateSignatureRow
+  }
+
+  return row as CertificateSignatureRow
+}
+
+export async function updateCertificateSignatureAdmin(
+  id: string,
+  patch: Partial<Pick<CertificateSignatureRow, "signer_name" | "signer_title" | "sort_order">> & {
+    image_file?: File | null
+  },
+): Promise<void> {
+  if (patch.signer_name || patch.signer_title || patch.sort_order != null) {
+    const dbPatch: Record<string, unknown> = {}
+    if (patch.signer_name !== undefined) dbPatch.signer_name = patch.signer_name.trim()
+    if (patch.signer_title !== undefined) dbPatch.signer_title = patch.signer_title.trim()
+    if (patch.sort_order !== undefined) dbPatch.sort_order = patch.sort_order
+    const { error } = await supabase
+      .from("lxp_certificate_signatures")
+      .update(dbPatch)
+      .eq("id", id)
+    if (error) throw error
+  }
+
+  if (patch.image_file) {
+    const ext = patch.image_file.name.split(".").pop()?.toLowerCase() || "png"
+    const path = `library/${id}.${ext}`
+    const up = await supabase.storage
+      .from(SIGNATURES_BUCKET)
+      .upload(path, patch.image_file, { upsert: true, contentType: patch.image_file.type })
+    if (up.error) throw up.error
+    const patchErr = await supabase
+      .from("lxp_certificate_signatures")
+      .update({ image_path: path })
+      .eq("id", id)
+    if (patchErr.error) throw patchErr.error
+  }
+}
+
+export async function deleteCertificateSignatureAdmin(id: string): Promise<void> {
+  const { error } = await supabase.from("lxp_certificate_signatures").delete().eq("id", id)
+  if (error) throw error
+}
+
+/* ------------------- vínculo template <-> assinatura (N:M) ----------------- */
+
+export async function listTemplateSignatureSlots(
+  templateId: string,
+): Promise<TemplateSignatureSlot[]> {
+  const { data, error } = await supabase
+    .from("lxp_certificate_template_signatures")
+    .select(
+      "template_id,signature_id,slot,sort_order,lxp_certificate_signatures(signer_name,signer_title,image_path)",
+    )
+    .eq("template_id", templateId)
+    .order("slot", { ascending: true })
+  if (error) throw error
+
+  type Row = {
+    template_id: string
+    signature_id: string
+    slot: number
+    sort_order: number
+    lxp_certificate_signatures: {
+      signer_name: string
+      signer_title: string
+      image_path: string | null
+    } | null
+  }
+
+  return ((data ?? []) as Row[]).map((row) => ({
+    template_id: row.template_id,
+    signature_id: row.signature_id,
+    slot: row.slot,
+    sort_order: row.sort_order,
+    signer_name: row.lxp_certificate_signatures?.signer_name ?? "",
+    signer_title: row.lxp_certificate_signatures?.signer_title ?? "",
+    image_path: row.lxp_certificate_signatures?.image_path ?? null,
+  }))
+}
+
+/** Substitui (ou cria) a assinatura no slot informado. */
+export async function setTemplateSignatureSlot(input: {
+  template_id: string
+  slot: number
+  signature_id: string
 }): Promise<void> {
-  const { error } = await supabase.from("lxp_certificate_signatures").insert({
+  // libera o slot atual desse template (se ocupado)
+  const clear = await supabase
+    .from("lxp_certificate_template_signatures")
+    .delete()
+    .eq("template_id", input.template_id)
+    .eq("slot", input.slot)
+  if (clear.error) throw clear.error
+
+  // remove esse signature_id de outro slot do mesmo template (se houver)
+  const dedup = await supabase
+    .from("lxp_certificate_template_signatures")
+    .delete()
+    .eq("template_id", input.template_id)
+    .eq("signature_id", input.signature_id)
+  if (dedup.error) throw dedup.error
+
+  const { error } = await supabase.from("lxp_certificate_template_signatures").insert({
     template_id: input.template_id,
-    signer_name: input.signer_name.trim(),
-    signer_title: input.signer_title.trim(),
-    sort_order: input.sort_order ?? 0,
+    signature_id: input.signature_id,
+    slot: input.slot,
+    sort_order: input.slot,
   })
   if (error) throw error
 }
 
+export async function removeTemplateSignatureSlot(input: {
+  template_id: string
+  slot: number
+}): Promise<void> {
+  const { error } = await supabase
+    .from("lxp_certificate_template_signatures")
+    .delete()
+    .eq("template_id", input.template_id)
+    .eq("slot", input.slot)
+  if (error) throw error
+}
+
+/* ------------------------------- emissões --------------------------------- */
+
 export async function listCertificateIssuesAdmin(): Promise<CertificateIssueAdminRow[]> {
   const { data: issues, error } = await supabase
     .from("lxp_certificate_issues")
-    .select("id,validation_code,issued_at,student_profile_id,course_discipline_id,template_id")
+    .select(
+      "id,validation_code,issued_at,student_profile_id,course_discipline_id,template_id,snapshot",
+    )
     .order("issued_at", { ascending: false })
     .limit(500)
   if (error) throw error
@@ -164,5 +369,31 @@ export async function listCertificateIssuesAdmin(): Promise<CertificateIssueAdmi
     template_name: row.template_id
       ? (templateName.get(row.template_id as string) ?? null)
       : null,
+    snapshot: (row.snapshot as Record<string, unknown> | null) ?? null,
   }))
+}
+
+/** Busca o snapshot completo (e a issue) para reaproveitar no PDF do admin. */
+export async function getCertificateIssueWithSnapshot(issueId: string): Promise<{
+  validation_code: string
+  issued_at: string
+  snapshot: Record<string, unknown> | null
+  student_profile_id: string
+  course_discipline_id: string
+  template_id: string | null
+} | null> {
+  const { data, error } = await supabase
+    .from("lxp_certificate_issues")
+    .select("validation_code,issued_at,snapshot,student_profile_id,course_discipline_id,template_id")
+    .eq("id", issueId)
+    .maybeSingle()
+  if (error) throw error
+  return (data as {
+    validation_code: string
+    issued_at: string
+    snapshot: Record<string, unknown> | null
+    student_profile_id: string
+    course_discipline_id: string
+    template_id: string | null
+  } | null) ?? null
 }

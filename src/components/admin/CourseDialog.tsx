@@ -49,7 +49,6 @@ export function CourseDialog({
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<CourseAdmin["category"]>("graduation")
   const [status, setStatus] = useState<CourseAdmin["status"]>("draft")
-  const [periods, setPeriods] = useState(8)
 
   const isEditing = !!course
 
@@ -60,13 +59,11 @@ export function CourseDialog({
         setDescription(course.description)
         setCategory(course.category)
         setStatus(course.status)
-        setPeriods(course.periods)
       } else {
         setName("")
         setDescription("")
         setCategory("graduation")
         setStatus("draft")
-        setPeriods(8)
       }
     }
   }, [open, course])
@@ -78,7 +75,6 @@ export function CourseDialog({
       description: description.trim(),
       category,
       status,
-      periods,
     })
     onOpenChange(false)
   }
@@ -95,7 +91,7 @@ export function CourseDialog({
             </DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "Altere as informações do curso"
+                ? "Altere as informações do curso. Períodos e disciplinas são gerenciados na aba Grades."
                 : "Preencha as informações para criar um novo curso"}
             </DialogDescription>
           </DialogHeader>
@@ -155,20 +151,6 @@ export function CourseDialog({
                 </Select>
               </div>
             </div>
-
-            {!isEditing && (
-              <div className="space-y-2">
-                <Label htmlFor="periods">Total de Grades</Label>
-                <Input
-                  id="periods"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={periods}
-                  onChange={(e) => setPeriods(Number(e.target.value))}
-                />
-              </div>
-            )}
           </div>
 
           <DialogFooter>

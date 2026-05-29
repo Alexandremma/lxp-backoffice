@@ -1,6 +1,7 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–23 (certificados, gamificação, acesso diário, comentários, anotações).
+ * Atualizado com migrations Steps 14–26 (certificados com biblioteca de assinaturas N:M
+ * e snapshot imutável de emissão, gamificação, acesso diário, comentários, anotações).
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -40,7 +41,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates/assinaturas/emissões), catálogo de **ações de XP**, badges com `rule_config`, níveis e estrutura de cursos. Admin edita via UI em `/admin/gamificacao`; RPC `lxp_reevaluate_all_student_badges` (somente admin). Migrations aplicadas até **Step 23**.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis e estrutura de cursos. Admin edita via UI em `/admin/gamificacao` e `/admin/certificados`; RPC `lxp_reevaluate_all_student_badges` (somente admin) e `lxp_get_default_certificate_template_id()`. Migrations aplicadas até **Step 26** (Fase 2.1).",
     tables: [
       {
         name: "backoffice_team_members",
@@ -106,19 +107,37 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_certificate_templates",
-        purpose: "Modelos visuais/legais de certificado disponíveis para emissão.",
+        purpose: "Modelos visuais/legais de certificado disponíveis para emissão; carregam identidade institucional do template.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Template." },
           { name: "name", kind: "column", sqlType: "text", description: "Nome interno do modelo." },
           { name: "description", kind: "column", sqlType: "text", description: "Notas para a equipe." },
           { name: "is_active", kind: "column", sqlType: "boolean", description: "Se pode ser usado em novas emissões." },
+          {
+            name: "is_default",
+            kind: "column",
+            sqlType: "boolean",
+            description: "Modelo padrão usado pela RPC `lxp_get_default_certificate_template_id()` (Step 25).",
+          },
+          {
+            name: "institution_name",
+            kind: "column",
+            sqlType: "text",
+            description: "Nome da instituição exibido no certificado (Step 26 — default 'B42 Edtech').",
+          },
+          {
+            name: "institution_logo_path",
+            kind: "column",
+            sqlType: "text",
+            description: "Caminho do logo institucional no bucket `certificate-signatures` (Step 26, opcional).",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],
       },
       {
         name: "lxp_certificate_signatures",
-        purpose: "Assinaturas vinculadas a um template (cargos, ordem, arte no Storage).",
+        purpose: "Biblioteca de assinaturas reutilizáveis (Step 26). Cargo + arte PNG no Storage; vinculadas a templates via `lxp_certificate_template_signatures`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Assinatura." },
           {
@@ -126,13 +145,47 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             kind: "fk",
             sqlType: "uuid",
             fkRef: "public.lxp_certificate_templates",
-            description: "Template ao qual a assinatura pertence.",
+            description: "Legado (nullable após Step 26). Backfill da relação 1:N — novos cadastros não usam.",
           },
           { name: "signer_name", kind: "column", sqlType: "text", description: "Nome no certificado." },
           { name: "signer_title", kind: "column", sqlType: "text", description: "Cargo do signatário." },
-          { name: "image_path", kind: "column", sqlType: "text", description: "Caminho da imagem no Storage (futuro)." },
-          { name: "sort_order", kind: "column", sqlType: "integer", description: "Ordem de exibição." },
+          {
+            name: "image_path",
+            kind: "column",
+            sqlType: "text",
+            description: "PNG da assinatura no bucket `certificate-signatures` (Storage).",
+          },
+          { name: "sort_order", kind: "column", sqlType: "integer", description: "Ordem default na biblioteca." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+        ],
+      },
+      {
+        name: "lxp_certificate_template_signatures",
+        purpose:
+          "Ponte N:M entre templates e a biblioteca de assinaturas (Step 26). Cada `slot` (1..4) representa uma posição fixa no layout do certificado.",
+        columns: [
+          {
+            name: "template_id",
+            kind: "pk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_certificate_templates",
+            description: "Template (parte da PK composta).",
+          },
+          {
+            name: "signature_id",
+            kind: "pk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_certificate_signatures",
+            description: "Assinatura da biblioteca (parte da PK composta).",
+          },
+          {
+            name: "slot",
+            kind: "column",
+            sqlType: "smallint",
+            description: "Posição (1..4) ocupada no template; UNIQUE por (template_id, slot).",
+          },
+          { name: "sort_order", kind: "column", sqlType: "smallint", description: "Ordem de empilhamento dentro do slot." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Quando o vínculo foi criado." },
         ],
       },
       {
@@ -240,9 +293,24 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             fkRef: "public.lxp_course_periods",
             description: "Período ao qual pertence.",
           },
-          { name: "external_discipline_id", kind: "column", sqlType: "text", description: "ID da disciplina no catálogo/biblioteca." },
-          { name: "title", kind: "column", sqlType: "text", description: "Título exibido." },
-          { name: "sort_order", kind: "column", sqlType: "integer", description: "Ordem no período." },
+          { name: "name", kind: "column", sqlType: "text", description: "Nome exibido no portal." },
+          { name: "code", kind: "column", sqlType: "text", description: "Código (ex.: ADS103)." },
+          { name: "workload", kind: "column", sqlType: "integer", description: "Carga horária (h)." },
+          { name: "credits", kind: "column", sqlType: "integer", description: "Créditos." },
+          { name: "professor", kind: "column", sqlType: "text", description: "Professor responsável (opcional)." },
+          { name: "status", kind: "column", sqlType: "text", description: "active | inactive." },
+          {
+            name: "description",
+            kind: "column",
+            sqlType: "text",
+            description: "Step 27: texto abaixo do título na página da disciplina (fallback: descrição do curso).",
+          },
+          {
+            name: "cover_image_path",
+            kind: "column",
+            sqlType: "text",
+            description: "Step 27: capa no bucket `discipline-covers` (Storage).",
+          },
         ],
       },
       {
@@ -268,7 +336,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Alunos",
     schemaHighlight: "student.*",
     intro:
-      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio. Conteúdo da aula via **Alice** (`GET /api/rents` + POST launch). Homolog: `HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md`.",
+      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (com download via snapshot imutável). Conteúdo da aula via **Alice** (`GET /api/rents` + POST launch). Validação pública via `lxp_validate_certificate_public(code)` (RPC `anon`-acessível, prioriza `snapshot`). Homolog: `HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md`.",
     tables: [
       {
         name: "lxp_profiles",
@@ -469,7 +537,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_certificate_issues",
-        purpose: "Emissão por (aluno, disciplina) com código de validação pública.",
+        purpose:
+          "Emissão por (aluno, disciplina) com código de validação pública e **snapshot imutável** do certificado no momento da emissão (Step 26).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Emissão." },
           {
@@ -491,9 +560,22 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             kind: "fk",
             sqlType: "uuid",
             fkRef: "public.lxp_certificate_templates",
-            description: "Modelo usado (pode ser nulo até regra de template).",
+            description: "Modelo usado (resolvido via default ativo quando não informado).",
           },
-          { name: "validation_code", kind: "column", sqlType: "text", description: "Código único de verificação." },
+          { name: "validation_code", kind: "column", sqlType: "text", description: "Código único de verificação (`lxp_validate_certificate_public`)." },
+          {
+            name: "snapshot",
+            kind: "column",
+            sqlType: "jsonb",
+            description:
+              "Step 26: dados imutáveis no momento da emissão (aluno, disciplina, carga horária, instituição, assinaturas resolvidas). NULL = emissão legada → reidratada e persistida na primeira leitura.",
+          },
+          {
+            name: "completed_at",
+            kind: "column",
+            sqlType: "timestamptz",
+            description: "Step 26: data de conclusão da disciplina capturada na emissão (backfill via `lxp_student_discipline_progress`).",
+          },
           { name: "issued_at", kind: "column", sqlType: "timestamptz", description: "Data da emissão lógica." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação do registro." },
         ],

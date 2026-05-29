@@ -1,16 +1,46 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
-import { createCertificateSignatureAdmin } from "@/services/certificatesAdminService"
+import {
+  createCertificateSignatureAdmin,
+  deleteCertificateSignatureAdmin,
+  updateCertificateSignatureAdmin,
+  type CertificateSignatureRow,
+} from "@/services/certificatesAdminService"
 
 export function useCreateCertificateSignatureAdmin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
-      template_id: string
       signer_name: string
       signer_title: string
       sort_order?: number
-    }) => createCertificateSignatureAdmin(input),
+      image_file?: File | null
+    }): Promise<CertificateSignatureRow> => createCertificateSignatureAdmin(input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.certificates.signatures })
+    },
+  })
+}
+
+export function useUpdateCertificateSignatureAdmin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: {
+      id: string
+      patch: Partial<Pick<CertificateSignatureRow, "signer_name" | "signer_title" | "sort_order">> & {
+        image_file?: File | null
+      }
+    }) => updateCertificateSignatureAdmin(args.id, args.patch),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.certificates.signatures })
+    },
+  })
+}
+
+export function useDeleteCertificateSignatureAdmin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteCertificateSignatureAdmin(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.certificates.signatures })
     },

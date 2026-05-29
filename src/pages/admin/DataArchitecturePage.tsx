@@ -77,7 +77,7 @@ const DataArchitecturePage = () => {
           </div>
           <PageHeader
             title="Modelo de dados (referência visual)"
-            description="Schema `public` no Supabase (migrations Steps 14–23): certificados, gamificação (`rule_config`, XP, níveis), acesso diário, comentários e anotações na aula. Abas Backoffice/Alunos = LXP; aba B42 = EAD Stock/Gael + Alice (`INTEGRACAO_ALICE_EADSTOCK.md`)."
+            description="Schema `public` no Supabase (migrations Steps 14–27): certificados com biblioteca N:M de assinaturas e snapshot imutável (Fase 2.1), apresentação da disciplina (`description`, `cover_image_path`, bucket `discipline-covers`), gamificação (`rule_config`, XP, níveis), acesso diário, comentários e anotações na aula. Abas Backoffice/Alunos = LXP; aba B42 = EAD Stock/Gael + Alice. Migrations centralizadas em `projetos-migrations/`."
             actions={
               <div className="flex flex-wrap gap-2">
                 <Badge
@@ -85,6 +85,18 @@ const DataArchitecturePage = () => {
                   className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
                 >
                   RLS por padrão
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-sky-500/40 bg-sky-500/5 font-mono text-[11px] text-sky-400"
+                >
+                  Step 26 · Certificados 2.1
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-violet-500/40 bg-violet-500/5 font-mono text-[11px] text-violet-400"
+                >
+                  Step 27 · Capa disciplina
                 </Badge>
                 <Badge
                   variant="outline"

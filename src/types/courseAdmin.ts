@@ -14,4 +14,5 @@ export type CourseAdmin = {
     externalLibraryId?: string
 }
 
-export type CourseAdminInput = Omit<CourseAdmin, "id" | "totalStudents" | "createdAt">
+/** Dados editáveis no modal de curso (períodos são gerenciados só na aba Grades). */
+export type CourseAdminInput = Pick<CourseAdmin, "name" | "description" | "category" | "status">

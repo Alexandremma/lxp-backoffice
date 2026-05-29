@@ -30,7 +30,7 @@ import {
 } from "lucide-react"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
 import { GradeDialog } from "./GradeDialog"
-import { DisciplineDialog } from "./DisciplineDialog"
+import { DisciplineDialog, type DisciplineDialogSavePayload } from "./DisciplineDialog"
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 import { toast } from "sonner"
 import type { CourseDisciplineAdmin, CoursePeriodAdmin } from "@/services/coursesService"
@@ -148,24 +148,36 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
     setDisciplineDialogOpen(true)
   }
 
-  const handleSaveDiscipline = async (data: {
-    name: string
-    code: string
-    workload: number
-    credits: number
-    professor?: string
-    status: "active" | "inactive"
-  }) => {
+  const handleSaveDiscipline = async (data: DisciplineDialogSavePayload) => {
     if (!selectedGradeId) return
 
     try {
+      const core = {
+        name: data.name,
+        code: data.code,
+        workload: data.workload,
+        credits: data.credits,
+        professor: data.professor,
+        description: data.description,
+        status: data.status,
+      }
+
       if (selectedDiscipline) {
-        await updateDisciplineMutation.mutateAsync({ disciplineId: selectedDiscipline.id, data })
+        await updateDisciplineMutation.mutateAsync({
+          disciplineId: selectedDiscipline.id,
+          data: core,
+          coverFile: data.coverFile,
+          removeCover: data.removeCover,
+        })
         toast.success("Disciplina atualizada com sucesso!")
         return
       }
 
-      await createDisciplineMutation.mutateAsync({ periodId: selectedGradeId, data })
+      await createDisciplineMutation.mutateAsync({
+        periodId: selectedGradeId,
+        data: core,
+        coverFile: data.coverFile,
+      })
       toast.success("Disciplina adicionada com sucesso!")
     } catch (e) {
       toast.error(getAdminErrorMessage("courses-disciplines", e))
