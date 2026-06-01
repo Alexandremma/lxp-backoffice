@@ -1,3 +1,4 @@
+import { assertCanCreateCourse } from "@/lib/planLimits"
 import { supabase } from "@/lib/supabaseClient"
 import type { CourseAdmin, CourseStatus } from "@/types/courseAdmin"
 import { getLibraryDisciplineUrl } from "@/services/libraryAdapter"
@@ -244,6 +245,8 @@ export type UpsertCourseAdminPayload = {
 }
 
 export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Promise<void> {
+    await assertCanCreateCourse()
+
     const { data: createdCourse, error: courseError } = await supabase
         .from("lxp_courses")
         .insert({

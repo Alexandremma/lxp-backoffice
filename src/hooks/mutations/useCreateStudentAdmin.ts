@@ -10,6 +10,7 @@ export function useCreateStudentAdmin() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.students.list })
             queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats })
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
         },
     })
 }

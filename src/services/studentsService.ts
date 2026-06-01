@@ -1,4 +1,6 @@
+import { assertCanCreateStudent } from "@/lib/planLimits"
 import { supabase } from "@/lib/supabaseClient"
+import { writeAuditLog } from "@/services/auditLogService"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 
 export async function updateStudentProfileAdmin(params: {
@@ -18,6 +20,15 @@ export async function updateStudentProfileAdmin(params: {
         p_touch_birth_date: params.birthDate !== undefined,
     })
     if (error) throw error
+
+    void writeAuditLog({
+        action: "student.profile_update",
+        entityType: "lxp_profile",
+        entityId: params.profileId,
+        metadata: { email: params.email.trim() },
+    }).catch((auditErr) => {
+        console.warn("[audit] student.profile_update", auditErr)
+    })
 }
 
 type StudentAdminErrorCode =
@@ -54,6 +65,8 @@ export async function createStudentAdmin(params: {
     birthDate?: string
     redirectTo?: string
 }): Promise<void> {
+    await assertCanCreateStudent()
+
     const { error } = await supabase.functions.invoke("manage-student-admin", {
         body: {
             action: "create",
