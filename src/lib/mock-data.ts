@@ -1379,56 +1379,11 @@ export const mockInstitutionSettings = {
   },
 }
 
-/** Planos exibidos no dialog de upgrade (mock — contratação real fora do escopo). */
-export type SubscriptionPlan = {
-  id: string
-  name: string
-  description: string
-  priceMonthly: number
-  highlighted?: boolean
-  highlights: string[]
-}
+/** @deprecated Use `PLAN_CATALOG` em `@/consts/planCatalog`. */
+export type SubscriptionPlan = import("@/consts/planCatalog").SubscriptionPlanCatalogItem
 
-export const mockSubscriptionPlans: SubscriptionPlan[] = [
-  {
-    id: "essential",
-    name: "Essencial",
-    description: "Para instituições em implantação.",
-    priceMonthly: 297,
-    highlights: [
-      "Até 200 alunos",
-      "Até 10 cursos",
-      "Até 5 membros na equipe",
-      "Certificados e gamificação",
-    ],
-  },
-  {
-    id: "professional",
-    name: "Profissional",
-    description: "O plano mais usado por faculdades e EADs.",
-    priceMonthly: 497,
-    highlighted: true,
-    highlights: [
-      "Até 500 alunos",
-      "Até 25 cursos",
-      "Até 15 membros na equipe",
-      "Certificados personalizados",
-      "Gamificação avançada",
-    ],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    description: "Limites ampliados e suporte dedicado.",
-    priceMonthly: 997,
-    highlights: [
-      "Alunos e cursos sob consulta",
-      "Equipe ampliada",
-      "AI Tutor",
-      "Onboarding assistido",
-    ],
-  },
-]
+/** @deprecated Use `PLAN_CATALOG` em `@/consts/planCatalog`. */
+export { PLAN_CATALOG as mockSubscriptionPlans } from "@/consts/planCatalog"
 
 export interface AuditLog {
   id: string

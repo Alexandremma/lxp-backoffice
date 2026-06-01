@@ -13,57 +13,12 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
 import { InstitutionSettingsCard } from "@/components/admin/settings/InstitutionSettingsCard"
-import { PlanUpgradeDialog } from "@/components/admin/settings/PlanUpgradeDialog"
+import { SettingsGeneralTab } from "@/components/admin/settings/SettingsGeneralTab"
 import { mockAuditLogs, type AuditLog } from "@/lib/mock-data"
 import type { SmtpSettingsValue } from "@/types/settings"
-import {
-  Building2,
-  Mail,
-  Save,
-  Check,
-  Shield,
-  Clock,
-  User,
-  Crown,
-  Users,
-  Zap,
-  BarChart3,
-} from "lucide-react"
+import { Mail, Save, Shield, Clock, User } from "lucide-react"
 import { toast } from "sonner"
-
-const CURRENT_PLAN_ID = "professional"
-
-const mockAccountData = {
-  admin: {
-    name: "Carlos Administrador",
-    email: "admin@instituicao.edu.br",
-    role: "Super Admin",
-    createdAt: "2023-01-15",
-    lastLogin: "2025-01-26T10:30:00",
-  },
-  plan: {
-    id: CURRENT_PLAN_ID,
-    name: "Profissional",
-    status: "active",
-    billingCycle: "monthly" as const,
-    price: 497,
-    startDate: "2024-01-15",
-  },
-  usage: {
-    students: { current: 342, limit: 500 },
-    courses: { current: 12, limit: 25 },
-    teamMembers: { current: 8, limit: 15 },
-  },
-  features: [
-    { name: "Certificados personalizados", included: true },
-    { name: "Gamificação avançada", included: true },
-    { name: "AI Tutor", included: true },
-    { name: "Cursos ilimitados", included: false },
-  ],
-}
 
 const defaultSmtpDraft: SmtpSettingsValue & { password?: string } = {
   enabled: false,
@@ -78,7 +33,6 @@ const defaultSmtpDraft: SmtpSettingsValue & { password?: string } = {
 
 const SettingsPage = () => {
   const [smtpDraft, setSmtpDraft] = useState(defaultSmtpDraft)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const { data: smtpFromDb } = useQuery({
     queryKey: queryKeys.settings.smtp,
@@ -141,150 +95,7 @@ const SettingsPage = () => {
         </TabsList>
 
         <TabsContent value="account" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Conta do Administrador
-                </CardTitle>
-                <CardDescription>Informações da sua conta administrativa</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{mockAccountData.admin.name}</h3>
-                    <p className="text-sm text-muted-foreground">{mockAccountData.admin.email}</p>
-                    <Badge variant="secondary" className="mt-1">
-                      <Crown className="h-3 w-3 mr-1" />
-                      {mockAccountData.admin.role}
-                    </Badge>
-                  </div>
-                </div>
-                <Separator />
-                <div className="grid gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Membro desde</span>
-                    <span>
-                      {new Date(mockAccountData.admin.createdAt).toLocaleDateString("pt-BR")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Último acesso</span>
-                    <span>
-                      {new Date(mockAccountData.admin.lastLogin).toLocaleString("pt-BR")}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm">
-                    Alterar Senha
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Editar Perfil
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-warning" />
-                  Plano Atual
-                </CardTitle>
-                <CardDescription>Resumo do plano contratado</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-2xl">{mockAccountData.plan.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Cobrança{" "}
-                      {mockAccountData.plan.billingCycle === "monthly" ? "mensal" : "anual"}
-                    </p>
-                  </div>
-                  <Badge variant="success-muted">
-                    <Check className="h-3 w-3 mr-1" />
-                    Ativo
-                  </Badge>
-                </div>
-                <div className="text-3xl font-bold">
-                  R$ {mockAccountData.plan.price.toFixed(2)}
-                  <span className="text-sm font-normal text-muted-foreground">/mês</span>
-                </div>
-                <div className="pt-2">
-                  <Button size="sm" onClick={() => setUpgradeOpen(true)}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Fazer Upgrade
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Uso do Plano
-              </CardTitle>
-              <CardDescription>Consumo atual dos recursos do seu plano</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-3">
-                <UsageMeter
-                  icon={Users}
-                  label="Alunos"
-                  current={mockAccountData.usage.students.current}
-                  limit={mockAccountData.usage.students.limit}
-                />
-                <UsageMeter
-                  icon={Building2}
-                  label="Cursos"
-                  current={mockAccountData.usage.courses.current}
-                  limit={mockAccountData.usage.courses.limit}
-                />
-                <UsageMeter
-                  icon={User}
-                  label="Equipe"
-                  current={mockAccountData.usage.teamMembers.current}
-                  limit={mockAccountData.usage.teamMembers.limit}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recursos do Plano</CardTitle>
-              <CardDescription>
-                Funcionalidades incluídas no plano {mockAccountData.plan.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2">
-                {mockAccountData.features.map((feature) => (
-                  <div
-                    key={feature.name}
-                    className={`flex items-center gap-2 p-3 rounded-lg ${
-                      feature.included ? "bg-success/10" : "bg-muted/50"
-                    }`}
-                  >
-                    <Check
-                      className={`h-4 w-4 ${feature.included ? "text-success" : "text-muted-foreground opacity-40"}`}
-                    />
-                    <span className={feature.included ? "" : "text-muted-foreground"}>
-                      {feature.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <SettingsGeneralTab />
         </TabsContent>
 
         <TabsContent value="institution" className="space-y-4">
@@ -419,40 +230,7 @@ const SettingsPage = () => {
         </TabsContent>
       </Tabs>
 
-      <PlanUpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        currentPlanId={mockAccountData.plan.id}
-      />
     </AdminLayout>
-  )
-}
-
-function UsageMeter({
-  icon: Icon,
-  label,
-  current,
-  limit,
-}: {
-  icon: typeof Users
-  label: string
-  current: number
-  limit: number
-}) {
-  const percent = limit > 0 ? Math.min(100, (current / limit) * 100) : 0
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-          {label}
-        </span>
-        <span className="text-muted-foreground">
-          {current}/{limit}
-        </span>
-      </div>
-      <Progress value={percent} className="h-2" />
-    </div>
   )
 }
 
