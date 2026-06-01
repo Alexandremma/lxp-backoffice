@@ -12,33 +12,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
-import {
-  mockInstitutionSettings,
-  mockIntegrations,
-  mockAuditLogs,
-  AuditLog,
-} from "@/lib/mock-data"
+import { PlanUpgradeDialog } from "@/components/admin/settings/PlanUpgradeDialog"
+import { mockInstitutionSettings, mockAuditLogs, type AuditLog } from "@/lib/mock-data"
 import {
   Building2,
   Mail,
-  Globe,
   Save,
   Check,
-  X,
-  RefreshCw,
   Shield,
   Clock,
   User,
   Crown,
-  CreditCard,
-  Calendar,
   Users,
-  HardDrive,
   Zap,
+  BarChart3,
 } from "lucide-react"
 import { toast } from "sonner"
 
-// Mock data for account and plan
+const CURRENT_PLAN_ID = "professional"
+
 const mockAccountData = {
   admin: {
     name: "Carlos Administrador",
@@ -48,33 +40,29 @@ const mockAccountData = {
     lastLogin: "2025-01-26T10:30:00",
   },
   plan: {
+    id: CURRENT_PLAN_ID,
     name: "Profissional",
     status: "active",
-    billingCycle: "monthly",
+    billingCycle: "monthly" as const,
     price: 497,
-    nextBillingDate: "2025-02-15",
     startDate: "2024-01-15",
   },
   usage: {
     students: { current: 342, limit: 500 },
     courses: { current: 12, limit: 25 },
-    storage: { current: 15.2, limit: 50 }, // GB
     teamMembers: { current: 8, limit: 15 },
   },
   features: [
-    { name: "Cursos ilimitados", included: false },
     { name: "Certificados personalizados", included: true },
-    { name: "AI Tutor", included: true },
     { name: "Gamificação avançada", included: true },
-    { name: "Relatórios avançados", included: true },
-    { name: "API de integração", included: false },
-    { name: "Suporte prioritário", included: true },
-    { name: "White-label", included: false },
+    { name: "AI Tutor", included: true },
+    { name: "Cursos ilimitados", included: false },
   ],
 }
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState(mockInstitutionSettings)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const handleSave = () => {
     toast.success("Configurações salvas com sucesso!")
@@ -93,11 +81,24 @@ const SettingsPage = () => {
     }
   }
 
+  const getActionLabel = (action: AuditLog["action"]) => {
+    switch (action) {
+      case "create":
+        return "criou"
+      case "update":
+        return "atualizou"
+      case "delete":
+        return "excluiu"
+      default:
+        return "registrou"
+    }
+  }
+
   return (
     <AdminLayout>
       <PageHeader
         title="Configurações Gerais"
-        description="Dados da instituição e integrações"
+        description="Plano, dados da instituição, e-mail e auditoria do Back Office"
       />
 
       <Tabs defaultValue="account" className="space-y-4">
@@ -105,23 +106,18 @@ const SettingsPage = () => {
           <TabsTrigger value="account">Geral</TabsTrigger>
           <TabsTrigger value="institution">Dados da Instituição</TabsTrigger>
           <TabsTrigger value="email">Configurações de Email</TabsTrigger>
-          <TabsTrigger value="integrations">Integrações</TabsTrigger>
           <TabsTrigger value="audit">Logs de Auditoria</TabsTrigger>
         </TabsList>
 
-        {/* Account & Plan Settings */}
         <TabsContent value="account" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Admin Account Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
                   Conta do Administrador
                 </CardTitle>
-                <CardDescription>
-                  Informações da sua conta administrativa
-                </CardDescription>
+                <CardDescription>Informações da sua conta administrativa</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -141,37 +137,43 @@ const SettingsPage = () => {
                 <div className="grid gap-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Membro desde</span>
-                    <span>{new Date(mockAccountData.admin.createdAt).toLocaleDateString("pt-BR")}</span>
+                    <span>
+                      {new Date(mockAccountData.admin.createdAt).toLocaleDateString("pt-BR")}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Último acesso</span>
-                    <span>{new Date(mockAccountData.admin.lastLogin).toLocaleString("pt-BR")}</span>
+                    <span>
+                      {new Date(mockAccountData.admin.lastLogin).toLocaleString("pt-BR")}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm">Alterar Senha</Button>
-                  <Button variant="outline" size="sm">Editar Perfil</Button>
+                  <Button variant="outline" size="sm">
+                    Alterar Senha
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Editar Perfil
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Current Plan Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Crown className="h-5 w-5 text-warning" />
                   Plano Atual
                 </CardTitle>
-                <CardDescription>
-                  Detalhes da sua assinatura
-                </CardDescription>
+                <CardDescription>Resumo do plano contratado</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-2xl">{mockAccountData.plan.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Cobrança {mockAccountData.plan.billingCycle === "monthly" ? "mensal" : "anual"}
+                      Cobrança{" "}
+                      {mockAccountData.plan.billingCycle === "monthly" ? "mensal" : "anual"}
                     </p>
                   </div>
                   <Badge variant="success-muted">
@@ -183,112 +185,48 @@ const SettingsPage = () => {
                   R$ {mockAccountData.plan.price.toFixed(2)}
                   <span className="text-sm font-normal text-muted-foreground">/mês</span>
                 </div>
-                <Separator />
-                <div className="grid gap-3 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Próxima cobrança
-                    </span>
-                    <span>{new Date(mockAccountData.plan.nextBillingDate).toLocaleDateString("pt-BR")}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Método de pagamento
-                    </span>
-                    <span>•••• 4242</span>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button size="sm">
+                <div className="pt-2">
+                  <Button size="sm" onClick={() => setUpgradeOpen(true)}>
                     <Zap className="h-4 w-4 mr-2" />
                     Fazer Upgrade
                   </Button>
-                  <Button variant="outline" size="sm">Gerenciar Cobrança</Button>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Usage Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <HardDrive className="h-5 w-5" />
+                <BarChart3 className="h-5 w-5" />
                 Uso do Plano
               </CardTitle>
-              <CardDescription>
-                Consumo atual dos recursos do seu plano
-              </CardDescription>
+              <CardDescription>Consumo atual dos recursos do seu plano</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      Alunos
-                    </span>
-                    <span className="text-muted-foreground">
-                      {mockAccountData.usage.students.current}/{mockAccountData.usage.students.limit}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(mockAccountData.usage.students.current / mockAccountData.usage.students.limit) * 100} 
-                    className="h-2"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      Cursos
-                    </span>
-                    <span className="text-muted-foreground">
-                      {mockAccountData.usage.courses.current}/{mockAccountData.usage.courses.limit}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(mockAccountData.usage.courses.current / mockAccountData.usage.courses.limit) * 100} 
-                    className="h-2"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <HardDrive className="h-4 w-4 text-muted-foreground" />
-                      Armazenamento
-                    </span>
-                    <span className="text-muted-foreground">
-                      {mockAccountData.usage.storage.current}GB/{mockAccountData.usage.storage.limit}GB
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(mockAccountData.usage.storage.current / mockAccountData.usage.storage.limit) * 100} 
-                    className="h-2"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      Equipe
-                    </span>
-                    <span className="text-muted-foreground">
-                      {mockAccountData.usage.teamMembers.current}/{mockAccountData.usage.teamMembers.limit}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={(mockAccountData.usage.teamMembers.current / mockAccountData.usage.teamMembers.limit) * 100} 
-                    className="h-2"
-                  />
-                </div>
+              <div className="grid gap-6 md:grid-cols-3">
+                <UsageMeter
+                  icon={Users}
+                  label="Alunos"
+                  current={mockAccountData.usage.students.current}
+                  limit={mockAccountData.usage.students.limit}
+                />
+                <UsageMeter
+                  icon={Building2}
+                  label="Cursos"
+                  current={mockAccountData.usage.courses.current}
+                  limit={mockAccountData.usage.courses.limit}
+                />
+                <UsageMeter
+                  icon={User}
+                  label="Equipe"
+                  current={mockAccountData.usage.teamMembers.current}
+                  limit={mockAccountData.usage.teamMembers.limit}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Features Card */}
           <Card>
             <CardHeader>
               <CardTitle>Recursos do Plano</CardTitle>
@@ -297,7 +235,7 @@ const SettingsPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-2">
                 {mockAccountData.features.map((feature) => (
                   <div
                     key={feature.name}
@@ -305,11 +243,9 @@ const SettingsPage = () => {
                       feature.included ? "bg-success/10" : "bg-muted/50"
                     }`}
                   >
-                    {feature.included ? (
-                      <Check className="h-4 w-4 text-success" />
-                    ) : (
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <Check
+                      className={`h-4 w-4 ${feature.included ? "text-success" : "text-muted-foreground opacity-40"}`}
+                    />
                     <span className={feature.included ? "" : "text-muted-foreground"}>
                       {feature.name}
                     </span>
@@ -320,7 +256,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Institution Settings */}
         <TabsContent value="institution" className="space-y-4">
           <Card>
             <CardHeader>
@@ -328,9 +263,7 @@ const SettingsPage = () => {
                 <Building2 className="h-5 w-5" />
                 Dados da Instituição
               </CardTitle>
-              <CardDescription>
-                Informações básicas da instituição de ensino
-              </CardDescription>
+              <CardDescription>Informações básicas da instituição de ensino</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
@@ -338,18 +271,14 @@ const SettingsPage = () => {
                   <Label>Nome da Instituição</Label>
                   <Input
                     value={settings.name}
-                    onChange={(e) =>
-                      setSettings({ ...settings, name: e.target.value })
-                    }
+                    onChange={(e) => setSettings({ ...settings, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>CNPJ</Label>
                   <Input
                     value={settings.cnpj}
-                    onChange={(e) =>
-                      setSettings({ ...settings, cnpj: e.target.value })
-                    }
+                    onChange={(e) => setSettings({ ...settings, cnpj: e.target.value })}
                   />
                 </div>
               </div>
@@ -359,18 +288,14 @@ const SettingsPage = () => {
                   <Input
                     type="email"
                     value={settings.email}
-                    onChange={(e) =>
-                      setSettings({ ...settings, email: e.target.value })
-                    }
+                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
                   <Input
                     value={settings.phone}
-                    onChange={(e) =>
-                      setSettings({ ...settings, phone: e.target.value })
-                    }
+                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -378,19 +303,8 @@ const SettingsPage = () => {
                 <Label>Endereço</Label>
                 <Textarea
                   value={settings.address}
-                  onChange={(e) =>
-                    setSettings({ ...settings, address: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                   rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Website</Label>
-                <Input
-                  value={settings.website}
-                  onChange={(e) =>
-                    setSettings({ ...settings, website: e.target.value })
-                  }
                 />
               </div>
               <Separator />
@@ -401,9 +315,11 @@ const SettingsPage = () => {
                     <Building2 className="h-10 w-10 text-muted-foreground" />
                   </div>
                   <div>
-                    <Button variant="outline">Alterar Logo</Button>
+                    <Button variant="outline" type="button">
+                      Alterar Logo
+                    </Button>
                     <p className="text-xs text-muted-foreground mt-2">
-                      PNG ou JPG. Máximo 2MB.
+                      PNG ou JPG. Máximo 2MB. (Persistência em versão futura.)
                     </p>
                   </div>
                 </div>
@@ -416,7 +332,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Email Settings */}
         <TabsContent value="email" className="space-y-4">
           <Card>
             <CardHeader>
@@ -424,9 +339,7 @@ const SettingsPage = () => {
                 <Mail className="h-5 w-5" />
                 Configurações de Email
               </CardTitle>
-              <CardDescription>
-                Configure o servidor SMTP para envio de emails
-              </CardDescription>
+              <CardDescription>Configure o servidor SMTP para envio de emails</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
@@ -485,9 +398,7 @@ const SettingsPage = () => {
               <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                 <div className="space-y-0.5">
                   <Label>SSL/TLS</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Usar conexão segura
-                  </p>
+                  <p className="text-sm text-muted-foreground">Usar conexão segura</p>
                 </div>
                 <Switch
                   checked={settings.smtp.secure}
@@ -512,67 +423,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Integrations */}
-        <TabsContent value="integrations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Integrações
-              </CardTitle>
-              <CardDescription>
-                Gerencie conexões com serviços externos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockIntegrations.map((integration) => (
-                  <div
-                    key={integration.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-lg bg-background flex items-center justify-center border">
-                        <span className="text-xl">{integration.icon}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">{integration.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {integration.description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {integration.status === "connected" ? (
-                        <Badge variant="success-muted" className="gap-1">
-                          <Check className="h-3 w-3" />
-                          Conectado
-                        </Badge>
-                      ) : integration.status === "error" ? (
-                        <Badge variant="destructive-muted" className="gap-1">
-                          <X className="h-3 w-3" />
-                          Erro
-                        </Badge>
-                      ) : (
-                        <Badge variant="ghost">Desconectado</Badge>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toast.success(`${integration.name} sincronizado!`)}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        {integration.status === "connected" ? "Sincronizar" : "Conectar"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Audit Logs */}
         <TabsContent value="audit" className="space-y-4">
           <Card>
             <CardHeader>
@@ -581,40 +431,37 @@ const SettingsPage = () => {
                 Logs de Auditoria
               </CardTitle>
               <CardDescription>
-                Histórico de ações administrativas no sistema
+                Histórico de ações administrativas realizadas no Back Office.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="px-6 pb-4">
+                <Badge variant="outline" className="text-muted-foreground font-normal">
+                  Dados de demonstração — persistência em `lxp_audit_logs` (próxima etapa)
+                </Badge>
+              </div>
               <ScrollArea className="h-[500px]">
-                <div className="p-4 space-y-2">
+                <div className="p-4 pt-0 space-y-2">
                   {mockAuditLogs.map((log) => (
                     <div
                       key={log.id}
                       className="flex items-start gap-4 p-4 rounded-lg bg-muted/30"
                     >
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <User className="h-5 w-5 text-primary" />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="font-medium">{log.userName}</span>
                           <span className={`text-sm ${getActionColor(log.action)}`}>
-                            {log.action === "create"
-                              ? "criou"
-                              : log.action === "update"
-                              ? "atualizou"
-                              : log.action === "delete"
-                              ? "excluiu"
-                              : "visualizou"}
+                            {getActionLabel(log.action)}
                           </span>
-                          <span className="text-sm">{log.resource}</span>
+                          <span className="text-sm text-muted-foreground">{log.resource}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {log.details}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{log.details}</p>
                       </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
+                      <div className="text-right text-sm text-muted-foreground shrink-0">
+                        <div className="flex items-center gap-1 justify-end">
                           <Clock className="h-3 w-3" />
                           {new Date(log.timestamp).toLocaleTimeString("pt-BR", {
                             hour: "2-digit",
@@ -631,7 +478,41 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PlanUpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        currentPlanId={mockAccountData.plan.id}
+      />
     </AdminLayout>
+  )
+}
+
+function UsageMeter({
+  icon: Icon,
+  label,
+  current,
+  limit,
+}: {
+  icon: typeof Users
+  label: string
+  current: number
+  limit: number
+}) {
+  const percent = limit > 0 ? Math.min(100, (current / limit) * 100) : 0
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          {label}
+        </span>
+        <span className="text-muted-foreground">
+          {current}/{limit}
+        </span>
+      </div>
+      <Progress value={percent} className="h-2" />
+    </div>
   )
 }
 

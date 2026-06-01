@@ -1370,7 +1370,6 @@ export const mockInstitutionSettings = {
   email: "contato@lxp.edu.br",
   phone: "(11) 3456-7890",
   address: "Av. Paulista, 1000 - São Paulo, SP - CEP 01310-100",
-  website: "https://www.lxp.edu.br",
   smtp: {
     host: "smtp.lxp.edu.br",
     port: "587",
@@ -1380,11 +1379,55 @@ export const mockInstitutionSettings = {
   },
 }
 
-export const mockIntegrations = [
-  { id: "int_001", name: "Gateway de Pagamento", description: "Integração com sistema de pagamentos", icon: "💳", status: "connected" as const },
-  { id: "int_002", name: "Biblioteca Digital", description: "Acesso ao conteúdo externo", icon: "📚", status: "connected" as const },
-  { id: "int_003", name: "Sistema Acadêmico", description: "Sincronização de notas e frequência", icon: "🎓", status: "error" as const },
-  { id: "int_004", name: "CRM", description: "Gestão de relacionamento", icon: "📊", status: "disconnected" as const },
+/** Planos exibidos no dialog de upgrade (mock — contratação real fora do escopo). */
+export type SubscriptionPlan = {
+  id: string
+  name: string
+  description: string
+  priceMonthly: number
+  highlighted?: boolean
+  highlights: string[]
+}
+
+export const mockSubscriptionPlans: SubscriptionPlan[] = [
+  {
+    id: "essential",
+    name: "Essencial",
+    description: "Para instituições em implantação.",
+    priceMonthly: 297,
+    highlights: [
+      "Até 200 alunos",
+      "Até 10 cursos",
+      "Até 5 membros na equipe",
+      "Certificados e gamificação",
+    ],
+  },
+  {
+    id: "professional",
+    name: "Profissional",
+    description: "O plano mais usado por faculdades e EADs.",
+    priceMonthly: 497,
+    highlighted: true,
+    highlights: [
+      "Até 500 alunos",
+      "Até 25 cursos",
+      "Até 15 membros na equipe",
+      "Certificados personalizados",
+      "Gamificação avançada",
+    ],
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    description: "Limites ampliados e suporte dedicado.",
+    priceMonthly: 997,
+    highlights: [
+      "Alunos e cursos sob consulta",
+      "Equipe ampliada",
+      "AI Tutor",
+      "Onboarding assistido",
+    ],
+  },
 ]
 
 export interface AuditLog {
@@ -1397,12 +1440,62 @@ export interface AuditLog {
   timestamp: string
 }
 
+/** Mock — substituir por `lxp_audit_logs` (Fase 4). Escopo: ações no Back Office apenas. */
 export const mockAuditLogs: AuditLog[] = [
-  { id: "audit_001", userId: "usr_001", userName: "Admin Master", action: "create", resource: "Curso", details: "Criou curso 'Especialização em IA'", timestamp: "2025-01-26T10:30:00" },
-  { id: "audit_002", userId: "team_001", userName: "Prof. Dr. Carlos Eduardo", action: "update", resource: "Trilha", details: "Atualizou trilha 'Fundamentos de Gestão'", timestamp: "2025-01-26T09:15:00" },
-  { id: "audit_003", userId: "usr_001", userName: "Admin Master", action: "delete", resource: "Usuário", details: "Removeu usuário 'teste@email.com'", timestamp: "2025-01-25T16:45:00" },
-  { id: "audit_004", userId: "team_003", userName: "Ricardo Souza", action: "update", resource: "Ticket", details: "Resolveu ticket #003", timestamp: "2025-01-25T14:00:00" },
-  { id: "audit_005", userId: "usr_001", userName: "Admin Master", action: "create", resource: "Badge", details: "Criou badge 'Maratonista'", timestamp: "2025-01-24T11:30:00" },
+  {
+    id: "audit_001",
+    userId: "usr_001",
+    userName: "Admin Master",
+    action: "create",
+    resource: "Aluno",
+    details: "Cadastrou aluno alexandremm.1118@gmail.com",
+    timestamp: "2026-05-28T10:30:00",
+  },
+  {
+    id: "audit_002",
+    userId: "usr_001",
+    userName: "Admin Master",
+    action: "update",
+    resource: "Disciplina",
+    details: "Vinculou biblioteca externa à disciplina 'APIs e Integrações'",
+    timestamp: "2026-05-28T09:15:00",
+  },
+  {
+    id: "audit_003",
+    userId: "usr_001",
+    userName: "Admin Master",
+    action: "update",
+    resource: "Certificado",
+    details: "Atualizou template padrão de certificado (logo institucional)",
+    timestamp: "2026-05-27T16:45:00",
+  },
+  {
+    id: "audit_004",
+    userId: "team_002",
+    userName: "Coordenação Acadêmica",
+    action: "update",
+    resource: "Gamificação",
+    details: "Alterou regra de XP 'Aula Assistida' para +10",
+    timestamp: "2026-05-27T14:00:00",
+  },
+  {
+    id: "audit_005",
+    userId: "usr_001",
+    userName: "Admin Master",
+    action: "create",
+    resource: "Badge",
+    details: "Criou badge 'Explorador' (≥ 1 comentário na aula)",
+    timestamp: "2026-05-26T11:30:00",
+  },
+  {
+    id: "audit_006",
+    userId: "usr_001",
+    userName: "Admin Master",
+    action: "update",
+    resource: "Aluno",
+    details: "Bloqueou matrícula do aluno student@lxp.edu.br",
+    timestamp: "2026-05-26T08:20:00",
+  },
 ]
 
 // ============================================
