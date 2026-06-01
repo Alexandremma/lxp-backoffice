@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { deleteStudentAdmin } from "@/services/studentsService"
 
 export function useDeleteStudentAdmin() {
@@ -10,6 +11,7 @@ export function useDeleteStudentAdmin() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.students.list })
             queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats })
+            invalidateAuditLogs(queryClient)
         },
     })
 }

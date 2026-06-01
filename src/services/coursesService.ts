@@ -1,3 +1,4 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateCourse } from "@/lib/planLimits"
 import { supabase } from "@/lib/supabaseClient"
 import type { CourseAdmin, CourseStatus } from "@/types/courseAdmin"
@@ -270,6 +271,24 @@ export async function createCourseAdmin(payload: UpsertCourseAdminPayload): Prom
         status: payload.status === "active" ? "current" : "upcoming",
     })
     if (periodsError) throw periodsError
+
+    fireAuditLog({
+        action: "course.create",
+        entityType: "lxp_course",
+        entityId: courseId,
+        metadata: { name: payload.name.trim() },
+    })
+}
+
+export async function deleteCourseAdmin(courseId: string): Promise<void> {
+    const { error } = await supabase.from("lxp_courses").delete().eq("id", courseId)
+    if (error) throw error
+
+    fireAuditLog({
+        action: "course.delete",
+        entityType: "lxp_course",
+        entityId: courseId,
+    })
 }
 
 export async function updateCourseAdmin(
@@ -288,6 +307,13 @@ export async function updateCourseAdmin(
         })
         .eq("id", courseId)
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.update",
+        entityType: "lxp_course",
+        entityId: courseId,
+        metadata: { name: payload.name.trim() },
+    })
 }
 
 export async function getCourseStudentsAdmin(courseId: string, courseName: string): Promise<{
@@ -550,6 +576,13 @@ export async function enrollStudentsAdmin(courseId: string, studentIds: string[]
 
     const { error } = await supabase.from("lxp_enrollments").insert(toInsert)
     if (error) throw error
+
+    fireAuditLog({
+        action: "enrollment.enroll",
+        entityType: "lxp_enrollment",
+        entityId: courseId,
+        metadata: { courseId, studentCount: studentIds.length },
+    })
 }
 
 export async function setCourseEnrollmentStatusAdmin(params: {
@@ -567,6 +600,16 @@ export async function setCourseEnrollmentStatusAdmin(params: {
         .eq("student_profile_id", params.studentProfileId)
 
     if (error) throw error
+
+    fireAuditLog({
+        action: "enrollment.status_update",
+        entityType: "lxp_enrollment",
+        entityId: params.studentProfileId,
+        metadata: {
+            courseId: params.courseId,
+            status: params.status,
+        },
+    })
 }
 
 export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeriodAdmin[]> {
@@ -757,7 +800,16 @@ export async function createCourseDisciplineAdmin(
         .select("id")
         .single()
     if (error) throw error
-    return (row as { id: string }).id
+    const disciplineId = (row as { id: string }).id
+
+    fireAuditLog({
+        action: "course.discipline.create",
+        entityType: "lxp_course_discipline",
+        entityId: disciplineId,
+        metadata: { name: data.name, code: data.code },
+    })
+
+    return disciplineId
 }
 
 export async function uploadDisciplineCoverAdmin(disciplineId: string, file: File): Promise<string> {
@@ -822,6 +874,13 @@ export async function updateCourseDisciplineAdmin(
         .eq("id", disciplineId)
 
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.discipline.update",
+        entityType: "lxp_course_discipline",
+        entityId: disciplineId,
+        metadata: { name: data.name },
+    })
 }
 
 export async function unlinkCourseContentByDisciplineAdmin(disciplineId: string): Promise<void> {
@@ -830,11 +889,23 @@ export async function unlinkCourseContentByDisciplineAdmin(disciplineId: string)
         .delete()
         .eq("course_discipline_id", disciplineId)
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.library.unlink",
+        entityType: "lxp_course_discipline",
+        entityId: disciplineId,
+    })
 }
 
 export async function deleteCourseDisciplineAdmin(disciplineId: string): Promise<void> {
     const { error } = await supabase.from("lxp_course_disciplines").delete().eq("id", disciplineId)
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.discipline.delete",
+        entityType: "lxp_course_discipline",
+        entityId: disciplineId,
+    })
 }
 
 export async function getCourseLinkedContentAdmin(courseId: string): Promise<CourseLinkedContentAdmin[]> {
@@ -935,6 +1006,16 @@ export async function linkCourseContentAdmin(
         linked_by: user?.id ?? null,
     })
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.library.link",
+        entityType: "lxp_course_discipline",
+        entityId: data.disciplineId,
+        metadata: {
+            libraryContentId: data.libraryContentId,
+            libraryContentName: data.libraryContentName,
+        },
+    })
 }
 
 export async function unlinkCourseContentAdmin(linkId: string): Promise<void> {
@@ -956,6 +1037,13 @@ export async function unlinkCourseContentAdmin(linkId: string): Promise<void> {
             .eq("id", disciplineId)
         if (inactiveError) throw inactiveError
     }
+
+    fireAuditLog({
+        action: "course.library.unlink",
+        entityType: "lxp_course_discipline",
+        entityId: disciplineId ?? linkId,
+        metadata: { linkId },
+    })
 }
 
 async function syncCoursePeriodsCount(courseId: string): Promise<void> {

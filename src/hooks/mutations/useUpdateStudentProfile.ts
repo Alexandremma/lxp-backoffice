@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { updateStudentProfileAdmin } from "@/services/studentsService"
 
 export function useUpdateStudentProfile() {
@@ -9,6 +10,7 @@ export function useUpdateStudentProfile() {
         mutationFn: updateStudentProfileAdmin,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.students.list })
+            invalidateAuditLogs(queryClient)
         },
     })
 }

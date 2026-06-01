@@ -1,6 +1,6 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateStudent } from "@/lib/planLimits"
 import { supabase } from "@/lib/supabaseClient"
-import { writeAuditLog } from "@/services/auditLogService"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 
 export async function updateStudentProfileAdmin(params: {
@@ -21,13 +21,11 @@ export async function updateStudentProfileAdmin(params: {
     })
     if (error) throw error
 
-    void writeAuditLog({
+    fireAuditLog({
         action: "student.profile_update",
         entityType: "lxp_profile",
         entityId: params.profileId,
-        metadata: { email: params.email.trim() },
-    }).catch((auditErr) => {
-        console.warn("[audit] student.profile_update", auditErr)
+        metadata: { email: params.email.trim(), name: params.name.trim() },
     })
 }
 
@@ -80,6 +78,17 @@ export async function createStudentAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
+
+    fireAuditLog({
+        action: "student.create",
+        entityType: "lxp_profile",
+        metadata: {
+            email: params.email.trim().toLowerCase(),
+            name: params.name.trim(),
+            courseIds: params.courseIds,
+            status: params.status,
+        },
+    })
 }
 
 export async function setStudentAccessAdmin(params: {
@@ -94,6 +103,20 @@ export async function setStudentAccessAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
+
+    const action =
+        params.status === "blocked"
+            ? "student.block"
+            : params.status === "active"
+              ? "student.unblock"
+              : "student.access_update"
+
+    fireAuditLog({
+        action,
+        entityType: "lxp_profile",
+        entityId: params.profileId,
+        metadata: { status: params.status },
+    })
 }
 
 export async function deleteStudentAdmin(profileId: string): Promise<void> {
@@ -104,4 +127,10 @@ export async function deleteStudentAdmin(profileId: string): Promise<void> {
         },
     })
     if (error) await normalizeFunctionError(error)
+
+    fireAuditLog({
+        action: "student.delete",
+        entityType: "lxp_profile",
+        entityId: profileId,
+    })
 }

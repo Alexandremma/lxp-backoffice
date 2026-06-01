@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { useAuth } from "@/hooks/use-auth"
-import { writeAuditLog } from "@/services/auditLogService"
+import { fireAuditLog } from "@/lib/auditLogHelpers"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { upsertInstitutionSetting } from "@/services/institutionSettingsService"
 import type { InstitutionSettingsValue } from "@/types/settings"
 
@@ -20,7 +21,7 @@ export function useUpdateInstitutionSettings() {
                 logoPath: values.logoPath ?? null,
             }
             await upsertInstitutionSetting("institution", payload, profile?.id ?? null)
-            await writeAuditLog({
+            fireAuditLog({
                 action: "institution.update",
                 entityType: "institution_settings",
                 entityId: "institution",
@@ -31,6 +32,7 @@ export function useUpdateInstitutionSettings() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.institution })
             queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
+            invalidateAuditLogs(queryClient)
         },
     })
 }

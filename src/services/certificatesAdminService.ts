@@ -1,3 +1,4 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 
 const SIGNATURES_BUCKET = "certificate-signatures"
@@ -166,7 +167,14 @@ export async function createCertificateTemplateAdmin(input: {
     .select(TEMPLATE_COLS)
     .single()
   if (error) throw error
-  return data as CertificateTemplateRow
+  const template = data as CertificateTemplateRow
+  fireAuditLog({
+    action: "certificate.template.create",
+    entityType: "lxp_certificate_template",
+    entityId: template.id,
+    metadata: { name: template.name },
+  })
+  return template
 }
 
 export async function updateCertificateTemplateAdmin(
@@ -186,6 +194,13 @@ export async function updateCertificateTemplateAdmin(
     })
     .eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "certificate.template.update",
+    entityType: "lxp_certificate_template",
+    entityId: id,
+    metadata: { name: patch.name },
+  })
 }
 
 export async function setDefaultCertificateTemplateAdmin(templateId: string): Promise<void> {
@@ -200,6 +215,12 @@ export async function setDefaultCertificateTemplateAdmin(templateId: string): Pr
     .update({ is_default: true, is_active: true, updated_at: new Date().toISOString() })
     .eq("id", templateId)
   if (error) throw error
+
+  fireAuditLog({
+    action: "certificate.template.set_default",
+    entityType: "lxp_certificate_template",
+    entityId: templateId,
+  })
 }
 
 export async function uploadInstitutionLogo(
@@ -263,10 +284,24 @@ export async function createCertificateSignatureAdmin(input: {
       .select("id,signer_name,signer_title,image_path,sort_order,created_at,template_id")
       .single()
     if (patch.error) throw patch.error
-    return patch.data as CertificateSignatureRow
+    const withImage = patch.data as CertificateSignatureRow
+    fireAuditLog({
+      action: "certificate.signature.create",
+      entityType: "lxp_certificate_signature",
+      entityId: withImage.id,
+      metadata: { signer_name: withImage.signer_name },
+    })
+    return withImage
   }
 
-  return row as CertificateSignatureRow
+  const signature = row as CertificateSignatureRow
+  fireAuditLog({
+    action: "certificate.signature.create",
+    entityType: "lxp_certificate_signature",
+    entityId: signature.id,
+    metadata: { signer_name: signature.signer_name },
+  })
+  return signature
 }
 
 export async function updateCertificateSignatureAdmin(
@@ -300,11 +335,23 @@ export async function updateCertificateSignatureAdmin(
       .eq("id", id)
     if (patchErr.error) throw patchErr.error
   }
+
+  fireAuditLog({
+    action: "certificate.signature.update",
+    entityType: "lxp_certificate_signature",
+    entityId: id,
+  })
 }
 
 export async function deleteCertificateSignatureAdmin(id: string): Promise<void> {
   const { error } = await supabase.from("lxp_certificate_signatures").delete().eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "certificate.signature.delete",
+    entityType: "lxp_certificate_signature",
+    entityId: id,
+  })
 }
 
 /* ------------------- vínculo template <-> assinatura (N:M) ----------------- */

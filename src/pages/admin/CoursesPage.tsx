@@ -43,7 +43,6 @@ import {
 import type { CourseAdmin, CourseAdminInput } from "@/types/courseAdmin"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -52,7 +51,9 @@ import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
+import { deleteCourseAdmin } from "@/services/coursesService"
 import { useUpsertCourseAdmin } from "@/hooks/mutations/useUpsertCourseAdmin"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { isPlanLimitError } from "@/lib/planLimits"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
@@ -164,11 +165,11 @@ const CoursesPage = () => {
     if (!deletingCourse) return
     setSubmitting(true)
     try {
-      const { error } = await supabase.from("lxp_courses").delete().eq("id", deletingCourse.id)
-      if (error) throw error
+      await deleteCourseAdmin(deletingCourse.id)
 
       toast.success("Curso excluído com sucesso")
       await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+      invalidateAuditLogs(queryClient)
       setDeleteDialogOpen(false)
       setDeletingCourse(null)
     } catch (e) {

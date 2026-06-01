@@ -15,7 +15,7 @@ import {
     buildPlanUpgradeWhatsAppUrl,
     type SubscriptionPlanCatalogItem,
 } from "@/consts/planCatalog"
-import { writeAuditLog } from "@/services/auditLogService"
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { toast } from "sonner"
 
 type PlanUpgradeDialogProps = {
@@ -40,22 +40,18 @@ export function PlanUpgradeDialog({
             institutionName,
         })
 
-        try {
-            await writeAuditLog({
-                action: "plan.upgrade_requested",
-                entityType: "subscription",
-                entityId: plan.id,
-                metadata: {
-                    targetPlanId: plan.id,
-                    targetPlanName: plan.name,
-                    currentPlanId,
-                    currentPlanName,
-                    channel: "whatsapp",
-                },
-            })
-        } catch (err) {
-            console.warn("[audit] plan.upgrade_requested", err)
-        }
+        fireAuditLog({
+            action: "plan.upgrade_requested",
+            entityType: "subscription",
+            entityId: plan.id,
+            metadata: {
+                targetPlanId: plan.id,
+                targetPlanName: plan.name,
+                currentPlanId,
+                currentPlanName,
+                channel: "whatsapp",
+            },
+        })
 
         window.open(whatsappUrl, "_blank", "noopener,noreferrer")
         toast.success("Abrimos o WhatsApp para você falar com o suporte sobre o plano.")
