@@ -1,4 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { queryKeys } from "@/consts/queryKeys"
+import { getInstitutionSetting } from "@/services/institutionSettingsService"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,8 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
+import { InstitutionSettingsCard } from "@/components/admin/settings/InstitutionSettingsCard"
 import { PlanUpgradeDialog } from "@/components/admin/settings/PlanUpgradeDialog"
-import { mockInstitutionSettings, mockAuditLogs, type AuditLog } from "@/lib/mock-data"
+import { mockAuditLogs, type AuditLog } from "@/lib/mock-data"
+import type { SmtpSettingsValue } from "@/types/settings"
 import {
   Building2,
   Mail,
@@ -60,11 +65,37 @@ const mockAccountData = {
   ],
 }
 
+const defaultSmtpDraft: SmtpSettingsValue & { password?: string } = {
+  enabled: false,
+  host: "",
+  port: 587,
+  user: "",
+  fromEmail: "",
+  fromName: "LXP Instituição",
+  secure: true,
+  password: "",
+}
+
 const SettingsPage = () => {
-  const [settings, setSettings] = useState(mockInstitutionSettings)
+  const [smtpDraft, setSmtpDraft] = useState(defaultSmtpDraft)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
 
-  const handleSave = () => {
+  const { data: smtpFromDb } = useQuery({
+    queryKey: queryKeys.settings.smtp,
+    queryFn: () => getInstitutionSetting<SmtpSettingsValue>("smtp"),
+  })
+
+  useEffect(() => {
+    if (!smtpFromDb) return
+    setSmtpDraft((prev) => ({
+      ...prev,
+      ...smtpFromDb,
+      port: smtpFromDb.port ?? 587,
+      password: "",
+    }))
+  }, [smtpFromDb])
+
+  const handleSaveSmtp = () => {
     toast.success("Configurações salvas com sucesso!")
   }
 
@@ -257,79 +288,7 @@ const SettingsPage = () => {
         </TabsContent>
 
         <TabsContent value="institution" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Dados da Instituição
-              </CardTitle>
-              <CardDescription>Informações básicas da instituição de ensino</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Nome da Instituição</Label>
-                  <Input
-                    value={settings.name}
-                    onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>CNPJ</Label>
-                  <Input
-                    value={settings.cnpj}
-                    onChange={(e) => setSettings({ ...settings, cnpj: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Email de Contato</Label>
-                  <Input
-                    type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input
-                    value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Endereço</Label>
-                <Textarea
-                  value={settings.address}
-                  onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                  rows={2}
-                />
-              </div>
-              <Separator />
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Logo da Instituição</Label>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center">
-                    <Building2 className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <Button variant="outline" type="button">
-                      Alterar Logo
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      PNG ou JPG. Máximo 2MB. (Persistência em versão futura.)
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <Button onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar Alterações
-              </Button>
-            </CardContent>
-          </Card>
+          <InstitutionSettingsCard />
         </TabsContent>
 
         <TabsContent value="email" className="space-y-4">
@@ -346,24 +305,18 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <Label>Servidor SMTP</Label>
                   <Input
-                    value={settings.smtp.host}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        smtp: { ...settings.smtp, host: e.target.value },
-                      })
-                    }
+                    value={smtpDraft.host}
+                    placeholder="Servidor SMTP"
+                    onChange={(e) => setSmtpDraft({ ...smtpDraft, host: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Porta</Label>
                   <Input
-                    value={settings.smtp.port}
+                    value={String(smtpDraft.port)}
+                    placeholder="Porta"
                     onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        smtp: { ...settings.smtp, port: e.target.value },
-                      })
+                      setSmtpDraft({ ...smtpDraft, port: Number(e.target.value) || 587 })
                     }
                   />
                 </div>
@@ -372,26 +325,18 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <Label>Usuário</Label>
                   <Input
-                    value={settings.smtp.user}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        smtp: { ...settings.smtp, user: e.target.value },
-                      })
-                    }
+                    value={smtpDraft.user}
+                    placeholder="Usuário SMTP"
+                    onChange={(e) => setSmtpDraft({ ...smtpDraft, user: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Senha</Label>
                   <Input
                     type="password"
-                    value={settings.smtp.password}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        smtp: { ...settings.smtp, password: e.target.value },
-                      })
-                    }
+                    value={smtpDraft.password ?? ""}
+                    placeholder="Senha SMTP"
+                    onChange={(e) => setSmtpDraft({ ...smtpDraft, password: e.target.value })}
                   />
                 </div>
               </div>
@@ -401,17 +346,12 @@ const SettingsPage = () => {
                   <p className="text-sm text-muted-foreground">Usar conexão segura</p>
                 </div>
                 <Switch
-                  checked={settings.smtp.secure}
-                  onCheckedChange={(checked) =>
-                    setSettings({
-                      ...settings,
-                      smtp: { ...settings.smtp, secure: checked },
-                    })
-                  }
+                  checked={smtpDraft.secure ?? true}
+                  onCheckedChange={(checked) => setSmtpDraft({ ...smtpDraft, secure: checked })}
                 />
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSave}>
+                <Button onClick={handleSaveSmtp}>
                   <Save className="mr-2 h-4 w-4" />
                   Salvar
                 </Button>

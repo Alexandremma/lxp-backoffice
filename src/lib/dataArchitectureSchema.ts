@@ -1,7 +1,7 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–26 (certificados com biblioteca de assinaturas N:M
- * e snapshot imutável de emissão, gamificação, acesso diário, comentários, anotações).
+ * Atualizado com migrations Steps 14–29 (certificados com biblioteca de assinaturas N:M
+ * e snapshot imutável de emissão, gamificação, configurações institucionais/auditoria, acesso diário, comentários, anotações).
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -41,7 +41,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis e estrutura de cursos. Admin edita via UI em `/admin/gamificacao` e `/admin/certificados`; RPC `lxp_reevaluate_all_student_badges` (somente admin) e `lxp_get_default_certificate_template_id()`. Migrations aplicadas até **Step 26** (Fase 2.1).",
+      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Migrations aplicadas até **Step 29**.",
     tables: [
       {
         name: "backoffice_team_members",
@@ -252,6 +252,44 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "is_active", kind: "column", sqlType: "boolean", description: "Se pode ser conquistada." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
+        ],
+      },
+      {
+        name: "lxp_institution_settings",
+        purpose:
+          "Configurações JSON por chave (`institution`, `subscription`, `smtp`); admin via RLS `is_admin()`; logo em bucket `institution-branding`.",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Registro." },
+          { name: "key", kind: "column", sqlType: "text", description: "Chave única do bloco de configuração." },
+          { name: "value", kind: "column", sqlType: "jsonb", description: "Payload (nome/CNPJ, plano/limites, SMTP sem senha)." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última alteração." },
+          {
+            name: "updated_by",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Admin que salvou (opcional).",
+          },
+        ],
+      },
+      {
+        name: "lxp_audit_logs",
+        purpose:
+          "Trilha de ações administrativas no Back Office; insert somente via RPC `lxp_write_audit_log` (actor = perfil do admin logado).",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Evento de auditoria." },
+          {
+            name: "actor_profile_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Quem executou (derivado de auth.uid()).",
+          },
+          { name: "action", kind: "column", sqlType: "text", description: "Ex.: student.profile_update, institution.update." },
+          { name: "entity_type", kind: "column", sqlType: "text", description: "Tipo da entidade afetada." },
+          { name: "entity_id", kind: "column", sqlType: "text", description: "Id da entidade (texto)." },
+          { name: "metadata", kind: "column", sqlType: "jsonb", description: "Detalhes adicionais da ação." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Quando ocorreu." },
         ],
       },
       {
