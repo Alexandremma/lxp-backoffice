@@ -733,15 +733,26 @@ export async function createCoursePeriodAdmin(
 
     const nextNumber = (maxNumberData?.number ?? 0) + 1
 
-    const { error } = await supabase.from("lxp_course_periods").insert({
-        course_id: courseId,
-        name: data.name,
-        status: data.status,
-        number: nextNumber,
-    })
+    const { data: inserted, error } = await supabase
+        .from("lxp_course_periods")
+        .insert({
+            course_id: courseId,
+            name: data.name,
+            status: data.status,
+            number: nextNumber,
+        })
+        .select("id")
+        .single()
 
     if (error) throw error
     await syncCoursePeriodsCount(courseId)
+
+    fireAuditLog({
+        action: "course.period.create",
+        entityType: "lxp_course_period",
+        entityId: (inserted as { id: string }).id,
+        metadata: { courseId, name: data.name, number: nextNumber },
+    })
 }
 
 export async function updateCoursePeriodAdmin(
@@ -758,6 +769,13 @@ export async function updateCoursePeriodAdmin(
         .eq("id", periodId)
 
     if (error) throw error
+
+    fireAuditLog({
+        action: "course.period.update",
+        entityType: "lxp_course_period",
+        entityId: periodId,
+        metadata: { name: data.name, status: data.status },
+    })
 }
 
 export async function deleteCoursePeriodAdmin(periodId: string): Promise<void> {
@@ -771,6 +789,13 @@ export async function deleteCoursePeriodAdmin(periodId: string): Promise<void> {
     const { error } = await supabase.from("lxp_course_periods").delete().eq("id", periodId)
     if (error) throw error
     if (period?.course_id) await syncCoursePeriodsCount(period.course_id)
+
+    fireAuditLog({
+        action: "course.period.delete",
+        entityType: "lxp_course_period",
+        entityId: periodId,
+        metadata: period?.course_id ? { courseId: period.course_id as string } : {},
+    })
 }
 
 export async function createCourseDisciplineAdmin(

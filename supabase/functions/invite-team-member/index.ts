@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8"
+import { writeAuditLogAsUser } from "../_shared/auditLog.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,10 +34,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse(500, {
         code: "INVITE_UNKNOWN_ERROR",
-        message: "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente na funòòo.",
+        message: "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY ausente na funùùo.",
       })
     }
 
@@ -45,7 +47,7 @@ Deno.serve(async (req) => {
     if (!token) {
       return jsonResponse(401, {
         code: "INVITE_NOT_ALLOWED",
-        message: "Token de autenticaòòo ausente.",
+        message: "Token de autenticaùùo ausente.",
       })
     }
 
@@ -54,7 +56,7 @@ Deno.serve(async (req) => {
     if (callerError || !callerUser.user) {
       return jsonResponse(401, {
         code: "INVITE_NOT_ALLOWED",
-        message: "Sessòo invòlida para convidar membro.",
+        message: "Sessùo invùlida para convidar membro.",
       })
     }
 
@@ -90,28 +92,28 @@ Deno.serve(async (req) => {
     if (!rawEmail) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Informe um e-mail vòlido.",
+        message: "Informe um e-mail vùlido.",
       })
     }
 
     if (action !== "create" && action !== "resend") {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Aòòo invòlida para convite.",
+        message: "Aùùo invùlida para convite.",
       })
     }
 
     if (action === "create" && (!rawName || !allowedRoles.has(rawRole))) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Informe nome, e-mail e funòòo vòlidos.",
+        message: "Informe nome, e-mail e funùùo vùlidos.",
       })
     }
 
     if (action === "create" && rawDepartment.length > 120) {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
-        message: "Departamento deve ter no mòximo 120 caracteres.",
+        message: "Departamento deve ter no mùximo 120 caracteres.",
       })
     }
 
@@ -130,12 +132,12 @@ Deno.serve(async (req) => {
         if (msg.includes("already") || msg.includes("exists")) {
           return jsonResponse(409, {
             code: "AUTH_USER_ALREADY_EXISTS",
-            message: "Jò existe conta Auth para este e-mail.",
+            message: "Jù existe conta Auth para este e-mail.",
           })
         }
         return jsonResponse(500, {
           code: "INVITE_UNKNOWN_ERROR",
-          message: inviteError?.message ?? "Falha ao convidar usuòrio no Auth.",
+          message: inviteError?.message ?? "Falha ao convidar usuùrio no Auth.",
         })
       }
       return invited.user
@@ -156,11 +158,19 @@ Deno.serve(async (req) => {
       if (!existingMember) {
         return jsonResponse(409, {
           code: "TEAM_MEMBER_NOT_FOUND",
-          message: "Membro da equipe nòo encontrado para este e-mail.",
+          message: "Membro da equipe nùo encontrado para este e-mail.",
         })
       }
       const inviteResult = await inviteUser()
       if (inviteResult instanceof Response) return inviteResult
+      if (anonKey) {
+        await writeAuditLogAsUser(supabaseUrl, anonKey, token, {
+          action: "team.invite_resend",
+          entityType: "backoffice_team_member",
+          entityId: existingMember.id,
+          metadata: { email: rawEmail, source: "edge" },
+        })
+      }
       return jsonResponse(200, {
         invitation_sent: true,
       })
@@ -182,7 +192,7 @@ Deno.serve(async (req) => {
     if (existingMember) {
       return jsonResponse(409, {
         code: "TEAM_MEMBER_EXISTS",
-        message: "Jò existe membro da equipe com este e-mail.",
+        message: "Jù existe membro da equipe com este e-mail.",
       })
     }
 
@@ -229,12 +239,21 @@ Deno.serve(async (req) => {
       })
     }
 
+    if (anonKey) {
+      await writeAuditLogAsUser(supabaseUrl, anonKey, token, {
+        action: "team.invite",
+        entityType: "backoffice_team_member",
+        entityId: member.id,
+        metadata: { email: rawEmail, name: rawName, role: rawRole, source: "edge" },
+      })
+    }
+
     return jsonResponse(200, {
       member,
       invitation_sent: true,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha inesperada na funòòo."
+    const message = error instanceof Error ? error.message : "Falha inesperada na funùùo."
     return jsonResponse(500, {
       code: "INVITE_UNKNOWN_ERROR",
       message,

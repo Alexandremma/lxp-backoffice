@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { updateCoursePeriodAdmin } from "@/services/coursesService"
 
 export function useUpdateCoursePeriod(courseId?: string) {
@@ -12,6 +13,7 @@ export function useUpdateCoursePeriod(courseId?: string) {
       if (!courseId) return
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.grades(courseId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) })
+      invalidateAuditLogs(queryClient)
     },
   })
 }

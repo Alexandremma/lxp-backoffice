@@ -186,6 +186,12 @@ export async function updateBadgeAdmin(
 export async function deleteBadgeAdmin(id: string): Promise<void> {
   const { error } = await supabase.from("lxp_gamification_badges").delete().eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "gamification.badge.delete",
+    entityType: "lxp_gamification_badge",
+    entityId: id,
+  })
 }
 
 export async function reevaluateAllStudentBadgesAdmin(): Promise<number> {

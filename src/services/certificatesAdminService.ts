@@ -420,6 +420,13 @@ export async function setTemplateSignatureSlot(input: {
     sort_order: input.slot,
   })
   if (error) throw error
+
+  fireAuditLog({
+    action: "certificate.template_signature.set",
+    entityType: "lxp_certificate_template",
+    entityId: input.template_id,
+    metadata: { slot: input.slot, signature_id: input.signature_id },
+  })
 }
 
 export async function removeTemplateSignatureSlot(input: {
@@ -432,6 +439,13 @@ export async function removeTemplateSignatureSlot(input: {
     .eq("template_id", input.template_id)
     .eq("slot", input.slot)
   if (error) throw error
+
+  fireAuditLog({
+    action: "certificate.template_signature.remove",
+    entityType: "lxp_certificate_template",
+    entityId: input.template_id,
+    metadata: { slot: input.slot },
+  })
 }
 
 /* ------------------------------- emissões --------------------------------- */

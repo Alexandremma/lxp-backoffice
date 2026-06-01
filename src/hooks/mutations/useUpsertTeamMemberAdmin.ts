@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import {
     createTeamMemberAdmin,
     updateTeamMemberAdmin,
@@ -36,6 +37,7 @@ export function useUpsertTeamMemberAdmin() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.list })
+            invalidateAuditLogs(queryClient)
         },
     })
 }

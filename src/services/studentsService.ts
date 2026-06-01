@@ -78,17 +78,7 @@ export async function createStudentAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
-
-    fireAuditLog({
-        action: "student.create",
-        entityType: "lxp_profile",
-        metadata: {
-            email: params.email.trim().toLowerCase(),
-            name: params.name.trim(),
-            courseIds: params.courseIds,
-            status: params.status,
-        },
-    })
+    // Audit: Edge `manage-student-admin` (evita duplicata no log).
 }
 
 export async function setStudentAccessAdmin(params: {
@@ -103,20 +93,7 @@ export async function setStudentAccessAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
-
-    const action =
-        params.status === "blocked"
-            ? "student.block"
-            : params.status === "active"
-              ? "student.unblock"
-              : "student.access_update"
-
-    fireAuditLog({
-        action,
-        entityType: "lxp_profile",
-        entityId: params.profileId,
-        metadata: { status: params.status },
-    })
+    // Audit: Edge `manage-student-admin`.
 }
 
 export async function deleteStudentAdmin(profileId: string): Promise<void> {
@@ -127,10 +104,5 @@ export async function deleteStudentAdmin(profileId: string): Promise<void> {
         },
     })
     if (error) await normalizeFunctionError(error)
-
-    fireAuditLog({
-        action: "student.delete",
-        entityType: "lxp_profile",
-        entityId: profileId,
-    })
+    // Audit: Edge `manage-student-admin`.
 }

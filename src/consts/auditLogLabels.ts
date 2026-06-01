@@ -30,6 +30,16 @@ const ACTION_VERB: Record<string, string> = {
     "gamification.badges.reevaluate_all": "reevaliou badges de todos os alunos",
     "institution.update": "atualizou dados da instituição",
     "plan.upgrade_requested": "solicitou contato sobre upgrade de plano",
+    "team.invite": "convidou membro da equipe",
+    "team.invite_resend": "reenviou convite da equipe",
+    "team.member_update": "atualizou membro da equipe",
+    "team.member_delete": "removeu membro da equipe",
+    "course.period.create": "criou período do curso",
+    "course.period.update": "atualizou período do curso",
+    "course.period.delete": "excluiu período do curso",
+    "gamification.badge.delete": "excluiu badge",
+    "certificate.template_signature.set": "definiu assinatura no template",
+    "certificate.template_signature.remove": "removeu assinatura do template",
 }
 
 const ENTITY_LABEL: Record<string, string> = {
@@ -43,6 +53,8 @@ const ENTITY_LABEL: Record<string, string> = {
     lxp_gamification_badge: "Badge",
     institution_settings: "Instituição",
     subscription: "Plano",
+    backoffice_team_member: "Equipe",
+    lxp_course_period: "Período",
 }
 
 function metadataSummary(metadata: Record<string, unknown>): string {
