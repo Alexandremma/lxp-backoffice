@@ -10,6 +10,7 @@ export function useDeleteTeamMemberAdmin() {
         mutationFn: deleteTeamMemberAdmin,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.list })
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
             invalidateAuditLogs(queryClient)
         },
     })

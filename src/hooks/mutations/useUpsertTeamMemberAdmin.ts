@@ -35,8 +35,11 @@ export function useUpsertTeamMemberAdmin() {
             }
             return updateTeamMemberAdmin(payload)
         },
-        onSuccess: () => {
+        onSuccess: (_data, payload) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.team.list })
+            if (payload.mode === "create") {
+                queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
+            }
             invalidateAuditLogs(queryClient)
         },
     })

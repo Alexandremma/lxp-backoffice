@@ -26,6 +26,50 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
   })
 }
 
+type SupabaseAdminClient = ReturnType<typeof createClient>
+
+async function assertTeamMemberPlanLimit(
+  supabaseAdmin: SupabaseAdminClient,
+): Promise<Response | null> {
+  const { data: settingsRow, error: settingsError } = await supabaseAdmin
+    .from("lxp_institution_settings")
+    .select("value")
+    .eq("key", "subscription")
+    .maybeSingle()
+
+  if (settingsError) {
+    return jsonResponse(500, {
+      code: "INVITE_UNKNOWN_ERROR",
+      message: settingsError.message,
+    })
+  }
+
+  const limits = (settingsRow?.value as { limits?: { teamMembers?: number } } | null)?.limits
+  const limit = limits?.teamMembers ?? 0
+  if (limit <= 0) return null
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("backoffice_team_members")
+    .select("id", { count: "exact", head: true })
+
+  if (countError) {
+    return jsonResponse(500, {
+      code: "INVITE_UNKNOWN_ERROR",
+      message: countError.message,
+    })
+  }
+
+  const current = count ?? 0
+  if (current >= limit) {
+    return jsonResponse(403, {
+      code: "PLAN_LIMIT_REACHED",
+      message: `Limite de membros da equipe do plano atingido (${current}/${limit}). Faùa upgrade em Configuraùùes.`,
+    })
+  }
+
+  return null
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -195,6 +239,9 @@ Deno.serve(async (req) => {
         message: "Jù existe membro da equipe com este e-mail.",
       })
     }
+
+    const planLimitResponse = await assertTeamMemberPlanLimit(supabaseAdmin)
+    if (planLimitResponse) return planLimitResponse
 
     const inviteResult = await inviteUser()
     if (inviteResult instanceof Response) return inviteResult
