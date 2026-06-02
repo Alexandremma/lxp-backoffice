@@ -494,13 +494,6 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
         progressRows = (pr ?? []) as ProgressRow[]
     }
 
-    const weights: Record<string, number> = {
-        approved: 100,
-        in_progress: 50,
-        pending: 0,
-        failed: 0,
-    }
-
     const progressByKey = new Map<string, string>()
     for (const r of progressRows) {
         progressByKey.set(`${r.student_profile_id}:${r.course_discipline_id}`, r.status)
@@ -509,12 +502,12 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
     const progressForEnrollment = (studentId: string, courseId: string): number => {
         const discs = discByCourse.get(courseId) ?? []
         if (discs.length === 0) return 0
-        let sum = 0
+        let complete = 0
         for (const did of discs) {
             const st = progressByKey.get(`${studentId}:${did}`) ?? "pending"
-            sum += weights[st] ?? 0
+            if (st === "approved") complete += 1
         }
-        return Math.round(sum / discs.length)
+        return Math.round((complete / discs.length) * 100)
     }
 
     const enrByStudent = new Map<string, CourseEnrollment[]>()
