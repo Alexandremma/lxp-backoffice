@@ -43,14 +43,18 @@ import {
 import type { CourseAdmin, CourseAdminInput } from "@/types/courseAdmin"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
+import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
+import { deleteCourseAdmin } from "@/services/coursesService"
 import { useUpsertCourseAdmin } from "@/hooks/mutations/useUpsertCourseAdmin"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
+import { isPlanLimitError } from "@/lib/planLimits"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 const statusConfig = {
@@ -75,6 +79,8 @@ const CoursesPage = () => {
   const queryClient = useQueryClient()
   const { data: coursesData, isLoading, error } = useGetCourses()
   const upsertCourse = useUpsertCourseAdmin()
+  const { usage: planUsage } = usePlanLimits()
+  const coursesAtLimit = planUsage?.courses.atLimit ?? false
   const courses = useMemo(() => coursesData ?? [], [coursesData])
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<CourseAdmin | null>(null)
@@ -140,6 +146,10 @@ const CoursesPage = () => {
         toast.success("Curso criado com sucesso")
       }
     } catch (e) {
+      if (isPlanLimitError(e)) {
+        toast.error(e.message)
+        return
+      }
       toast.error(getAdminErrorMessage("courses-save", e))
     } finally {
       setSubmitting(false)
@@ -155,11 +165,11 @@ const CoursesPage = () => {
     if (!deletingCourse) return
     setSubmitting(true)
     try {
-      const { error } = await supabase.from("lxp_courses").delete().eq("id", deletingCourse.id)
-      if (error) throw error
+      await deleteCourseAdmin(deletingCourse.id)
 
       toast.success("Curso excluído com sucesso")
       await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+      invalidateAuditLogs(queryClient)
       setDeleteDialogOpen(false)
       setDeletingCourse(null)
     } catch (e) {
@@ -188,11 +198,21 @@ const CoursesPage = () => {
         title="Cursos"
         description="Gerencie os cursos vinculados à biblioteca de conteúdo"
       >
-        <Button onClick={handleOpenNew} disabled={submitting}>
+        <Button
+          onClick={handleOpenNew}
+          disabled={submitting || coursesAtLimit}
+          title={
+            coursesAtLimit
+              ? "Limite de cursos do plano atingido. Faça upgrade em Configurações."
+              : undefined
+          }
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Curso
         </Button>
       </PageHeader>
+
+      <PlanLimitBanner resource="courses" status={planUsage?.courses} />
 
       <CourseDialog
         open={editDialogOpen}

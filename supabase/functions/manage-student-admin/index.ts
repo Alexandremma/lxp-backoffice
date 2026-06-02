@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8"
+import { writeAuditLogAsUser } from "../_shared/auditLog.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +33,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse(500, {
         code: "UNKNOWN_ERROR",
@@ -124,6 +126,15 @@ Deno.serve(async (req) => {
         await supabaseAdmin.auth.admin.updateUserById(invited.user.id, { ban_duration: "876000h" })
       }
 
+      if (anonKey) {
+        await writeAuditLogAsUser(supabaseUrl, anonKey, token, {
+          action: "student.create",
+          entityType: "lxp_profile",
+          entityId: profile.id,
+          metadata: { email, name, courseIds, status, source: "edge" },
+        })
+      }
+
       return jsonResponse(200, { profile_id: profile.id })
     }
 
@@ -160,6 +171,17 @@ Deno.serve(async (req) => {
       })
       if (authErr) return jsonResponse(500, { code: "UNKNOWN_ERROR", message: authErr.message })
 
+      if (anonKey) {
+        const auditAction =
+          status === "blocked" ? "student.block" : status === "active" ? "student.unblock" : "student.access_update"
+        await writeAuditLogAsUser(supabaseUrl, anonKey, token, {
+          action: auditAction,
+          entityType: "lxp_profile",
+          entityId: profileId,
+          metadata: { status, source: "edge" },
+        })
+      }
+
       return jsonResponse(200, { ok: true })
     }
 
@@ -180,6 +202,15 @@ Deno.serve(async (req) => {
 
       const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(profile.user_id)
       if (deleteErr) return jsonResponse(500, { code: "UNKNOWN_ERROR", message: deleteErr.message })
+
+      if (anonKey) {
+        await writeAuditLogAsUser(supabaseUrl, anonKey, token, {
+          action: "student.delete",
+          entityType: "lxp_profile",
+          entityId: profileId,
+          metadata: { source: "edge" },
+        })
+      }
 
       return jsonResponse(200, { ok: true })
     }

@@ -29,5 +29,15 @@ export const queryKeys = {
         badges: ["gamification", "badges"] as const,
         badgeEarnedCounts: ["gamification", "badge-earned-counts"] as const,
     },
+    settings: {
+        dashboard: ["settings", "dashboard"] as const,
+        institution: ["settings", "institution"] as const,
+        subscription: ["settings", "subscription"] as const,
+        smtp: ["settings", "smtp"] as const,
+    },
+    auditLogs: {
+        list: (params?: { limit?: number; offset?: number }) =>
+            ["audit-logs", "list", params?.limit ?? 50, params?.offset ?? 0] as const,
+    },
 } as const;
 

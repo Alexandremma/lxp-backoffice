@@ -1,3 +1,4 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 
 export type XpRuleRow = {
@@ -62,6 +63,13 @@ export async function updateXpRuleAdmin(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "gamification.xp_rule.update",
+    entityType: "lxp_gamification_xp_rule",
+    entityId: id,
+    metadata: { label: patch.label, xp_value: patch.xp_value },
+  })
 }
 
 export async function listLevelsAdmin(): Promise<LevelRow[]> {
@@ -135,6 +143,12 @@ export async function createBadgeAdmin(input: {
     rule_config: input.rule_config ?? null,
   })
   if (error) throw error
+
+  fireAuditLog({
+    action: "gamification.badge.create",
+    entityType: "lxp_gamification_badge",
+    metadata: { name: input.name.trim(), slug: input.slug },
+  })
 }
 
 export async function updateBadgeAdmin(
@@ -160,18 +174,39 @@ export async function updateBadgeAdmin(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "gamification.badge.update",
+    entityType: "lxp_gamification_badge",
+    entityId: id,
+    metadata: { name: patch.name },
+  })
 }
 
 export async function deleteBadgeAdmin(id: string): Promise<void> {
   const { error } = await supabase.from("lxp_gamification_badges").delete().eq("id", id)
   if (error) throw error
+
+  fireAuditLog({
+    action: "gamification.badge.delete",
+    entityType: "lxp_gamification_badge",
+    entityId: id,
+  })
 }
 
 export async function reevaluateAllStudentBadgesAdmin(): Promise<number> {
   const { data, error } = await supabase.rpc("lxp_reevaluate_all_student_badges")
   if (error) throw error
   const payload = data as { students_processed?: number } | null
-  return payload?.students_processed ?? 0
+  const count = payload?.students_processed ?? 0
+
+  fireAuditLog({
+    action: "gamification.badges.reevaluate_all",
+    entityType: "lxp_gamification_badge",
+    metadata: { students_processed: count },
+  })
+
+  return count
 }
 
 export async function getBadgeEarnedCountsAdmin(): Promise<Record<string, number>> {

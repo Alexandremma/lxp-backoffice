@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import {
     createCourseAdmin,
     updateCourseAdmin,
@@ -20,8 +21,12 @@ export function useUpsertCourseAdmin() {
             }
             return updateCourseAdmin(payload.id, payload)
         },
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+            if (variables.mode === "create") {
+                queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
+            }
+            invalidateAuditLogs(queryClient)
         },
     })
 }

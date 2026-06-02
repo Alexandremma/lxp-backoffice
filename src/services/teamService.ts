@@ -1,3 +1,4 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -121,6 +122,7 @@ export async function createTeamMemberAdmin(params: {
         throw createInviteError("INVITE_UNKNOWN_ERROR", "Convite criado, mas sem retorno válido da função.")
     }
 
+    // Audit: Edge `invite-team-member` (action create).
     return {
         member: toTeamMemberAdminRow(data.member),
         invitationSent: Boolean(data.invitation_sent),
@@ -136,6 +138,7 @@ export async function resendTeamInviteAdmin(params: { email: string; redirectTo?
         },
     })
     if (error) await normalizeFunctionError(error)
+    // Audit: Edge `invite-team-member` (action resend).
 }
 
 export async function updateTeamMemberAdmin(params: {
@@ -158,9 +161,22 @@ export async function updateTeamMemberAdmin(params: {
         })
         .eq("id", params.id)
     if (error) throw error
+
+    fireAuditLog({
+        action: "team.member_update",
+        entityType: "backoffice_team_member",
+        entityId: params.id,
+        metadata: { email: params.email, name: params.name, role: params.role },
+    })
 }
 
 export async function deleteTeamMemberAdmin(id: string): Promise<void> {
     const { error } = await supabase.from("backoffice_team_members").delete().eq("id", id)
     if (error) throw error
+
+    fireAuditLog({
+        action: "team.member_delete",
+        entityType: "backoffice_team_member",
+        entityId: id,
+    })
 }

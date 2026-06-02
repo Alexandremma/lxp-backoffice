@@ -1,3 +1,5 @@
+import { fireAuditLog } from "@/lib/auditLogHelpers"
+import { assertCanCreateStudent } from "@/lib/planLimits"
 import { supabase } from "@/lib/supabaseClient"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 
@@ -18,6 +20,13 @@ export async function updateStudentProfileAdmin(params: {
         p_touch_birth_date: params.birthDate !== undefined,
     })
     if (error) throw error
+
+    fireAuditLog({
+        action: "student.profile_update",
+        entityType: "lxp_profile",
+        entityId: params.profileId,
+        metadata: { email: params.email.trim(), name: params.name.trim() },
+    })
 }
 
 type StudentAdminErrorCode =
@@ -54,6 +63,8 @@ export async function createStudentAdmin(params: {
     birthDate?: string
     redirectTo?: string
 }): Promise<void> {
+    await assertCanCreateStudent()
+
     const { error } = await supabase.functions.invoke("manage-student-admin", {
         body: {
             action: "create",
@@ -67,6 +78,7 @@ export async function createStudentAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
+    // Audit: Edge `manage-student-admin` (evita duplicata no log).
 }
 
 export async function setStudentAccessAdmin(params: {
@@ -81,6 +93,7 @@ export async function setStudentAccessAdmin(params: {
         },
     })
     if (error) await normalizeFunctionError(error)
+    // Audit: Edge `manage-student-admin`.
 }
 
 export async function deleteStudentAdmin(profileId: string): Promise<void> {
@@ -91,4 +104,5 @@ export async function deleteStudentAdmin(profileId: string): Promise<void> {
         },
     })
     if (error) await normalizeFunctionError(error)
+    // Audit: Edge `manage-student-admin`.
 }

@@ -73,7 +73,11 @@ import { useDeleteStudentAdmin } from "@/hooks/mutations/useDeleteStudentAdmin"
 import { useSetStudentAccessAdmin } from "@/hooks/mutations/useSetStudentAccessAdmin"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import { isPlanLimitError } from "@/lib/planLimits"
+import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
+import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 
 const DEFAULT_LXP_ALUNOS_SET_PASSWORD_URL = "https://lxp-alunos.vercel.app/definir-senha"
@@ -117,6 +121,8 @@ const StudentsPage = () => {
   const { data: coursesList } = useGetCourses()
   const updateStudentProfile = useUpdateStudentProfile()
   const createStudent = useCreateStudentAdmin()
+  const { usage: planUsage } = usePlanLimits()
+  const studentsAtLimit = planUsage?.students.atLimit ?? false
   const deleteStudent = useDeleteStudentAdmin()
   const setStudentAccess = useSetStudentAccessAdmin()
 
@@ -270,6 +276,10 @@ const StudentsPage = () => {
       toast.success("Aluno criado com convite enviado por e-mail.")
       setDialogOpen(false)
     } catch (err: unknown) {
+      if (isPlanLimitError(err)) {
+        toast.error(err.message)
+        return
+      }
       toast.error(getAdminErrorMessage("students-create", err))
     }
   }
@@ -354,6 +364,12 @@ const StudentsPage = () => {
       toast.error("Não foi possível enviar o e-mail de redefinição de senha.")
       return
     }
+    fireAuditLog({
+      action: "student.reset_password",
+      entityType: "lxp_profile",
+      entityId: student.id,
+      metadata: { email: student.email },
+    })
     toast.success("E-mail de redefinição de senha enviado.")
   }
 
@@ -367,11 +383,21 @@ const StudentsPage = () => {
         title="Alunos"
         description="Gerencie os alunos matriculados na plataforma"
       >
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button
+          onClick={() => setDialogOpen(true)}
+          disabled={studentsAtLimit}
+          title={
+            studentsAtLimit
+              ? "Limite de alunos do plano atingido. Faça upgrade em Configurações."
+              : undefined
+          }
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Aluno
         </Button>
       </PageHeader>
+
+      <PlanLimitBanner resource="students" status={planUsage?.students} />
 
       {isError && (
         <Alert variant="destructive" className="mb-6">
