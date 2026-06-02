@@ -1,6 +1,6 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–29 (certificados com biblioteca de assinaturas N:M
+ * Atualizado com migrations Steps 14–30 (certificados com biblioteca de assinaturas N:M
  * e snapshot imutável de emissão, gamificação, configurações institucionais/auditoria, acesso diário, comentários, anotações).
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
@@ -41,7 +41,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Migrations aplicadas até **Step 29**.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Limites de plano (`subscription`) aplicados na equipe e matrículas. **23 tabelas** em `public`. Migrations aplicadas até **Step 30**.",
     tables: [
       {
         name: "backoffice_team_members",
@@ -299,6 +299,20 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Curso." },
           { name: "name", kind: "column", sqlType: "text", description: "Nome público." },
           { name: "description", kind: "column", sqlType: "text", description: "Resumo opcional." },
+          { name: "status", kind: "column", sqlType: "text", description: "active | inactive | draft." },
+          {
+            name: "category",
+            kind: "column",
+            sqlType: "text",
+            description: "graduation | postgraduate | extension (Step 2).",
+          },
+          { name: "periods", kind: "column", sqlType: "integer", description: "Quantidade de períodos/semestres (1–20)." },
+          {
+            name: "external_library_id",
+            kind: "column",
+            sqlType: "text",
+            description: "Referência opcional ao catálogo externo (EAD Stock).",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],
@@ -315,8 +329,11 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             fkRef: "public.lxp_courses",
             description: "Curso pai.",
           },
-          { name: "name", kind: "column", sqlType: "text", description: "Nome do período." },
-          { name: "sort_order", kind: "column", sqlType: "integer", description: "Ordem na trilha." },
+          { name: "number", kind: "column", sqlType: "integer", description: "Número sequencial do período (unique por curso)." },
+          { name: "name", kind: "column", sqlType: "text", description: "Nome do período (ex.: 1º Semestre)." },
+          { name: "status", kind: "column", sqlType: "text", description: "completed | current | upcoming." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],
       },
       {
@@ -349,11 +366,13 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             sqlType: "text",
             description: "Step 27: capa no bucket `discipline-covers` (Storage).",
           },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],
       },
       {
         name: "lxp_course_library_links",
-        purpose: "Associação entre disciplina do curso e item da biblioteca de conteúdo.",
+        purpose: "Associação 1:1 entre disciplina do curso e item da biblioteca externa (somente tipo `discipline`).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Vínculo." },
           {
@@ -361,10 +380,25 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             kind: "fk",
             sqlType: "uuid",
             fkRef: "public.lxp_course_disciplines",
-            description: "Disciplina no curso.",
+            description: "Disciplina no curso (unique — uma biblioteca por disciplina).",
           },
-          { name: "library_content_id", kind: "column", sqlType: "text", description: "Conteúdo na biblioteca externa." },
+          {
+            name: "library_content_type",
+            kind: "column",
+            sqlType: "text",
+            description: "Sempre `discipline` (Step 9 — trail/module descontinuados).",
+          },
+          { name: "library_content_id", kind: "column", sqlType: "text", description: "ID da disciplina no catálogo externo (EAD Stock)." },
+          { name: "library_content_name", kind: "column", sqlType: "text", description: "Nome espelhado para exibição no backoffice." },
+          { name: "metadata", kind: "column", sqlType: "jsonb", description: "Metadados extras do vínculo (opcional)." },
           { name: "linked_at", kind: "column", sqlType: "timestamptz", description: "Quando o vínculo foi criado." },
+          {
+            name: "linked_by",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Admin que vinculou (opcional).",
+          },
         ],
       },
     ],
@@ -418,6 +452,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           },
           { name: "status", kind: "column", sqlType: "text", description: "active | inactive | blocked." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Quando matriculou." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última alteração (Step 11)." },
         ],
       },
       {
@@ -437,6 +472,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "status", kind: "column", sqlType: "text", description: "pending | in_progress | completed." },
           { name: "completed_at", kind: "column", sqlType: "timestamptz", description: "Quando marcou concluída." },
           { name: "last_accessed_at", kind: "column", sqlType: "timestamptz", description: "Último acesso." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação do registro." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última atualização." },
         ],
       },
@@ -462,6 +498,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "status", kind: "column", sqlType: "text", description: "pending | in_progress | approved | failed." },
           { name: "grade", kind: "column", sqlType: "numeric", description: "Nota opcional." },
           { name: "xp_earned", kind: "column", sqlType: "integer", description: "XP legado por disciplina (complemento a eventos)." },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação do registro." },
           { name: "completed_at", kind: "column", sqlType: "timestamptz", description: "Primeira vez em approved (auditoria)." },
           { name: "last_updated_at", kind: "column", sqlType: "timestamptz", description: "Última mudança de estado." },
         ],

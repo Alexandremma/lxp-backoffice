@@ -77,9 +77,15 @@ const DataArchitecturePage = () => {
           </div>
           <PageHeader
             title="Modelo de dados (referência visual)"
-            description="Schema `public` no Supabase (migrations Steps 14–27): certificados com biblioteca N:M de assinaturas e snapshot imutável (Fase 2.1), apresentação da disciplina (`description`, `cover_image_path`, bucket `discipline-covers`), gamificação (`rule_config`, XP, níveis), acesso diário, comentários e anotações na aula. Abas Backoffice/Alunos = LXP; aba B42 = EAD Stock/Gael + Alice. Migrations centralizadas em `projetos-migrations/`."
+            description="Schema `public` no Supabase (migrations Steps 14–30): certificados com biblioteca N:M de assinaturas e snapshot imutável (Fase 2.1), apresentação da disciplina (`description`, `cover_image_path`), gamificação (`rule_config`, XP, níveis), configurações institucionais e auditoria (Step 29), acesso diário, comentários e anotações na aula. **23 tabelas** em homolog. Abas Backoffice/Alunos = LXP; aba B42 = EAD Stock/Gael + Alice. Migrations centralizadas em `projetos-migrations/`."
             actions={
               <div className="flex flex-wrap gap-2">
+                <Badge
+                  variant="outline"
+                  className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
+                >
+                  23 tabelas · public
+                </Badge>
                 <Badge
                   variant="outline"
                   className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
@@ -90,19 +96,19 @@ const DataArchitecturePage = () => {
                   variant="outline"
                   className="border-sky-500/40 bg-sky-500/5 font-mono text-[11px] text-sky-400"
                 >
-                  Step 26 · Certificados 2.1
+                  Step 29 · Config + audit
                 </Badge>
                 <Badge
                   variant="outline"
                   className="border-violet-500/40 bg-violet-500/5 font-mono text-[11px] text-violet-400"
                 >
-                  Step 27 · Capa disciplina
+                  Step 26 · Certificados 2.1
                 </Badge>
                 <Badge
                   variant="outline"
                   className="border-emerald-500/40 bg-emerald-500/5 font-mono text-[11px] text-emerald-500"
                 >
-                  Atualizado · mai/2026
+                  Atualizado · jun/2026
                 </Badge>
               </div>
             }
