@@ -73,6 +73,17 @@ export async function assertCanCreateCourse(): Promise<void> {
     }
 }
 
+export async function assertCanCreateTeamMember(): Promise<void> {
+    const dashboard = await getSettingsDashboard()
+    const { teamMembers } = planUsageFromDashboard(dashboard)
+    if (teamMembers.atLimit) {
+        throw new PlanLimitError(
+            "teamMembers",
+            `Limite de membros da equipe do plano atingido (${teamMembers.current}/${teamMembers.limit}). Faça upgrade em Configurações.`,
+        )
+    }
+}
+
 export function isPlanLimitError(err: unknown): err is PlanLimitError {
     return err instanceof PlanLimitError
 }

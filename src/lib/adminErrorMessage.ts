@@ -60,6 +60,9 @@ export function getAdminErrorMessage(context: AdminErrorContext, err: unknown): 
         if (code === "INVITE_BAD_REQUEST") {
             return "Dados inválidos para envio do convite."
         }
+        if (code === "PLAN_LIMIT_REACHED") {
+            return getErrorMessage(err) || "Limite de membros da equipe do plano atingido."
+        }
     }
 
     if (

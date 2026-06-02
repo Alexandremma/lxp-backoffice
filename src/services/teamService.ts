@@ -1,4 +1,5 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
+import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -20,6 +21,7 @@ type TeamInviteErrorCode =
     | "AUTH_USER_ALREADY_EXISTS"
     | "INVITE_NOT_ALLOWED"
     | "INVITE_BAD_REQUEST"
+    | "PLAN_LIMIT_REACHED"
     | "INVITE_UNKNOWN_ERROR"
 
 export type TeamInviteResult = {
@@ -107,6 +109,8 @@ export async function createTeamMemberAdmin(params: {
     department?: string | null
     redirectTo?: string
 }): Promise<TeamInviteResult> {
+    await assertCanCreateTeamMember()
+
     const { data, error } = await supabase.functions.invoke<InviteFunctionResponse>("invite-team-member", {
         body: {
             name: params.name,

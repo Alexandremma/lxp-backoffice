@@ -63,7 +63,10 @@ import {
 import { useUpsertTeamMemberAdmin } from "@/hooks/mutations/useUpsertTeamMemberAdmin"
 import { useDeleteTeamMemberAdmin } from "@/hooks/mutations/useDeleteTeamMemberAdmin"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import { isPlanLimitError } from "@/lib/planLimits"
+import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
 import { useResendTeamInviteAdmin } from "@/hooks/mutations/useResendTeamInviteAdmin"
 
 type TeamRole = TeamMemberAdminRow["role"]
@@ -101,6 +104,8 @@ function toTeamMemberDialogModel(row: TeamMemberAdminRow): TeamMemberDialogMembe
 
 const TeamPage = () => {
     const { data, isLoading, isError, error, refetch } = useGetTeamMembersAdmin()
+    const { usage: planUsage } = usePlanLimits()
+    const teamAtLimit = planUsage?.teamMembers.atLimit ?? false
     const upsertMember = useUpsertTeamMemberAdmin()
     const deleteMember = useDeleteTeamMemberAdmin()
     const resendInvite = useResendTeamInviteAdmin()
@@ -185,6 +190,10 @@ const TeamPage = () => {
             setDialogOpen(false)
             setEditingMember(null)
         } catch (err: unknown) {
+            if (isPlanLimitError(err)) {
+                toast.error(err.message)
+                return
+            }
             toast.error(getAdminErrorMessage("team-save", err))
         }
     }
@@ -224,11 +233,13 @@ const TeamPage = () => {
                 title="Equipe"
                 description="Visualize e mantenha a equipe administrativa do Backoffice."
             >
-                <Button onClick={handleOpenCreate}>
+                <Button onClick={handleOpenCreate} disabled={teamAtLimit} title={teamAtLimit ? "Limite de membros da equipe atingido" : undefined}>
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Membro
                 </Button>
             </PageHeader>
+
+            <PlanLimitBanner resource="teamMembers" status={planUsage?.teamMembers} />
 
             {isError && (
                 <Alert variant="destructive" className="mb-6">
