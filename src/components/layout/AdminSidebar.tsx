@@ -12,24 +12,26 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NavLink } from "@/components/NavLink"
-import { useModuleVisibility } from "@/hooks/useModuleVisibility"
+import type { PermissionId } from "@/consts/permissions"
+import { usePermission } from "@/hooks/usePermission"
 import { useLogout } from "@/hooks/use-logout"
 
 interface NavItem {
   title: string
   url: string
   icon: React.ElementType
+  permission: PermissionId
 }
 
 const navigationItems: NavItem[] = [
-  { title: "Início", url: "/", icon: LayoutDashboard },
-  { title: "Alunos", url: "/admin/alunos", icon: Users },
-  { title: "Equipe", url: "/admin/equipe", icon: UserCog },
-  { title: "Cursos", url: "/admin/cursos", icon: BookOpen },
-  { title: "Gamificação", url: "/admin/gamificacao", icon: Gamepad2 },
-  { title: "Certificados", url: "/admin/certificados", icon: Award },
-  { title: "Modelo de dados", url: "/admin/modelo-dados", icon: Database },
-  { title: "Geral", url: "/admin/configuracoes", icon: Settings },
+  { title: "Início", url: "/", icon: LayoutDashboard, permission: "dashboard.visualizar" },
+  { title: "Alunos", url: "/admin/alunos", icon: Users, permission: "alunos.visualizar" },
+  { title: "Equipe", url: "/admin/equipe", icon: UserCog, permission: "equipe.visualizar" },
+  { title: "Cursos", url: "/admin/cursos", icon: BookOpen, permission: "cursos.visualizar" },
+  { title: "Gamificação", url: "/admin/gamificacao", icon: Gamepad2, permission: "gamificacao.visualizar" },
+  { title: "Certificados", url: "/admin/certificados", icon: Award, permission: "certificados.visualizar" },
+  { title: "Modelo de dados", url: "/admin/modelo-dados", icon: Database, permission: "dev.modelo_dados" },
+  { title: "Geral", url: "/admin/configuracoes", icon: Settings, permission: "configuracoes.visualizar" },
 ]
 
 interface AdminSidebarProps {
@@ -39,15 +41,14 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
   const location = useLocation()
-  const { isModuleVisible } = useModuleVisibility()
+  const { can } = usePermission()
   const { logout } = useLogout()
 
-  // Filtrar itens baseado na visibilidade (manter rota atual visível para não travar)
   const visibleItems = navigationItems.filter(
     (item) =>
-      isModuleVisible(item.url) ||
+      can(item.permission) ||
       location.pathname === item.url ||
-      location.pathname.startsWith(item.url + "/")
+      location.pathname.startsWith(item.url + "/"),
   )
 
   return (
@@ -55,7 +56,7 @@ const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
       className={cn(
         "flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300",
         collapsed ? "w-16" : "w-64",
-        className
+        className,
       )}
     >
       <div
@@ -77,7 +78,6 @@ const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
         )}
       </div>
 
-      {/* Navigation — p-3 igual ao portal do aluno (folga abaixo do header) */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
           {visibleItems.map((item) => (
@@ -88,7 +88,7 @@ const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                 "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                collapsed && "justify-center px-2"
+                collapsed && "justify-center px-2",
               )}
               activeClassName="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
             >
@@ -99,13 +99,12 @@ const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
         </div>
       </nav>
 
-      {/* Bottom Section */}
       <div className="p-3 space-y-1 border-t border-sidebar-border">
         <button
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all w-full",
             "text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10",
-            collapsed && "justify-center px-2"
+            collapsed && "justify-center px-2",
           )}
           onClick={() => {
             void logout()

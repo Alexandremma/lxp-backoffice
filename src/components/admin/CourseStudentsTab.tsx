@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react"
+import { RequirePermission } from "@/components/auth/RequirePermission"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -167,12 +168,14 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
             Gerencie os alunos matriculados neste curso
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setEnrollDialogOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Matricular Aluno
-          </Button>
-        </div>
+        <RequirePermission permission="matriculas.criar">
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setEnrollDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Matricular Aluno
+            </Button>
+          </div>
+        </RequirePermission>
       </div>
 
       {/* Enroll Dialog */}
@@ -344,14 +347,16 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                             <Mail className="h-4 w-4 mr-2" />
                             Enviar e-mail
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => void handleToggleEnrollmentStatus(student)}
-                          >
-                            <Ban className="h-4 w-4 mr-2" />
-                            {student.status === "inactive" ? "Reativar matrícula" : "Inativar matrícula"}
-                          </DropdownMenuItem>
+                          <RequirePermission permission="matriculas.editar">
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => void handleToggleEnrollmentStatus(student)}
+                            >
+                              <Ban className="h-4 w-4 mr-2" />
+                              {student.status === "inactive" ? "Reativar matrícula" : "Inativar matrícula"}
+                            </DropdownMenuItem>
+                          </RequirePermission>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -369,10 +374,12 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                   : "Ainda não há alunos matriculados neste curso"}
               </p>
               {!search && statusFilter === "all" && (
-                <Button onClick={() => setEnrollDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Matricular primeiro aluno
-                </Button>
+                <RequirePermission permission="matriculas.criar">
+                  <Button onClick={() => setEnrollDialogOpen(true)}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Matricular primeiro aluno
+                  </Button>
+                </RequirePermission>
               )}
             </div>
           )}

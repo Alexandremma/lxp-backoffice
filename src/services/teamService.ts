@@ -1,3 +1,4 @@
+import type { TeamRole } from "@/consts/teamRoles"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
@@ -8,7 +9,7 @@ export type TeamMemberAdminRow = {
     userId: string
     name: string
     email: string
-    role: "admin" | "coordinator" | "secretary" | "professor" | "tutor" | "financial" | "commercial"
+    role: TeamRole
     department: string | null
     createdAt: string
     updatedAt: string

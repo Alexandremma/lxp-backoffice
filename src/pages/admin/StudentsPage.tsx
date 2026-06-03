@@ -77,6 +77,7 @@ import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import { isPlanLimitError } from "@/lib/planLimits"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
+import { RequirePermission } from "@/components/auth/RequirePermission"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 import { lxpAlunosSetPasswordUrl } from "@/lib/authRedirectUrls"
@@ -379,18 +380,20 @@ const StudentsPage = () => {
         title="Alunos"
         description="Gerencie os alunos matriculados na plataforma"
       >
-        <Button
-          onClick={() => setDialogOpen(true)}
-          disabled={studentsAtLimit}
-          title={
-            studentsAtLimit
-              ? "Limite de alunos do plano atingido. Faça upgrade em Configurações."
-              : undefined
-          }
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Aluno
-        </Button>
+        <RequirePermission permission="alunos.criar">
+          <Button
+            onClick={() => setDialogOpen(true)}
+            disabled={studentsAtLimit}
+            title={
+              studentsAtLimit
+                ? "Limite de alunos do plano atingido. Faça upgrade em Configurações."
+                : undefined
+            }
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Aluno
+          </Button>
+        </RequirePermission>
       </PageHeader>
 
       <PlanLimitBanner resource="students" status={planUsage?.students} />
@@ -651,39 +654,43 @@ const StudentsPage = () => {
                               <Eye className="h-4 w-4 mr-2" />
                               Ver detalhes
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleEditStudent(student, e)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Editar dados
-                            </DropdownMenuItem>
+                            <RequirePermission permission="alunos.editar">
+                              <DropdownMenuItem onClick={(e) => handleEditStudent(student, e)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Editar dados
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => void handleResetPassword(student, e)}>
+                                <KeyRound className="h-4 w-4 mr-2" />
+                                Resetar senha
+                              </DropdownMenuItem>
+                            </RequirePermission>
                             <DropdownMenuItem onClick={(e) => handleSendEmail(student, e)}>
                               <Mail className="h-4 w-4 mr-2" />
                               Enviar e-mail
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => void handleResetPassword(student, e)}>
-                              <KeyRound className="h-4 w-4 mr-2" />
-                              Resetar senha
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => void handleToggleBlock(student, e)}>
-                              {student.status === "blocked" ? (
-                                <>
-                                  <Unlock className="h-4 w-4 mr-2" />
-                                  Desbloquear acesso global
-                                </>
-                              ) : (
-                                <>
-                                  <Ban className="h-4 w-4 mr-2" />
-                                  Bloquear acesso global
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={(e) => handleDeleteClick(student, e)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
+                            <RequirePermission permission="alunos.excluir">
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={(e) => void handleToggleBlock(student, e)}>
+                                {student.status === "blocked" ? (
+                                  <>
+                                    <Unlock className="h-4 w-4 mr-2" />
+                                    Desbloquear acesso global
+                                  </>
+                                ) : (
+                                  <>
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Bloquear acesso global
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={(e) => handleDeleteClick(student, e)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </RequirePermission>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

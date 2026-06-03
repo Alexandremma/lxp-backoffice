@@ -6,15 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-const allowedRoles = new Set([
-  "admin",
-  "coordinator",
-  "secretary",
-  "professor",
-  "tutor",
-  "financial",
-  "commercial",
-])
+const allowedRoles = new Set(["admin", "coordinator", "professor"])
+
+function canAssignRole(callerRole: string, targetRole: string): boolean {
+  if (targetRole === "admin" && callerRole !== "admin") return false
+  return allowedRoles.has(targetRole)
+}
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -117,10 +114,11 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (!callerMember || callerMember.role !== "admin") {
+    const callerRole = typeof callerMember?.role === "string" ? callerMember.role.trim() : ""
+    if (!callerMember || !["admin", "coordinator"].includes(callerRole)) {
       return jsonResponse(403, {
         code: "INVITE_NOT_ALLOWED",
-        message: "Somente admin pode convidar novos membros.",
+        message: "Somente administrador ou coordenador pode convidar membros.",
       })
     }
 
@@ -158,6 +156,13 @@ Deno.serve(async (req) => {
       return jsonResponse(400, {
         code: "INVITE_BAD_REQUEST",
         message: "Departamento deve ter no mùximo 120 caracteres.",
+      })
+    }
+
+    if (action === "create" && !canAssignRole(callerRole, rawRole)) {
+      return jsonResponse(403, {
+        code: "INVITE_NOT_ALLOWED",
+        message: "Somente administrador pode atribuir a funÁ„o Administrador.",
       })
     }
 

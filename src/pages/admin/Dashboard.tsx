@@ -21,8 +21,11 @@ import {
 import { Link } from "react-router-dom"
 import { useGetAdminDashboardStats } from "@/hooks/queries/useGetAdminDashboardStats"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import type { PermissionId } from "@/consts/permissions"
+import { usePermission } from "@/hooks/usePermission"
 
 const Dashboard = () => {
+    const { can } = usePermission()
     const { data, isLoading, isError, error, refetch } = useGetAdminDashboardStats()
     const stats = {
         totalAlunos: data?.totalStudents ?? 0,
@@ -31,12 +34,22 @@ const Dashboard = () => {
         alunosAtivos: data?.activeStudents ?? 0,
     }
 
-    const quickAccessItems = [
+    const quickAccessItems: {
+        title: string
+        description: string
+        icon: typeof Users
+        href: string
+        permission: PermissionId
+        color: string
+        bgColor: string
+        stats: string
+    }[] = [
         {
             title: "Alunos",
             description: "Gerenciar alunos cadastrados",
             icon: Users,
             href: "/admin/alunos",
+            permission: "alunos.visualizar",
             color: "text-blue-500",
             bgColor: "bg-blue-500/10",
             stats: isLoading ? "Carregando..." : `${stats.totalAlunos.toLocaleString("pt-BR")} alunos`,
@@ -46,6 +59,7 @@ const Dashboard = () => {
             description: "Gerenciar membros da equipe",
             icon: UserCog,
             href: "/admin/equipe",
+            permission: "equipe.visualizar",
             color: "text-purple-500",
             bgColor: "bg-purple-500/10",
             stats: isLoading ? "Carregando..." : `${stats.totalColaboradores} membros`,
@@ -55,6 +69,7 @@ const Dashboard = () => {
             description: "Gerenciar cursos e grades",
             icon: BookOpen,
             href: "/admin/cursos",
+            permission: "cursos.visualizar",
             color: "text-green-500",
             bgColor: "bg-green-500/10",
             stats: isLoading ? "Carregando..." : `${stats.totalCursos} cursos`,
@@ -64,6 +79,7 @@ const Dashboard = () => {
             description: "Configurar XP, badges e níveis",
             icon: Gamepad2,
             href: "/admin/gamificacao",
+            permission: "gamificacao.visualizar",
             color: "text-orange-500",
             bgColor: "bg-orange-500/10",
             stats: "Configurar regras",
@@ -73,6 +89,7 @@ const Dashboard = () => {
             description: "Templates e histórico",
             icon: Award,
             href: "/admin/certificados",
+            permission: "certificados.visualizar",
             color: "text-yellow-500",
             bgColor: "bg-yellow-500/10",
             stats: "Gerenciar",
@@ -82,18 +99,19 @@ const Dashboard = () => {
             description: "Configurações gerais",
             icon: Settings,
             href: "/admin/configuracoes",
+            permission: "configuracoes.visualizar",
             color: "text-gray-500",
             bgColor: "bg-gray-500/10",
             stats: "Ajustar",
         },
-    ]
+    ].filter((item) => can(item.permission))
 
     const commonActions = [
-        { label: "Cadastrar Novo Aluno", href: "/admin/alunos", icon: UserCheck },
-        { label: "Criar Novo Curso", href: "/admin/cursos", icon: GraduationCap },
-        { label: "Adicionar Membro", href: "/admin/equipe", icon: Shield },
-        { label: "Configurar Gamificação", href: "/admin/gamificacao", icon: Gamepad2 },
-    ]
+        { label: "Cadastrar Novo Aluno", href: "/admin/alunos", icon: UserCheck, permission: "alunos.criar" as PermissionId },
+        { label: "Criar Novo Curso", href: "/admin/cursos", icon: GraduationCap, permission: "cursos.criar" as PermissionId },
+        { label: "Adicionar Membro", href: "/admin/equipe", icon: Shield, permission: "equipe.criar" as PermissionId },
+        { label: "Configurar Gamificação", href: "/admin/gamificacao", icon: Gamepad2, permission: "gamificacao.visualizar" as PermissionId },
+    ].filter((item) => can(item.permission))
 
     return (
         <AdminLayout>

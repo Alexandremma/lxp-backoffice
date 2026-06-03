@@ -35,6 +35,8 @@ import {
 } from "@/services/certificatesAdminService"
 import { openCertificatePrintWindow } from "@/lib/certificatePrint"
 
+import { RequirePermission } from "@/components/auth/RequirePermission"
+import { usePermission } from "@/hooks/usePermission"
 import { TemplateCard } from "@/components/admin/certificates/TemplateCard"
 import { TemplateEditorDialog } from "@/components/admin/certificates/TemplateEditorDialog"
 import {
@@ -54,6 +56,11 @@ type EmissionTableRow = {
 }
 
 const CertificatesPage = () => {
+  const { can } = usePermission()
+  const canEditTemplates = can("certificados.template_editar")
+  const canCreateTemplates = can("certificados.template_criar")
+  const canEmit = can("certificados.emitir")
+
   const [searchQuery, setSearchQuery] = useState("")
   const [previewTemplate, setPreviewTemplate] = useState<CertificateTemplateRow | null>(null)
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplateRow | null>(null)
@@ -174,16 +181,17 @@ const CertificatesPage = () => {
     {
       key: "actions",
       header: "",
-      cell: (row) => (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => void handleDownloadIssue(row)}
-          title="Baixar PDF deste certificado"
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-      ),
+      cell: (row) =>
+        canEmit ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => void handleDownloadIssue(row)}
+            title="Baixar PDF deste certificado"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        ) : null,
       className: "w-12",
     },
   ]
@@ -360,12 +368,14 @@ const CertificatesPage = () => {
             </TabsList>
 
             <TabsContent value="templates" className="space-y-4">
-              <div className="flex justify-end">
-                <Button onClick={() => setNewTemplateOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo template
-                </Button>
-              </div>
+              <RequirePermission permission="certificados.template_criar">
+                <div className="flex justify-end">
+                  <Button onClick={() => setNewTemplateOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo template
+                  </Button>
+                </div>
+              </RequirePermission>
               {templates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum template cadastrado. Crie um para emitir certificados.
@@ -377,9 +387,13 @@ const CertificatesPage = () => {
                       key={template.id}
                       template={template}
                       onPreview={() => setPreviewTemplate(template)}
-                      onEdit={() => setEditingTemplate(template)}
-                      onSetDefault={() => void handleSetDefaultTemplate(template)}
-                      onToggleActive={(next) => void handleToggleTemplate(template, next)}
+                      onEdit={canEditTemplates ? () => setEditingTemplate(template) : undefined}
+                      onSetDefault={
+                        canEditTemplates ? () => void handleSetDefaultTemplate(template) : undefined
+                      }
+                      onToggleActive={
+                        canEditTemplates ? (next) => void handleToggleTemplate(template, next) : undefined
+                      }
                       disabled={updateTemplate.isPending || setDefaultTemplate.isPending}
                     />
                   ))}
@@ -405,15 +419,17 @@ const CertificatesPage = () => {
                 <p className="text-sm text-muted-foreground">
                   Assinaturas formam uma biblioteca compartilhada. Vincule-as a templates via editor.
                 </p>
-                <Button
-                  onClick={() => {
-                    setEditingSignature(null)
-                    setSignatureDialogOpen(true)
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nova assinatura
-                </Button>
+                <RequirePermission permission="certificados.template_editar">
+                  <Button
+                    onClick={() => {
+                      setEditingSignature(null)
+                      setSignatureDialogOpen(true)
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova assinatura
+                  </Button>
+                </RequirePermission>
               </div>
               <SignatureLibraryGrid
                 signatures={signatures}

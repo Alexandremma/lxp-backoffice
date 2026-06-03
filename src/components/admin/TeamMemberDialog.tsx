@@ -27,15 +27,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-
-export type TeamRole =
-  | "admin"
-  | "coordinator"
-  | "secretary"
-  | "professor"
-  | "tutor"
-  | "financial"
-  | "commercial"
+import {
+  DEFAULT_DEPARTMENT_BY_ROLE,
+  TEAM_DEPARTMENTS,
+  TEAM_DEPARTMENT_LABELS,
+  TEAM_ROLE_LABELS,
+  TEAM_ROLES,
+  type TeamRole,
+  canAssignTeamRole,
+} from "@/consts/teamRoles"
+import { usePermission } from "@/hooks/usePermission"
 
 export type TeamMemberDialogMember = {
   id: string
@@ -50,8 +51,8 @@ export type TeamMemberDialogMember = {
 const teamMemberSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Email inválido"),
-  role: z.enum(["admin", "coordinator", "secretary", "professor", "tutor", "financial", "commercial"] as const),
-  department: z.string().max(120, "Máximo 120 caracteres"),
+  role: z.enum(TEAM_ROLES),
+  department: z.enum(TEAM_DEPARTMENTS),
 })
 
 export type TeamMemberFormData = z.infer<typeof teamMemberSchema>
@@ -64,16 +65,6 @@ interface TeamMemberDialogProps {
   isSubmitting?: boolean
 }
 
-const roleOptions: { value: TeamRole; label: string }[] = [
-  { value: "admin", label: "Admin" },
-  { value: "coordinator", label: "Coordenador" },
-  { value: "secretary", label: "Secretaria" },
-  { value: "professor", label: "Professor" },
-  { value: "tutor", label: "Tutor" },
-  { value: "financial", label: "Financeiro" },
-  { value: "commercial", label: "Comercial" },
-]
-
 export function TeamMemberDialog({
   open,
   onOpenChange,
@@ -81,7 +72,12 @@ export function TeamMemberDialog({
   onSave,
   isSubmitting = false,
 }: TeamMemberDialogProps) {
+  const { role: actorRole } = usePermission()
   const isEditing = !!member
+
+  const assignableRoles = TEAM_ROLES.filter((r) =>
+    actorRole ? canAssignTeamRole(actorRole, r) : false,
+  )
 
   const form = useForm<TeamMemberFormData>({
     resolver: zodResolver(teamMemberSchema),
@@ -89,29 +85,50 @@ export function TeamMemberDialog({
       name: "",
       email: "",
       role: "professor",
-      department: "",
+      department: DEFAULT_DEPARTMENT_BY_ROLE.professor,
     },
   })
 
+  const watchedRole = form.watch("role")
+
+  useEffect(() => {
+    if (!watchedRole) return
+    const currentDept = form.getValues("department")
+    const suggested = DEFAULT_DEPARTMENT_BY_ROLE[watchedRole]
+    if (!currentDept || currentDept !== suggested) {
+      form.setValue("department", suggested)
+    }
+  }, [watchedRole, form])
+
   useEffect(() => {
     if (member) {
+      const role = TEAM_ROLES.includes(member.role) ? member.role : "professor"
+      const deptRaw = member.department?.trim()
+      const department =
+        deptRaw && (TEAM_DEPARTMENTS as readonly string[]).includes(deptRaw)
+          ? (deptRaw as TeamMemberFormData["department"])
+          : DEFAULT_DEPARTMENT_BY_ROLE[role]
       form.reset({
         name: member.name,
         email: member.email,
-        role: member.role,
-        department: member.department ?? "",
+        role,
+        department,
       })
     } else {
       form.reset({
         name: "",
         email: "",
         role: "professor",
-        department: "",
+        department: DEFAULT_DEPARTMENT_BY_ROLE.professor,
       })
     }
   }, [member, form])
 
   const handleSubmit = async (data: TeamMemberFormData) => {
+    if (actorRole && !canAssignTeamRole(actorRole, data.role)) {
+      form.setError("role", { message: "Somente administradores podem atribuir a função Administrador." })
+      return
+    }
     await onSave(data)
     form.reset()
   }
@@ -120,9 +137,7 @@ export function TeamMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Editar Membro" : "Novo Membro"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? "Editar Membro" : "Novo Membro"}</DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Atualize as informações do membro da equipe."
@@ -183,9 +198,9 @@ export function TeamMemberDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {roleOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                        {(assignableRoles.length > 0 ? assignableRoles : TEAM_ROLES).map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {TEAM_ROLE_LABELS[value]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -199,15 +214,26 @@ export function TeamMemberDialog({
                 control={form.control}
                 name="department"
                 render={({ field }) => (
-                  <FormItem className="sm:col-span-2">
-                    <FormLabel>Departamento (opcional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Ex.: Pedagógico, Financeiro"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
+                  <FormItem>
+                    <FormLabel>Departamento</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Departamento" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TEAM_DEPARTMENTS.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {TEAM_DEPARTMENT_LABELS[value]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

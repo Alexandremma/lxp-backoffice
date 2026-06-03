@@ -49,6 +49,7 @@ import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
+import { RequirePermission } from "@/components/auth/RequirePermission"
 import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
 import { deleteCourseAdmin } from "@/services/coursesService"
@@ -198,18 +199,20 @@ const CoursesPage = () => {
         title="Cursos"
         description="Gerencie os cursos vinculados à biblioteca de conteúdo"
       >
-        <Button
-          onClick={handleOpenNew}
-          disabled={submitting || coursesAtLimit}
-          title={
-            coursesAtLimit
-              ? "Limite de cursos do plano atingido. Faça upgrade em Configurações."
-              : undefined
-          }
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Curso
-        </Button>
+        <RequirePermission permission="cursos.criar">
+          <Button
+            onClick={handleOpenNew}
+            disabled={submitting || coursesAtLimit}
+            title={
+              coursesAtLimit
+                ? "Limite de cursos do plano atingido. Faça upgrade em Configurações."
+                : undefined
+            }
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Curso
+          </Button>
+        </RequirePermission>
       </PageHeader>
 
       <PlanLimitBanner resource="courses" status={planUsage?.courses} />
@@ -455,17 +458,19 @@ const CoursesPage = () => {
                             <Calendar className="h-4 w-4 mr-2" />
                             Gerenciar períodos
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteCourse(course)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
+                          <RequirePermission permission="cursos.excluir">
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteCourse(course)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </RequirePermission>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
