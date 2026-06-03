@@ -121,16 +121,6 @@ const App = () => (
 
 
 
-              {/* Módulos fora da entrega — redireciona para início */}
-
-              <Route path="/admin/produtos" element={<Navigate to="/" replace />} />
-
-              <Route path="/admin/financeiro" element={<Navigate to="/" replace />} />
-
-              <Route path="/admin/tickets" element={<Navigate to="/" replace />} />
-
-              <Route path="/admin/ai-tutor" element={<Navigate to="/" replace />} />
-
               <Route path="/dashboard-old" element={<Navigate to="/" replace />} />
 
               <Route path="/admin/cursos-v1" element={<Navigate to="/" replace />} />
