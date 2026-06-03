@@ -9,9 +9,9 @@ import type { CertificateTemplateRow } from "@/services/certificatesAdminService
 type TemplateCardProps = {
   template: CertificateTemplateRow
   onPreview: () => void
-  onEdit: () => void
-  onSetDefault: () => void
-  onToggleActive: (next: boolean) => void
+  onEdit?: () => void
+  onSetDefault?: () => void
+  onToggleActive?: (next: boolean) => void
   disabled?: boolean
 }
 
@@ -81,7 +81,7 @@ export function TemplateCard({
           <Switch
             checked={template.is_active}
             onCheckedChange={onToggleActive}
-            disabled={disabled}
+            disabled={disabled || !onToggleActive}
           />
         </div>
 
@@ -90,22 +90,28 @@ export function TemplateCard({
             <Eye className="h-4 w-4 mr-1" />
             Preview
           </Button>
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Edit className="h-4 w-4 mr-1" />
-            Editar
-          </Button>
+          {onEdit ? (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-1" />
+              Editar
+            </Button>
+          ) : (
+            <div />
+          )}
         </div>
 
-        <Button
-          variant={isDefault ? "ghost" : "secondary"}
-          size="sm"
-          className="w-full"
-          onClick={onSetDefault}
-          disabled={isDefault || disabled}
-        >
-          <Star className={cn("h-4 w-4 mr-1", isDefault && "fill-current")} />
-          {isDefault ? "Este é o padrão" : "Definir como padrão"}
-        </Button>
+        {onSetDefault ? (
+          <Button
+            variant={isDefault ? "ghost" : "secondary"}
+            size="sm"
+            className="w-full"
+            onClick={onSetDefault}
+            disabled={isDefault || disabled}
+          >
+            <Star className={cn("h-4 w-4 mr-1", isDefault && "fill-current")} />
+            {isDefault ? "Este é o padrão" : "Definir como padrão"}
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   )

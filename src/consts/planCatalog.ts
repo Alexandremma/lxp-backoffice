@@ -83,17 +83,4 @@ export function mapSubscriptionFeaturesToDisplay(featureKeys: string[] | undefin
     }))
 }
 
-const TEAM_ROLE_LABELS: Record<string, string> = {
-    admin: "Administrador",
-    coordinator: "Coordenador",
-    secretary: "Secretaria",
-    professor: "Professor",
-    tutor: "Tutor",
-    financial: "Financeiro",
-    commercial: "Comercial",
-}
-
-export function formatTeamRoleLabel(role: string | null | undefined): string {
-    if (!role) return "Administrador"
-    return TEAM_ROLE_LABELS[role] ?? role
-}
+export { formatTeamRoleLabel } from "@/consts/teamRoles"

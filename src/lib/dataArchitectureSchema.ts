@@ -426,7 +426,13 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "email", kind: "column", sqlType: "text", description: "E-mail de contato." },
           { name: "phone", kind: "column", sqlType: "text", description: "Telefone opcional." },
           { name: "birth_date", kind: "column", sqlType: "date", description: "Data de nascimento opcional." },
-          { name: "role", kind: "column", sqlType: "text", description: "student | admin (controle de acesso)." },
+          {
+            name: "role",
+            kind: "column",
+            sqlType: "text",
+            description:
+              "student (portal aluno) | admin (legado). Acesso ao backoffice = linha em backoffice_team_members; RBAC = team_members.role.",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],

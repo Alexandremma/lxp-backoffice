@@ -66,9 +66,9 @@ export function SettingsGeneralTab() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <User className="h-5 w-5" />
-                            Conta do Administrador
+                            Minha conta
                         </CardTitle>
-                        <CardDescription>Informações da sua conta administrativa</CardDescription>
+                        <CardDescription>Informações do seu acesso ao backoffice</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {adminLoading ? (

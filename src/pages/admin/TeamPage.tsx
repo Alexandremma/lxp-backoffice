@@ -39,19 +39,18 @@ import {
     ChevronRight,
     Edit,
     GraduationCap,
-    HeadphonesIcon,
     Loader2,
     Mail,
-    Megaphone,
     MoreHorizontal,
     Plus,
     Search,
     Shield,
     Trash2,
     UserCog,
-    FileText,
-    DollarSign,
 } from "lucide-react"
+import { RequirePermission } from "@/components/auth/RequirePermission"
+import { TEAM_ROLE_LABELS, formatTeamDepartmentLabel, type TeamRole } from "@/consts/teamRoles"
+import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
 import type { TeamMemberAdminRow } from "@/services/teamService"
@@ -70,8 +69,6 @@ import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
 import { useResendTeamInviteAdmin } from "@/hooks/mutations/useResendTeamInviteAdmin"
 import { backofficeSetPasswordUrl } from "@/lib/authRedirectUrls"
 
-type TeamRole = TeamMemberAdminRow["role"]
-
 const roleConfig: Record<
     TeamRole,
     {
@@ -80,13 +77,9 @@ const roleConfig: Record<
         badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
     }
 > = {
-    admin: { label: "Admin", icon: Shield, badgeVariant: "destructive" },
-    coordinator: { label: "Coordenador", icon: UserCog, badgeVariant: "info" },
-    secretary: { label: "Secretaria", icon: FileText, badgeVariant: "secondary" },
-    professor: { label: "Professor", icon: GraduationCap, badgeVariant: "default" },
-    tutor: { label: "Tutor", icon: HeadphonesIcon, badgeVariant: "success" },
-    financial: { label: "Financeiro", icon: DollarSign, badgeVariant: "warning" },
-    commercial: { label: "Comercial", icon: Megaphone, badgeVariant: "outline" },
+    admin: { label: TEAM_ROLE_LABELS.admin, icon: Shield, badgeVariant: "destructive" },
+    coordinator: { label: TEAM_ROLE_LABELS.coordinator, icon: UserCog, badgeVariant: "info" },
+    professor: { label: TEAM_ROLE_LABELS.professor, icon: GraduationCap, badgeVariant: "default" },
 }
 
 function toTeamMemberDialogModel(row: TeamMemberAdminRow): TeamMemberDialogMember {
@@ -135,13 +128,12 @@ const TeamPage = () => {
         const counts: Record<TeamRole, number> = {
             admin: 0,
             coordinator: 0,
-            secretary: 0,
             professor: 0,
-            tutor: 0,
-            financial: 0,
-            commercial: 0,
         }
-        for (const member of members) counts[member.role] += 1
+        for (const member of members) {
+            const key = member.role in counts ? member.role : "professor"
+            counts[key] += 1
+        }
         return counts
     }, [members])
 
@@ -161,7 +153,7 @@ const TeamPage = () => {
     }
 
     const handleSaveDialog = async (values: TeamMemberFormData) => {
-        const departmentNorm = values.department.trim() || null
+        const departmentNorm = values.department
         try {
             if (editingMember) {
                 await upsertMember.mutateAsync({
@@ -230,10 +222,12 @@ const TeamPage = () => {
                 title="Equipe"
                 description="Visualize e mantenha a equipe administrativa do Backoffice."
             >
-                <Button onClick={handleOpenCreate} disabled={teamAtLimit} title={teamAtLimit ? "Limite de membros da equipe atingido" : undefined}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Membro
-                </Button>
+                <RequirePermission permission="equipe.criar">
+                    <Button onClick={handleOpenCreate} disabled={teamAtLimit} title={teamAtLimit ? "Limite de membros da equipe atingido" : undefined}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Membro
+                    </Button>
+                </RequirePermission>
             </PageHeader>
 
             <PlanLimitBanner resource="teamMembers" status={planUsage?.teamMembers} />
@@ -367,7 +361,7 @@ const TeamPage = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <span className="text-sm text-muted-foreground">
-                                                    {member.department?.trim() ? member.department : "—"}
+                                                    {formatTeamDepartmentLabel(member.department)}
                                                 </span>
                                             </TableCell>
                                             <TableCell>
@@ -396,26 +390,32 @@ const TeamPage = () => {
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
-                                                            <Edit className="h-4 w-4 mr-2" />
-                                                            Editar
-                                                        </DropdownMenuItem>
+                                                        <RequirePermission permission="equipe.editar">
+                                                            <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
+                                                                <Edit className="h-4 w-4 mr-2" />
+                                                                Editar
+                                                            </DropdownMenuItem>
+                                                        </RequirePermission>
                                                         <DropdownMenuItem onClick={() => (window.location.href = `mailto:${member.email}`)}>
                                                             <Mail className="h-4 w-4 mr-2" />
                                                             Enviar e-mail
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => void handleResendInvite(member)}>
-                                                            <Mail className="h-4 w-4 mr-2" />
-                                                            Reenviar convite
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive"
-                                                            onClick={() => handleDeleteMember(member)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4 mr-2" />
-                                                            Remover
-                                                        </DropdownMenuItem>
+                                                        <RequirePermission permission="equipe.criar">
+                                                            <DropdownMenuItem onClick={() => void handleResendInvite(member)}>
+                                                                <Mail className="h-4 w-4 mr-2" />
+                                                                Reenviar convite
+                                                            </DropdownMenuItem>
+                                                        </RequirePermission>
+                                                        <RequirePermission permission="equipe.excluir">
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-destructive"
+                                                                onClick={() => handleDeleteMember(member)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Remover
+                                                            </DropdownMenuItem>
+                                                        </RequirePermission>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
