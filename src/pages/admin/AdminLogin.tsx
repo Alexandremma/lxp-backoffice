@@ -18,11 +18,7 @@ import {
   mapResetPasswordErrorMessage,
   mapSignInErrorMessage,
 } from "@/lib/authLoginMessages";
-
-const DEFAULT_BACKOFFICE_SET_PASSWORD_URL = "https://lxp-backoffice.vercel.app/admin/definir-senha";
-const backofficeSetPasswordUrl = (
-  import.meta.env.VITE_BACKOFFICE_SET_PASSWORD_URL ?? DEFAULT_BACKOFFICE_SET_PASSWORD_URL
-).trim();
+import { backofficeSetPasswordUrl } from "@/lib/authRedirectUrls";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");

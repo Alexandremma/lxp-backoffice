@@ -68,12 +68,9 @@ import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import { isPlanLimitError } from "@/lib/planLimits"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
 import { useResendTeamInviteAdmin } from "@/hooks/mutations/useResendTeamInviteAdmin"
+import { backofficeSetPasswordUrl } from "@/lib/authRedirectUrls"
 
 type TeamRole = TeamMemberAdminRow["role"]
-const DEFAULT_BACKOFFICE_SET_PASSWORD_URL = "https://lxp-backoffice.vercel.app/admin/definir-senha"
-const backofficeSetPasswordUrl = (
-    import.meta.env.VITE_BACKOFFICE_SET_PASSWORD_URL ?? DEFAULT_BACKOFFICE_SET_PASSWORD_URL
-).trim()
 
 const roleConfig: Record<
     TeamRole,
