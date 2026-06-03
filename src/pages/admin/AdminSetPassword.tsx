@@ -1,41 +1,25 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient";
-
-function getAuthErrorMessageFromHash(): string | null {
-  const hash = window.location.hash.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash;
-  if (!hash) return null;
-
-  const params = new URLSearchParams(hash);
-  const errorCode = params.get("error_code");
-  if (!errorCode) return null;
-
-  if (errorCode === "otp_expired") {
-    return "Este link expirou ou já foi usado. Solicite um novo convite ou redefinição de senha.";
-  }
-
-  const description = params.get("error_description");
-  if (description) return decodeURIComponent(description.replace(/\+/g, " "));
-  return "Não foi possível validar o link de acesso.";
-}
+import { usePasswordRecoverySession } from "@/lib/authRecovery";
 
 export default function AdminSetPassword() {
   const navigate = useNavigate();
+  const recovery = usePasswordRecoverySession();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const hashError = useMemo(() => getAuthErrorMessageFromHash(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (recovery.status !== "ready") return;
+
     setError(null);
     setSuccess(null);
 
@@ -52,10 +36,11 @@ export default function AdminSetPassword() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
       setLoading(false);
-      setError("Não foi possível definir a senha. Solicite um novo convite e tente novamente.");
+      setError("Não foi possível definir a senha. Solicite um novo link e tente novamente.");
       return;
     }
 
+    await supabase.auth.signOut();
     setLoading(false);
     setSuccess("Senha definida com sucesso. Faça login no Backoffice.");
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -67,49 +52,67 @@ export default function AdminSetPassword() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle>Definir senha de acesso</CardTitle>
-          <CardDescription>Primeiro acesso ao Backoffice</CardDescription>
+          <CardDescription>Primeiro acesso, convite ou redefinição de senha</CardDescription>
         </CardHeader>
         <CardContent>
-          {hashError && (
-            <p className="mb-4 text-sm text-destructive" role="alert">
-              {hashError}
+          {recovery.status === "loading" && (
+            <p className="mb-4 text-sm text-muted-foreground" role="status">
+              Validando link de acesso…
             </p>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Nova senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar senha</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && (
+
+          {(recovery.status === "hash_error" || recovery.status === "invalid_link") && (
+            <div className="mb-4 space-y-3">
               <p className="text-sm text-destructive" role="alert">
-                {error}
+                {recovery.message}
               </p>
-            )}
-            {success && (
-              <p className="text-sm text-success" role="status">
-                {success}
-              </p>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Salvando..." : "Salvar senha"}
-            </Button>
-          </form>
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/admin/login">Voltar ao login</Link>
+              </Button>
+            </div>
+          )}
+
+          {recovery.status === "ready" && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Nova senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+              {error && (
+                <p className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
+              )}
+              {success && (
+                <p className="text-sm text-success" role="status">
+                  {success}
+                </p>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Salvando..." : "Salvar senha"}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

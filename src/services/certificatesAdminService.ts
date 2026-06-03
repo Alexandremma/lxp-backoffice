@@ -49,6 +49,20 @@ export type CertificateIssueAdminRow = {
 
 /* ---------------------------- helpers de Storage --------------------------- */
 
+type SignatureEmbed = {
+  signer_name: string
+  signer_title: string
+  image_path: string | null
+}
+
+/** Supabase pode tipar relação N:1 como objeto ou array; normaliza para um único registro. */
+function singleSignatureEmbed(
+  rel: SignatureEmbed | SignatureEmbed[] | null | undefined,
+): SignatureEmbed | null {
+  if (!rel) return null
+  return Array.isArray(rel) ? (rel[0] ?? null) : rel
+}
+
 function signatureStoragePublicUrl(imagePath: string | null | undefined): string | null {
   if (!imagePath?.trim()) return null
   const { data } = supabase.storage.from(SIGNATURES_BUCKET).getPublicUrl(imagePath.trim())
@@ -104,19 +118,13 @@ export async function enrichSnapshotRecord(
 
       if (slotErr) throw slotErr
 
-      type SlotRow = {
-        slot: number
-        lxp_certificate_signatures: {
-          signer_name: string
-          signer_title: string
-          image_path: string | null
-        } | null
-      }
-
       const bySlot = new Map(
-        ((slots ?? []) as SlotRow[])
-          .filter((row) => row.lxp_certificate_signatures)
-          .map((row) => [row.slot, row.lxp_certificate_signatures!]),
+        (slots ?? []).map((row) => {
+          const sig = singleSignatureEmbed(
+            row.lxp_certificate_signatures as SignatureEmbed | SignatureEmbed[] | null,
+          )
+          return sig ? ([row.slot as number, sig] as const) : null
+        }).filter((entry): entry is [number, SignatureEmbed] => entry != null),
       )
 
       enriched.signatures = rawSigs.map((entry) => {
@@ -368,27 +376,20 @@ export async function listTemplateSignatureSlots(
     .order("slot", { ascending: true })
   if (error) throw error
 
-  type Row = {
-    template_id: string
-    signature_id: string
-    slot: number
-    sort_order: number
-    lxp_certificate_signatures: {
-      signer_name: string
-      signer_title: string
-      image_path: string | null
-    } | null
-  }
-
-  return ((data ?? []) as Row[]).map((row) => ({
-    template_id: row.template_id,
-    signature_id: row.signature_id,
-    slot: row.slot,
-    sort_order: row.sort_order,
-    signer_name: row.lxp_certificate_signatures?.signer_name ?? "",
-    signer_title: row.lxp_certificate_signatures?.signer_title ?? "",
-    image_path: row.lxp_certificate_signatures?.image_path ?? null,
-  }))
+  return (data ?? []).map((row) => {
+    const sig = singleSignatureEmbed(
+      row.lxp_certificate_signatures as SignatureEmbed | SignatureEmbed[] | null,
+    )
+    return {
+      template_id: row.template_id as string,
+      signature_id: row.signature_id as string,
+      slot: row.slot as number,
+      sort_order: row.sort_order as number,
+      signer_name: sig?.signer_name ?? "",
+      signer_title: sig?.signer_title ?? "",
+      image_path: sig?.image_path ?? null,
+    }
+  })
 }
 
 /** Substitui (ou cria) a assinatura no slot informado. */

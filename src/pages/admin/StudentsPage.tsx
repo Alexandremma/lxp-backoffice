@@ -79,11 +79,7 @@ import { isPlanLimitError } from "@/lib/planLimits"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
-
-const DEFAULT_LXP_ALUNOS_SET_PASSWORD_URL = "https://lxp-alunos.vercel.app/definir-senha"
-const lxpAlunosSetPasswordUrl = (
-  import.meta.env.VITE_LXP_ALUNOS_SET_PASSWORD_URL ?? DEFAULT_LXP_ALUNOS_SET_PASSWORD_URL
-).trim()
+import { lxpAlunosSetPasswordUrl } from "@/lib/authRedirectUrls"
 
 function courseRowToStudent(row: CourseStudentRow): Student {
   return {
