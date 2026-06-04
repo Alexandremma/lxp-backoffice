@@ -29,6 +29,7 @@ const ACTION_VERB: Record<string, string> = {
     "gamification.badge.update": "atualizou badge",
     "gamification.badges.reevaluate_all": "reevaliou badges de todos os alunos",
     "institution.update": "atualizou dados da instituição",
+    "smtp.update": "atualizou configurações de e-mail (SMTP)",
     "plan.upgrade_requested": "solicitou contato sobre upgrade de plano",
     "team.invite": "convidou membro da equipe",
     "team.invite_resend": "reenviou convite da equipe",
@@ -79,7 +80,7 @@ export type AuditLogDisplay = {
 }
 
 export function formatAuditLogDisplay(row: AuditLogRow): AuditLogDisplay {
-    const verb = ACTION_VERB[row.action] ?? row.action.replaceAll(".", " ")
+    const verb = ACTION_VERB[row.action] ?? row.action.split(".").join(" ")
     const resourceLabel = row.entity_type
         ? (ENTITY_LABEL[row.entity_type] ?? row.entity_type)
         : "Back Office"

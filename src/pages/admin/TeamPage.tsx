@@ -49,7 +49,7 @@ import {
     UserCog,
 } from "lucide-react"
 import { RequirePermission } from "@/components/auth/RequirePermission"
-import { TEAM_ROLE_LABELS, formatTeamDepartmentLabel, type TeamRole } from "@/consts/teamRoles"
+import { TEAM_ROLE_LABELS, formatTeamDepartmentLabel, resolveTeamDepartment, type TeamRole } from "@/consts/teamRoles"
 import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
@@ -113,11 +113,11 @@ const TeamPage = () => {
     const filteredMembers = useMemo(() => {
         const q = search.toLowerCase()
         return members.filter((member) => {
-            const dept = (member.department ?? "").toLowerCase()
+            const deptLabel = formatTeamDepartmentLabel(member.department, member.role).toLowerCase()
             const matchesSearch =
                 member.name.toLowerCase().includes(q) ||
                 member.email.toLowerCase().includes(q) ||
-                dept.includes(q)
+                deptLabel.includes(q)
             const matchesRole = roleFilter === "all" || member.role === roleFilter
             return matchesSearch && matchesRole
         })
@@ -153,7 +153,8 @@ const TeamPage = () => {
     }
 
     const handleSaveDialog = async (values: TeamMemberFormData) => {
-        const departmentNorm = values.department
+        const departmentNorm =
+            values.department ?? resolveTeamDepartment(null, values.role as TeamRole) ?? null
         try {
             if (editingMember) {
                 await upsertMember.mutateAsync({
@@ -254,19 +255,21 @@ const TeamPage = () => {
                 </Card>
             )}
 
-            <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7 mb-6">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-6">
                 {(Object.keys(roleConfig) as TeamRole[]).map((role) => {
                     const Icon = roleConfig[role].icon
                     return (
                         <Card key={role}>
                             <CardContent className="pt-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 rounded-lg bg-muted">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="shrink-0 p-2.5 rounded-lg bg-muted">
                                         <Icon className="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                    <div>
-                                        <p className="text-xl font-bold">{countByRole[role]}</p>
-                                        <p className="text-xs text-muted-foreground">{roleConfig[role].label}</p>
+                                    <div className="min-w-0">
+                                        <p className="text-xl font-bold leading-none">{countByRole[role]}</p>
+                                        <p className="text-xs text-muted-foreground truncate mt-1">
+                                            {roleConfig[role].label}
+                                        </p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -361,7 +364,7 @@ const TeamPage = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <span className="text-sm text-muted-foreground">
-                                                    {formatTeamDepartmentLabel(member.department)}
+                                                    {formatTeamDepartmentLabel(member.department, member.role)}
                                                 </span>
                                             </TableCell>
                                             <TableCell>

@@ -55,10 +55,49 @@ export function formatTeamRoleLabel(role: string | null | undefined): string {
   return TEAM_ROLE_LABELS[normalized]
 }
 
-export function formatTeamDepartmentLabel(dept: string | null | undefined): string {
-  if (!dept?.trim()) return "—"
-  const key = dept.trim() as TeamDepartment
-  return TEAM_DEPARTMENT_LABELS[key] ?? dept
+export function formatTeamDepartmentLabel(
+  dept: string | null | undefined,
+  role?: string | null,
+): string {
+  const resolved = resolveTeamDepartment(dept, role)
+  if (!resolved) return "—"
+  return TEAM_DEPARTMENT_LABELS[resolved]
+}
+
+const DEPARTMENT_ALIASES: Record<string, TeamDepartment> = {
+  administracao: "administracao",
+  administração: "administracao",
+  administracao_institucional: "administracao",
+  coordenacao_pedagogica: "coordenacao_pedagogica",
+  "coordenação pedagógica": "coordenacao_pedagogica",
+  ensino_atendimento: "ensino_atendimento",
+  "ensino e atendimento ao aluno": "ensino_atendimento",
+}
+
+function normalizeDepartmentKey(value: string): TeamDepartment | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const lower = trimmed.toLowerCase()
+  if ((TEAM_DEPARTMENTS as readonly string[]).includes(trimmed)) {
+    return trimmed as TeamDepartment
+  }
+  if ((TEAM_DEPARTMENTS as readonly string[]).includes(lower)) {
+    return lower as TeamDepartment
+  }
+  return DEPARTMENT_ALIASES[lower] ?? DEPARTMENT_ALIASES[trimmed] ?? null
+}
+
+/** Valor efetivo para exibição — usa padrão da função quando o banco está vazio. */
+export function resolveTeamDepartment(
+  dept: string | null | undefined,
+  role?: string | null,
+): TeamDepartment | null {
+  const fromDb = dept ? normalizeDepartmentKey(dept) : null
+  if (fromDb) return fromDb
+  if (role && isTeamRole(normalizeTeamRole(role))) {
+    return DEFAULT_DEPARTMENT_BY_ROLE[normalizeTeamRole(role)]
+  }
+  return null
 }
 
 /** Coordenador não pode promover nem atribuir função Administrador. */

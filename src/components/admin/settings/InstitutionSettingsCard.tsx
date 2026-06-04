@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Building2, Loader2, Save } from "lucide-react"
+import { Building2, Loader2, Pencil, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { INSTITUTION_FIELD_PLACEHOLDERS } from "@/consts/institutionDefaults"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useInstitutionSettings } from "@/hooks/queries/useInstitutionSettings"
 import { useUpdateInstitutionSettings } from "@/hooks/mutations/useUpdateInstitutionSettings"
+import { usePermission } from "@/hooks/usePermission"
+import { formatCnpjBr, formatPhoneBr } from "@/lib/inputMasks"
+import { institutionSettingsSchema, toInstitutionSettingsValue } from "@/lib/settingsSchemas"
 import {
     getInstitutionBrandingPublicUrl,
     uploadInstitutionBrandingLogo,
@@ -17,15 +20,26 @@ import {
 import type { InstitutionSettingsValue } from "@/types/settings"
 
 export function InstitutionSettingsCard() {
+    const { can } = usePermission()
+    const canEdit = can("configuracoes.editar")
     const { data, isLoading, isError, error } = useInstitutionSettings()
     const updateSettings = useUpdateInstitutionSettings()
     const [form, setForm] = useState<InstitutionSettingsValue | null>(null)
+    const [isEditing, setIsEditing] = useState(false)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
     const [uploadingLogo, setUploadingLogo] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    const fieldsDisabled = !isEditing || updateSettings.isPending || uploadingLogo
+
     useEffect(() => {
-        if (data) setForm(data)
+        if (data) {
+            setForm({
+                ...data,
+                cnpj: data.cnpj ? formatCnpjBr(data.cnpj) : "",
+                phone: data.phone ? formatPhoneBr(data.phone) : "",
+            })
+        }
     }, [data])
 
     useEffect(() => {
@@ -36,15 +50,39 @@ export function InstitutionSettingsCard() {
         setLogoPreview(getInstitutionBrandingPublicUrl(form.logoPath))
     }, [form?.logoPath])
 
+    const handleStartEdit = () => {
+        if (data) {
+            setForm({
+                ...data,
+                cnpj: data.cnpj ? formatCnpjBr(data.cnpj) : "",
+                phone: data.phone ? formatPhoneBr(data.phone) : "",
+            })
+        }
+        setIsEditing(true)
+    }
+
+    const handleCancelEdit = () => {
+        if (data) {
+            setForm({
+                ...data,
+                cnpj: data.cnpj ? formatCnpjBr(data.cnpj) : "",
+                phone: data.phone ? formatPhoneBr(data.phone) : "",
+            })
+        }
+        setIsEditing(false)
+    }
+
     const handleSave = async () => {
         if (!form) return
-        if (!form.name.trim()) {
-            toast.error("Informe o nome da instituição.")
+        const parsed = institutionSettingsSchema.safeParse(form)
+        if (!parsed.success) {
+            toast.error(parsed.error.errors[0]?.message ?? "Revise os campos da instituição.")
             return
         }
         try {
-            await updateSettings.mutateAsync(form)
+            await updateSettings.mutateAsync(toInstitutionSettingsValue(parsed.data))
             toast.success("Dados da instituição salvos.")
+            setIsEditing(false)
         } catch (err) {
             console.error(err)
             toast.error("Não foi possível salvar os dados da instituição.")
@@ -52,7 +90,7 @@ export function InstitutionSettingsCard() {
     }
 
     const handleLogoChange = async (file: File | undefined) => {
-        if (!file || !form) return
+        if (!file || !form || !isEditing) return
         setUploadingLogo(true)
         try {
             const path = await uploadInstitutionBrandingLogo(file)
@@ -92,12 +130,22 @@ export function InstitutionSettingsCard() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Dados da Instituição
-                </CardTitle>
-                <CardDescription>Informações exibidas no Back Office e comunicações institucionais</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div className="flex flex-col gap-2">
+                    <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5" />
+                        Dados da Instituição
+                    </CardTitle>
+                    <CardDescription>
+                        Informações exibidas no Back Office e comunicações institucionais
+                    </CardDescription>
+                </div>
+                {canEdit && !isEditing && (
+                    <Button variant="outline" size="sm" onClick={handleStartEdit}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                    </Button>
+                )}
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -107,6 +155,8 @@ export function InstitutionSettingsCard() {
                             id="institution-name"
                             value={form.name}
                             placeholder={INSTITUTION_FIELD_PLACEHOLDERS.name}
+                            disabled={fieldsDisabled}
+                            readOnly={!isEditing}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
                         />
                     </div>
@@ -116,7 +166,9 @@ export function InstitutionSettingsCard() {
                             id="institution-cnpj"
                             value={form.cnpj ?? ""}
                             placeholder={INSTITUTION_FIELD_PLACEHOLDERS.cnpj}
-                            onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                            disabled={fieldsDisabled}
+                            readOnly={!isEditing}
+                            onChange={(e) => setForm({ ...form, cnpj: formatCnpjBr(e.target.value) })}
                         />
                     </div>
                 </div>
@@ -128,6 +180,8 @@ export function InstitutionSettingsCard() {
                             type="email"
                             value={form.contactEmail ?? ""}
                             placeholder={INSTITUTION_FIELD_PLACEHOLDERS.contactEmail}
+                            disabled={fieldsDisabled}
+                            readOnly={!isEditing}
                             onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
                         />
                     </div>
@@ -137,7 +191,9 @@ export function InstitutionSettingsCard() {
                             id="institution-phone"
                             value={form.phone ?? ""}
                             placeholder={INSTITUTION_FIELD_PLACEHOLDERS.phone}
-                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                            disabled={fieldsDisabled}
+                            readOnly={!isEditing}
+                            onChange={(e) => setForm({ ...form, phone: formatPhoneBr(e.target.value) })}
                         />
                     </div>
                 </div>
@@ -147,6 +203,8 @@ export function InstitutionSettingsCard() {
                         id="institution-address"
                         value={form.address ?? ""}
                         placeholder={INSTITUTION_FIELD_PLACEHOLDERS.address}
+                        disabled={fieldsDisabled}
+                        readOnly={!isEditing}
                         onChange={(e) => setForm({ ...form, address: e.target.value })}
                         rows={2}
                     />
@@ -168,12 +226,13 @@ export function InstitutionSettingsCard() {
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp"
                                 className="hidden"
+                                disabled={fieldsDisabled}
                                 onChange={(e) => void handleLogoChange(e.target.files?.[0])}
                             />
                             <Button
                                 variant="outline"
                                 type="button"
-                                disabled={uploadingLogo || updateSettings.isPending}
+                                disabled={fieldsDisabled}
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 {uploadingLogo ? (
@@ -185,18 +244,33 @@ export function InstitutionSettingsCard() {
                                     "Alterar Logo"
                                 )}
                             </Button>
-                            <p className="text-xs text-muted-foreground mt-2">PNG, JPG ou WebP. Máximo 2MB.</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                PNG, JPG ou WebP. Máximo 2MB.
+                                {!isEditing && canEdit ? " Clique em Editar para alterar." : null}
+                            </p>
                         </div>
                     </div>
                 </div>
-                <Button onClick={() => void handleSave()} disabled={updateSettings.isPending || uploadingLogo}>
-                    {updateSettings.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Salvar Alterações
-                </Button>
+                {isEditing && canEdit && (
+                    <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => void handleSave()} disabled={updateSettings.isPending || uploadingLogo}>
+                            {updateSettings.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Salvar
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                            disabled={updateSettings.isPending || uploadingLogo}
+                        >
+                            <X className="mr-2 h-4 w-4" />
+                            Cancelar
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     )

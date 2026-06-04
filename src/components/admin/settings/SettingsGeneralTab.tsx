@@ -56,8 +56,8 @@ export function SettingsGeneralTab() {
         subscription.status === "active"
             ? "Ativo"
             : subscription.status === "trial"
-              ? "Trial"
-              : subscription.status
+                ? "Trial"
+                : subscription.status
 
     return (
         <>
@@ -111,7 +111,7 @@ export function SettingsGeneralTab() {
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                     <Button variant="outline" size="sm" asChild>
-                                        <Link to="/admin/equipe">Editar perfil na equipe</Link>
+                                        <Link to="/admin/equipe">Editar perfil em Equipe</Link>
                                     </Button>
                                 </div>
                             </>
@@ -159,22 +159,21 @@ export function SettingsGeneralTab() {
                         Uso do Plano
                     </CardTitle>
                     <CardDescription>
-                        Consumo atual (alunos = perfis com papel student em{" "}
-                        <code className="text-xs">lxp_profiles</code>)
+                        Consumo atual do plano contratado
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {(planUsage.students.nearLimit ||
                         planUsage.courses.nearLimit ||
                         planUsage.teamMembers.nearLimit) && (
-                        <Alert>
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertDescription>
-                                Um ou mais limites estão acima de 90% do plano. Considere fazer upgrade com o
-                                suporte.
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                            <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                    Um ou mais limites estão acima de 90% do plano. Considere fazer upgrade com o
+                                    suporte.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     <div className="grid gap-6 md:grid-cols-3">
                         <UsageMeter icon={Users} label="Alunos" status={planUsage.students} />
                         <UsageMeter icon={Building2} label="Cursos" status={planUsage.courses} />
