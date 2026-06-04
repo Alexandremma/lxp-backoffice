@@ -1,5 +1,5 @@
-import { Bell, PanelLeftClose, PanelLeftOpen } from "lucide-react"
-import { Link } from "react-router-dom"
+import { useMemo } from "react"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -11,8 +11,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { mockCurrentUser } from "@/lib/mock-data"
+import { TEAM_ROLE_LABELS } from "@/consts/teamRoles"
+import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember"
 import { useLogout } from "@/hooks/use-logout"
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
+
+function initialsFromDisplay(label: string): string {
+  const t = label.trim()
+  if (!t) return "?"
+  const parts = t.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return t.slice(0, 2).toUpperCase()
+}
 
 interface AdminTopBarProps {
   isSidebarOpen: boolean
@@ -21,6 +33,24 @@ interface AdminTopBarProps {
 
 const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
   const { logout } = useLogout()
+  const { data: member } = useBackofficeMember()
+
+  const displayName = useMemo(
+    () => member?.name?.trim() || "Membro",
+    [member?.name],
+  )
+
+  const displayEmail = useMemo(() => member?.email?.trim() || "", [member?.email])
+
+  const roleLabel = useMemo(
+    () => (member ? TEAM_ROLE_LABELS[member.role] : ""),
+    [member],
+  )
+
+  const avatarInitials = useMemo(
+    () => initialsFromDisplay(displayName === "Membro" && displayEmail ? displayEmail : displayName),
+    [displayName, displayEmail],
+  )
 
   return (
     <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between gap-4">
@@ -39,54 +69,15 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
       </Button>
 
       <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge
-                variant="destructive"
-                size="sm"
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-              >
-                5
-              </Badge>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Novo ticket urgente</span>
-              <span className="text-xs text-muted-foreground">
-                Problema com pagamento - Maria Silva
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Matrícula pendente</span>
-              <span className="text-xs text-muted-foreground">
-                15 alunos aguardando aprovação
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Curso atualizado</span>
-              <span className="text-xs text-muted-foreground">
-                Nova trilha adicionada em Administração
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-primary">
-              Ver todas as notificações
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={mockCurrentUser.avatar} alt={mockCurrentUser.name} />
+                <AvatarImage src="/placeholder.svg" alt={displayName} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {mockCurrentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  {avatarInitials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -94,21 +85,17 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{mockCurrentUser.name}</p>
+                <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {mockCurrentUser.email}
+                  {displayEmail || "—"}
                 </p>
-                <Badge variant="secondary" size="sm" className="w-fit mt-1">
-                  {mockCurrentUser.role}
-                </Badge>
+                {roleLabel ? (
+                  <Badge variant="secondary" size="sm" className="w-fit mt-1">
+                    {roleLabel}
+                  </Badge>
+                ) : null}
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/admin/configuracoes" className="cursor-pointer">
-                Configurações
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
