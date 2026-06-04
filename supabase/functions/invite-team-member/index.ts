@@ -166,7 +166,13 @@ Deno.serve(async (req) => {
       })
     }
 
-    const departmentValue = rawDepartment.length > 0 ? rawDepartment : null
+    const defaultDepartmentByRole: Record<string, string> = {
+      admin: "administracao",
+      coordinator: "coordenacao_pedagogica",
+      professor: "ensino_atendimento",
+    }
+    const departmentValue =
+      rawDepartment.length > 0 ? rawDepartment : (defaultDepartmentByRole[rawRole] ?? null)
 
     const inviteUser = async () => {
       const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(rawEmail, {

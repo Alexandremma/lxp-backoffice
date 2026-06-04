@@ -14,7 +14,7 @@ export function AuditLogsTab() {
     return (
         <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
+                <div className="flex flex-col gap-2">
                     <CardTitle className="flex items-center gap-2">
                         <Shield className="h-5 w-5" />
                         Logs de Auditoria
@@ -50,7 +50,7 @@ export function AuditLogsTab() {
                         aparecerão aqui.
                     </p>
                 ) : (
-                    <ScrollArea className="h-[500px]">
+                    <ScrollArea className="h-[min(364px,calc(100dvh-22rem))]">
                         <div className="p-4 pt-0 space-y-2">
                             {logs.map((row) => {
                                 const display = formatAuditLogDisplay(row)

@@ -1,4 +1,5 @@
 import type { TeamRole } from "@/consts/teamRoles"
+import { DEFAULT_DEPARTMENT_BY_ROLE } from "@/consts/teamRoles"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
@@ -117,7 +118,7 @@ export async function createTeamMemberAdmin(params: {
             name: params.name,
             email: params.email,
             role: params.role,
-            department: params.department ?? null,
+            department: params.department ?? DEFAULT_DEPARTMENT_BY_ROLE[params.role] ?? null,
             redirect_to: params.redirectTo,
         },
     })
@@ -160,7 +161,7 @@ export async function updateTeamMemberAdmin(params: {
             name: params.name,
             email: params.email,
             role: params.role,
-            department: params.department ?? null,
+            department: params.department ?? DEFAULT_DEPARTMENT_BY_ROLE[params.role] ?? null,
             updated_at: new Date().toISOString(),
             updated_by: authData.user?.id ?? null,
         })
