@@ -41,7 +41,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Limites de plano (`subscription`) aplicados na equipe e matrículas. **23 tabelas** em `public`. Migrations aplicadas até **Step 30**.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Limites de plano (`subscription`) aplicados na equipe e matrículas. **23 tabelas** em `public`. Migrations aplicadas até **Step 31** (+ seeds homolog instituição/equipe).",
     tables: [
       {
         name: "backoffice_team_members",

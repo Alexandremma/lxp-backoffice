@@ -1,17 +1,14 @@
-import { Bell, Search, Menu, Moon, Sun } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Search, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
 
 interface TopBarProps {
   onMenuClick?: () => void
@@ -37,42 +34,7 @@ const TopBar = ({ onMenuClick, showMenuButton = false }: TopBarProps) => {
           <Search className="h-5 w-5" />
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge
-                variant="destructive"
-                size="sm"
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-              >
-                3
-              </Badge>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Novo conteúdo disponível</span>
-              <span className="text-xs text-muted-foreground">
-                Aula 6 de Metodologia Científica liberada
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Prazo se aproximando</span>
-              <span className="text-xs text-muted-foreground">
-                Entrega do projeto em 3 dias
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Certificado disponível</span>
-              <span className="text-xs text-muted-foreground">
-                Você completou o curso de Comunicação
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -94,16 +56,6 @@ const TopBar = ({ onMenuClick, showMenuButton = false }: TopBarProps) => {
                 </p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/admin/configuracoes" className="cursor-pointer">
-                Configurações
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
-              Sair
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
