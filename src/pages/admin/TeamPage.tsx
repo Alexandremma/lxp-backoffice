@@ -108,7 +108,7 @@ const TeamPage = () => {
     const [deletingMember, setDeletingMember] = useState<TeamMemberAdminRow | null>(null)
     const [deleteOpen, setDeleteOpen] = useState(false)
 
-    const members = data ?? []
+    const members = useMemo(() => data ?? [], [data])
 
     const filteredMembers = useMemo(() => {
         const q = search.toLowerCase()

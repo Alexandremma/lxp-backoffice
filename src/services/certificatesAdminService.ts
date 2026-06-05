@@ -1,4 +1,5 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
+import type { CertificatePrintPayload } from "@/lib/certificatePrint"
 import { supabase } from "@/lib/supabaseClient"
 
 const SIGNATURES_BUCKET = "certificate-signatures"
@@ -71,6 +72,47 @@ function signatureStoragePublicUrl(imagePath: string | null | undefined): string
 
 export function getSignatureImagePublicUrl(imagePath: string | null | undefined): string | null {
   return signatureStoragePublicUrl(imagePath)
+}
+
+const CERTIFICATE_PREVIEW_SAMPLE = {
+  studentName: "Nome do Aluno",
+  disciplineName: "Disciplina de Exemplo",
+  workloadHours: 60,
+  validationCode: "B42-PREVIEW00000001",
+} as const
+
+/** Payload de exemplo para preview/PDF de template (iframe e impressão). */
+export function buildCertificateTemplatePreviewPayload(input: {
+  template: Pick<CertificateTemplateRow, "institution_name" | "institution_logo_path">
+  slots: TemplateSignatureSlot[]
+  institutionNameOverride?: string
+  institutionLogoUrlOverride?: string | null
+}): CertificatePrintPayload {
+  const signatures = [...input.slots]
+    .sort((a, b) => a.slot - b.slot)
+    .map((s) => ({
+      signerName: s.signer_name,
+      signerTitle: s.signer_title,
+      imageUrl: getSignatureImagePublicUrl(s.image_path),
+    }))
+
+  return {
+    studentName: CERTIFICATE_PREVIEW_SAMPLE.studentName,
+    disciplineName: CERTIFICATE_PREVIEW_SAMPLE.disciplineName,
+    issuedAt: new Date().toISOString(),
+    validationCode: CERTIFICATE_PREVIEW_SAMPLE.validationCode,
+    workloadHours: CERTIFICATE_PREVIEW_SAMPLE.workloadHours,
+    institutionName:
+      input.institutionNameOverride?.trim() ||
+      input.template.institution_name?.trim() ||
+      "B42 Edtech",
+    institutionLogoUrl:
+      input.institutionLogoUrlOverride ??
+      getSignatureImagePublicUrl(input.template.institution_logo_path),
+    signatures,
+    validateBaseUrl: typeof window !== "undefined" ? window.location.origin : "",
+    autoPrint: false,
+  }
 }
 
 /** Preenche logo/instituição no snapshot de emissão quando ausentes (emissões anteriores ao upload do logo). */
