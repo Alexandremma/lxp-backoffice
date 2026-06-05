@@ -140,7 +140,6 @@ export default function AdminEnrollmentsV1() {
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredEnrollments = useMemo(() => {

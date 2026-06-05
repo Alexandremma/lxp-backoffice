@@ -83,12 +83,14 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       }
 
       setLoading(true);
-      supabase
-        .from("lxp_profiles")
-        .select("*")
-        .eq("user_id", nextSession.user.id)
-        .maybeSingle()
-        .then(({ data, error }) => {
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("lxp_profiles")
+            .select("*")
+            .eq("user_id", nextSession.user.id)
+            .maybeSingle();
+
           if (error) {
             console.warn(
               "[use-auth] Erro ao buscar lxp_profiles (onAuthStateChange):",
@@ -96,8 +98,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             );
           }
           setProfile((data as LxpProfile) ?? null);
-        })
-        .finally(() => setLoading(false));
+        } finally {
+          setLoading(false);
+        }
+      })();
     });
 
     return () => {

@@ -140,6 +140,52 @@ window.onload = function() {
 </html>`
 }
 
+/** Converte snapshot gravado na emissão para o payload de impressão/PDF. */
+export function snapshotRecordToPrintPayload(
+  snapshot: Record<string, unknown>,
+  fallback: {
+    studentName: string
+    disciplineName: string
+    issuedAt: string
+    validationCode: string
+  },
+): CertificatePrintPayload {
+  const signaturesFromSnap = Array.isArray(snapshot.signatures)
+    ? [...(snapshot.signatures as Array<Record<string, unknown>>)]
+        .sort((a, b) => {
+          const slotA = typeof a.slot === "number" ? a.slot : Number(a.slot) || 0
+          const slotB = typeof b.slot === "number" ? b.slot : Number(b.slot) || 0
+          return slotA - slotB
+        })
+        .map((entry) => ({
+          signerName: String(entry.signer_name ?? entry.signerName ?? ""),
+          signerTitle: String(entry.signer_title ?? entry.signerTitle ?? ""),
+          imageUrl:
+            (entry.image_url as string | null | undefined) ??
+            (entry.imageUrl as string | null | undefined) ??
+            null,
+        }))
+    : []
+
+  const instructorRaw = snapshot.instructor_name ?? snapshot.instructorName
+
+  return {
+    studentName: String(snapshot.student_name ?? fallback.studentName),
+    disciplineName: String(snapshot.discipline_name ?? fallback.disciplineName),
+    issuedAt: String(snapshot.issued_at ?? fallback.issuedAt),
+    validationCode: String(snapshot.validation_code ?? fallback.validationCode),
+    workloadHours:
+      snapshot.workload_hours != null && Number.isFinite(Number(snapshot.workload_hours))
+        ? Number(snapshot.workload_hours)
+        : null,
+    instructorName:
+      typeof instructorRaw === "string" && instructorRaw.trim() ? instructorRaw.trim() : null,
+    institutionName: (snapshot.institution_name as string | undefined) ?? "B42 Edtech",
+    institutionLogoUrl: (snapshot.institution_logo_url as string | null | undefined) ?? null,
+    signatures: signaturesFromSnap,
+  }
+}
+
 export async function openCertificatePrintWindow(payload: CertificatePrintPayload): Promise<void> {
   const embedded = await embedCertificatePrintImages(payload)
   const html = buildCertificatePrintHtml({

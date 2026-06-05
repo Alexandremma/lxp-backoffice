@@ -27,13 +27,14 @@ import {
   useUpdateCertificateTemplateAdmin,
 } from "@/hooks/mutations/useCertificateTemplateMutationsAdmin"
 import {
+  buildCertificateTemplatePreviewPayload,
   enrichSnapshotRecord,
-  getSignatureImagePublicUrl,
   type CertificateIssueAdminRow,
   type CertificateSignatureRow,
   type CertificateTemplateRow,
 } from "@/services/certificatesAdminService"
-import { openCertificatePrintWindow } from "@/lib/certificatePrint"
+import { openCertificatePrintWindow, snapshotRecordToPrintPayload } from "@/lib/certificatePrint"
+import { useTemplateSignatureSlots } from "@/hooks/mutations/useTemplateSignatureMutationsAdmin"
 
 import { RequirePermission } from "@/components/auth/RequirePermission"
 import { usePermission } from "@/hooks/usePermission"
@@ -73,13 +74,14 @@ const CertificatesPage = () => {
   const templatesQ = useCertificateTemplatesAdmin()
   const signaturesQ = useCertificateSignaturesAdmin()
   const issuesQ = useCertificateIssuesAdmin()
+  const previewSlotsQ = useTemplateSignatureSlots(previewTemplate?.id)
   const createTemplate = useCreateCertificateTemplateAdmin()
   const updateTemplate = useUpdateCertificateTemplateAdmin()
   const setDefaultTemplate = useSetDefaultCertificateTemplateAdmin()
 
   const templates = templatesQ.data ?? []
   const signatures = signaturesQ.data ?? []
-  const issues = issuesQ.data ?? []
+  const issues = useMemo(() => issuesQ.data ?? [], [issuesQ.data])
 
   const emissionRows: EmissionTableRow[] = useMemo(
     () =>
@@ -102,39 +104,28 @@ const CertificatesPage = () => {
       e.validationCode.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const snapshotToPrintPayload = (s: Record<string, unknown>, row: EmissionTableRow) => {
-    const signaturesFromSnap = Array.isArray(s.signatures)
-      ? (s.signatures as Array<Record<string, unknown>>).map((entry) => ({
-          signerName: String(entry.signer_name ?? entry.signerName ?? ""),
-          signerTitle: String(entry.signer_title ?? entry.signerTitle ?? ""),
-          imageUrl:
-            (entry.image_url as string | null | undefined) ??
-            (entry.imageUrl as string | null | undefined) ??
-            null,
-        }))
-      : []
-    return {
-      studentName: String(s.student_name ?? row.studentName),
-      disciplineName: String(s.discipline_name ?? row.courseName),
-      issuedAt: String(s.issued_at ?? row.issuedAt),
-      validationCode: String(s.validation_code ?? row.validationCode),
-      workloadHours:
-        s.workload_hours != null && Number.isFinite(Number(s.workload_hours))
-          ? Number(s.workload_hours)
-          : null,
-      institutionName: (s.institution_name as string | undefined) ?? "B42 Edtech",
-      institutionLogoUrl: (s.institution_logo_url as string | null | undefined) ?? null,
-      signatures: signaturesFromSnap,
-      validateBaseUrl: window.location.origin,
-    }
-  }
+  const previewPayload = useMemo(() => {
+    if (!previewTemplate) return null
+    return buildCertificateTemplatePreviewPayload({
+      template: previewTemplate,
+      slots: previewSlotsQ.data ?? [],
+    })
+  }, [previewTemplate, previewSlotsQ.data])
 
   const handleDownloadIssue = async (row: EmissionTableRow) => {
     try {
       const snap = row.raw.snapshot
       if (snap && typeof snap === "object") {
         const enriched = await enrichSnapshotRecord(snap, row.raw.template_id)
-        await openCertificatePrintWindow(snapshotToPrintPayload(enriched, row))
+        await openCertificatePrintWindow({
+          ...snapshotRecordToPrintPayload(enriched, {
+            studentName: row.studentName,
+            disciplineName: row.courseName,
+            issuedAt: row.issuedAt,
+            validationCode: row.validationCode,
+          }),
+          validateBaseUrl: window.location.origin,
+        })
         return
       }
       toast.warning(
@@ -245,29 +236,6 @@ const CertificatesPage = () => {
     } catch (e) {
       toast.error("Não foi possível definir o template padrão.")
       console.error(e)
-    }
-  }
-
-  const previewPayloadFor = (t: CertificateTemplateRow) => {
-    const slotSigs = (signaturesQ.data ?? [])
-      .filter((s) => s.template_id === t.id) // legacy fallback
-      .slice(0, 2)
-      .map((s) => ({
-        signerName: s.signer_name,
-        signerTitle: s.signer_title,
-        imageUrl: getSignatureImagePublicUrl(s.image_path),
-      }))
-    return {
-      studentName: "Nome do Aluno",
-      disciplineName: "Disciplina de Exemplo",
-      issuedAt: new Date().toISOString(),
-      validationCode: "B42-PREVIEW00000001",
-      workloadHours: 60,
-      institutionName: t.institution_name || "B42 Edtech",
-      institutionLogoUrl: getSignatureImagePublicUrl(t.institution_logo_path),
-      signatures: slotSigs,
-      validateBaseUrl: window.location.origin,
-      autoPrint: false,
     }
   }
 
@@ -490,28 +458,30 @@ const CertificatesPage = () => {
 
           {/* Preview rápido (somente leitura) */}
           <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
+            <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-4 overflow-hidden">
+              <DialogHeader className="shrink-0">
                 <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
                 <DialogDescription>
                   Dados de exemplo. O certificado real é montado com o snapshot da emissão.
                 </DialogDescription>
               </DialogHeader>
-              {previewTemplate && (
-                <CertificatePreviewFrame
-                  payload={previewPayloadFor(previewTemplate)}
-                  className="w-full h-[640px] border rounded-lg bg-white"
-                />
+              {previewTemplate && previewPayload && (
+                <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-white">
+                  <CertificatePreviewFrame
+                    payload={previewPayload}
+                    className="h-full min-h-[480px] w-full rounded-lg border-0 bg-white"
+                  />
+                </div>
               )}
-              <DialogFooter>
+              <DialogFooter className="shrink-0">
                 <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
                   Fechar
                 </Button>
-                {previewTemplate && (
+                {previewTemplate && previewPayload && (
                   <Button
                     onClick={() => {
                       void openCertificatePrintWindow({
-                        ...previewPayloadFor(previewTemplate),
+                        ...previewPayload,
                         autoPrint: true,
                       }).catch((e) => {
                         toast.error("Não foi possível abrir a impressão.")

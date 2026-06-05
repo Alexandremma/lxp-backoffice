@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 
 import {
+  buildCertificateTemplatePreviewPayload,
   type CertificateSignatureRow,
   type CertificateTemplateRow,
   type TemplateSignatureSlot,
@@ -105,27 +106,24 @@ export function TemplateEditorDialog({
   }, [slotsQ.data])
 
   const previewPayload: CertificatePrintPayload = useMemo(() => {
-    const sigs = SLOTS.map((slot) => signaturesBySlot.get(slot))
-      .filter((s): s is NonNullable<typeof s> => Boolean(s))
-      .map((s) => ({
-        signerName: s.signer_name,
-        signerTitle: s.signer_title,
-        imageUrl: getSignatureImagePublicUrl(s.image_path),
-      }))
-
-    return {
-      studentName: "Nome do Aluno",
-      disciplineName: "Disciplina de Exemplo",
-      issuedAt: new Date().toISOString(),
-      validationCode: "B42-PREVIEW00000001",
-      workloadHours: 60,
-      institutionName: institutionName.trim() || "B42 Edtech",
-      institutionLogoUrl: localLogoUrl ?? persistedLogoUrl,
-      signatures: sigs,
-      validateBaseUrl: window.location.origin,
-      autoPrint: false,
+    if (!template) {
+      return buildCertificateTemplatePreviewPayload({
+        template: { institution_name: "B42 Edtech", institution_logo_path: null },
+        slots: [],
+      })
     }
-  }, [institutionName, localLogoUrl, persistedLogoUrl, signaturesBySlot])
+
+    const slots = SLOTS.map((slot) => signaturesBySlot.get(slot)).filter(
+      (s): s is NonNullable<typeof s> => Boolean(s),
+    )
+
+    return buildCertificateTemplatePreviewPayload({
+      template,
+      slots,
+      institutionNameOverride: institutionName,
+      institutionLogoUrlOverride: localLogoUrl ?? persistedLogoUrl,
+    })
+  }, [template, institutionName, localLogoUrl, persistedLogoUrl, signaturesBySlot])
 
   if (!template) return null
 
