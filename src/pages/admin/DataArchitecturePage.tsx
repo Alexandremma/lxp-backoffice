@@ -96,7 +96,7 @@ const DataArchitecturePage = () => {
                   variant="outline"
                   className="border-emerald-500/40 bg-emerald-500/5 font-mono text-[11px] text-emerald-500"
                 >
-                  Atualizado · jun/2026
+                  Step 31 · jun/2026
                 </Badge>
               </div>
             }

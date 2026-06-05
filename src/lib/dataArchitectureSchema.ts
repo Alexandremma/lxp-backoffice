@@ -1,7 +1,8 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–30 (certificados com biblioteca de assinaturas N:M
- * e snapshot imutável de emissão, gamificação, configurações institucionais/auditoria, acesso diário, comentários, anotações).
+ * Atualizado com migrations Steps 14–31 (certificados N:M + snapshot, gamificação,
+ * configurações/auditoria, RBAC equipe). App jun/2026: auth modular, preview/PDF por slots,
+ * `actorProfileService` para `updated_by` e fallback de ator na auditoria.
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -41,7 +42,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members`), certificados (templates com identidade institucional, biblioteca N:M de assinaturas e emissões com snapshot imutável), catálogo de **ações de XP**, badges com `rule_config`, níveis, estrutura de cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). Admin edita via UI em `/admin/gamificacao`, `/admin/certificados` e `/admin/configuracoes`; RPCs `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. Limites de plano (`subscription`) aplicados na equipe e matrículas. **23 tabelas** em `public`. Migrations aplicadas até **Step 31** (+ seeds homolog instituição/equipe).",
+      "Cadastro acadêmico, equipe (`backoffice_team_members` — papéis **admin / coordenador / professor**; legados normalizados no app), certificados (templates + biblioteca N:M + snapshot imutável), gamificação, cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). UI: `/admin/gamificacao`, `/admin/certificados`, `/admin/configuracoes`. RPCs: `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. **App (jun/2026):** auth em `AuthProvider` + `use-auth` + `auth-events`; preview/PDF de template via slots N:M (`buildCertificateTemplatePreviewPayload`); `updated_by` resolvido por `auth.uid()` → `lxp_profiles` (`actorProfileService`). **23 tabelas** · migrations até **Step 31** + seeds homolog.",
     tables: [
       {
         name: "backoffice_team_members",
@@ -76,7 +77,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             name: "role",
             kind: "column",
             sqlType: "text",
-            description: "Papel operacional (admin, coordenador, professor, etc.).",
+            description: "Papel RBAC: admin, coordinator ou professor (legados mapeados no app via `normalizeTeamRole`).",
           },
           {
             name: "department",
@@ -268,7 +269,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             kind: "fk",
             sqlType: "uuid",
             fkRef: "public.lxp_profiles",
-            description: "Admin que salvou (opcional).",
+            description:
+              "Perfil do admin (`lxp_profiles.id`), resolvido no save via `auth.uid()` (`actorProfileService`); não usa cache do AuthProvider.",
           },
         ],
       },
@@ -288,7 +290,13 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "action", kind: "column", sqlType: "text", description: "Ex.: student.profile_update, institution.update." },
           { name: "entity_type", kind: "column", sqlType: "text", description: "Tipo da entidade afetada." },
           { name: "entity_id", kind: "column", sqlType: "text", description: "Id da entidade (texto)." },
-          { name: "metadata", kind: "column", sqlType: "jsonb", description: "Detalhes adicionais da ação." },
+          {
+            name: "metadata",
+            kind: "column",
+            sqlType: "jsonb",
+            description:
+              "Detalhes da ação; pode incluir `actor_member_id` / `actor_member_name` (equipe) para exibição quando o perfil não tem nome.",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Quando ocorreu." },
         ],
       },
@@ -408,7 +416,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Alunos",
     schemaHighlight: "student.*",
     intro:
-      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (com download via snapshot imutável). Conteúdo da aula via **Alice** (`GET /api/rents` + POST launch). Validação pública via `lxp_validate_certificate_public(code)` (RPC `anon`-acessível, prioriza `snapshot`). Homolog: `HOMOLOGACAO_GAMIFICACAO_E_ENGAJAMENTO_CLIENTE.md`.",
+      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (download via snapshot imutável). Conteúdo via **Alice**; validação pública `lxp_validate_certificate_public(code)`. **App (jun/2026):** auth modular (`AuthProvider` + `use-auth` + `auth-events`); `ProtectedRoute` com papel e perfil ausente; gate de matrícula bloqueada 1×/sessão; PDF tolera chaves mistas no snapshot; logout limpa cache React Query.",
     tables: [
       {
         name: "lxp_profiles",
