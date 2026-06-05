@@ -59,7 +59,6 @@ type EmissionTableRow = {
 const CertificatesPage = () => {
   const { can } = usePermission()
   const canEditTemplates = can("certificados.template_editar")
-  const canCreateTemplates = can("certificados.template_criar")
   const canEmit = can("certificados.emitir")
 
   const [searchQuery, setSearchQuery] = useState("")

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { useAuth } from "@/hooks/use-auth"
+import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import { getInstitutionSetting, upsertInstitutionSetting } from "@/services/institutionSettingsService"
@@ -8,9 +9,19 @@ import type { SmtpSettingsValue } from "@/types/settings"
 
 export type UpdateSmtpSettingsInput = SmtpSettingsValue & { password?: string }
 
+function auditActorMetadata(member: ReturnType<typeof useBackofficeMember>["data"]) {
+    if (!member) return {}
+    return {
+        actor_member_id: member.id,
+        actor_member_name: member.name,
+        actor_member_email: member.email,
+    }
+}
+
 export function useUpdateSmtpSettings() {
     const queryClient = useQueryClient()
-    const { profile } = useAuth()
+    const { user } = useAuth()
+    const { data: member } = useBackofficeMember()
 
     return useMutation({
         mutationFn: async (values: UpdateSmtpSettingsInput) => {
@@ -31,12 +42,12 @@ export function useUpdateSmtpSettings() {
                 payload.password = existing.password
             }
 
-            await upsertInstitutionSetting("smtp", payload, profile?.id ?? null)
+            await upsertInstitutionSetting("smtp", payload, user?.id ?? null)
             fireAuditLog({
                 action: "smtp.update",
                 entityType: "institution_settings",
                 entityId: "smtp",
-                metadata: { host: payload.host, port: payload.port },
+                metadata: { host: payload.host, port: payload.port, ...auditActorMetadata(member) },
             })
             return payload as SmtpSettingsValue
         },

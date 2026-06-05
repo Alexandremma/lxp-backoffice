@@ -1,5 +1,5 @@
 import type { TeamRole } from "@/consts/teamRoles"
-import { DEFAULT_DEPARTMENT_BY_ROLE } from "@/consts/teamRoles"
+import { DEFAULT_DEPARTMENT_BY_ROLE, normalizeTeamRole } from "@/consts/teamRoles"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
@@ -96,7 +96,7 @@ export async function getTeamMembersAdmin(): Promise<TeamMemberAdminRow[]> {
         userId: row.user_id as string,
         name: (row.name as string | null) ?? "Sem nome",
         email: (row.email as string | null) ?? "",
-        role: ((row.role as string | null) ?? "admin") as TeamMemberAdminRow["role"],
+        role: normalizeTeamRole(row.role as string | null),
         department: (row.department as string | null) ?? null,
         createdAt: row.created_at as string,
         updatedAt: row.updated_at as string,

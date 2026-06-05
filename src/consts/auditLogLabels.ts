@@ -88,8 +88,13 @@ export function formatAuditLogDisplay(row: AuditLogRow): AuditLogDisplay {
     const entityBit = row.entity_id ? ` (${row.entity_id.slice(0, 8)}…)` : ""
     const detail = metaDetail || entityBit.trim() || "—"
 
+    const metadataActorName =
+        typeof row.metadata?.actor_member_name === "string"
+            ? row.metadata.actor_member_name.trim()
+            : ""
+
     return {
-        actorName: row.actor_name?.trim() || "Administrador",
+        actorName: row.actor_name?.trim() || metadataActorName || "Administrador",
         verb,
         resourceLabel,
         detail,
