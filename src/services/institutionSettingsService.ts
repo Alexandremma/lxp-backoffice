@@ -1,3 +1,4 @@
+import { resolveActorProfileId } from "@/services/actorProfileService"
 import { supabase } from "@/lib/supabaseClient"
 import type { InstitutionSettingKey } from "@/types/settings"
 
@@ -20,14 +21,15 @@ export async function getInstitutionSetting<T extends Record<string, unknown>>(
 export async function upsertInstitutionSetting(
     key: InstitutionSettingKey,
     value: Record<string, unknown>,
-    updatedByProfileId?: string | null,
+    updatedByUserId?: string | null,
 ): Promise<void> {
+    const updatedBy = await resolveActorProfileId(updatedByUserId)
     const { error } = await supabase.from("lxp_institution_settings").upsert(
         {
             key,
             value,
             updated_at: new Date().toISOString(),
-            updated_by: updatedByProfileId ?? null,
+            updated_by: updatedBy,
         },
         { onConflict: "key" },
     )

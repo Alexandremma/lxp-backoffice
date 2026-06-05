@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ElementType } from "react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { AdminLayout } from "@/components/layout/AdminLayout"
@@ -50,7 +50,6 @@ import {
 } from "lucide-react"
 import { RequirePermission } from "@/components/auth/RequirePermission"
 import { TEAM_ROLE_LABELS, formatTeamDepartmentLabel, resolveTeamDepartment, type TeamRole } from "@/consts/teamRoles"
-import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
 import type { TeamMemberAdminRow } from "@/services/teamService"
@@ -73,7 +72,7 @@ const roleConfig: Record<
     TeamRole,
     {
         label: string
-        icon: React.ElementType
+        icon: ElementType
         badgeVariant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
     }
 > = {

@@ -49,13 +49,48 @@ export async function listAuditLogs(params?: {
     if (actorIds.length > 0) {
         const { data: profiles, error: profilesError } = await supabase
             .from("lxp_profiles")
-            .select("id, name, email")
+            .select("id, name, email, user_id")
             .in("id", actorIds)
         if (profilesError) throw profilesError
+
+        const userIdsForTeamLookup = new Set<string>()
         for (const p of profiles ?? []) {
             const id = p.id as string
-            const label = (p.name as string | null)?.trim() || (p.email as string | null)?.trim() || id
-            nameByProfileId.set(id, label)
+            const name = (p.name as string | null)?.trim()
+            const email = (p.email as string | null)?.trim()
+            if (name || email) {
+                nameByProfileId.set(id, name || email || id)
+            } else if (p.user_id) {
+                userIdsForTeamLookup.add(p.user_id as string)
+            }
+        }
+
+        if (userIdsForTeamLookup.size > 0) {
+            const { data: members, error: membersError } = await supabase
+                .from("backoffice_team_members")
+                .select("user_id, name, email")
+                .in("user_id", [...userIdsForTeamLookup])
+            if (membersError) throw membersError
+
+            const nameByUserId = new Map<string, string>()
+            for (const m of members ?? []) {
+                const label =
+                    (m.name as string | null)?.trim() ||
+                    (m.email as string | null)?.trim() ||
+                    (m.user_id as string)
+                nameByUserId.set(m.user_id as string, label)
+            }
+
+            for (const p of profiles ?? []) {
+                const id = p.id as string
+                if (nameByProfileId.has(id)) continue
+                const userId = p.user_id as string | undefined
+                if (userId && nameByUserId.has(userId)) {
+                    nameByProfileId.set(id, nameByUserId.get(userId)!)
+                } else {
+                    nameByProfileId.set(id, id)
+                }
+            }
         }
     }
 
