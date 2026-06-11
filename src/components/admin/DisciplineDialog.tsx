@@ -14,7 +14,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { getDisciplineCoverPublicUrl } from "@/services/coursesService"
+import {
+  disciplineHasStudentLessonProgress,
+  getDisciplineCoverPublicUrl,
+  type LessonAccessMode,
+} from "@/services/coursesService"
 import { toast } from "sonner"
 
 const disciplineSchema = z.object({
@@ -25,6 +29,7 @@ const disciplineSchema = z.object({
   professor: z.string().max(100).optional(),
   description: z.string().max(2000).optional(),
   isActive: z.boolean(),
+  isSequential: z.boolean(),
 })
 
 type DisciplineFormData = z.infer<typeof disciplineSchema>
@@ -37,14 +42,17 @@ export type DisciplineDialogSavePayload = {
   professor?: string
   description?: string
   status: "active" | "inactive"
+  lessonAccessMode: LessonAccessMode
   coverFile?: File | null
   removeCover?: boolean
+  lessonAccessModeLocked?: boolean
 }
 
 interface DisciplineDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   discipline?: {
+    id?: string
     name: string
     code: string
     workload: number
@@ -53,6 +61,7 @@ interface DisciplineDialogProps {
     description?: string
     coverImagePath?: string
     status?: "active" | "inactive"
+    lessonAccessMode?: LessonAccessMode
   } | null
   onSave: (data: DisciplineDialogSavePayload) => void | Promise<void>
   /** Disciplina possui vínculo em lxp_course_library_links — obrigatório para ativar no app do aluno. */
@@ -70,6 +79,7 @@ export function DisciplineDialog({
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
+  const [lessonAccessModeLocked, setLessonAccessModeLocked] = useState(false)
 
   const {
     register,
@@ -87,6 +97,7 @@ export function DisciplineDialog({
       professor: "",
       description: "",
       isActive: false,
+      isSequential: false,
     },
   })
 
@@ -100,6 +111,7 @@ export function DisciplineDialog({
     setCoverFile(null)
     setLocalPreviewUrl(null)
     setRemoveCover(false)
+    setLessonAccessModeLocked(false)
     if (discipline) {
       reset({
         name: discipline.name,
@@ -109,7 +121,13 @@ export function DisciplineDialog({
         professor: discipline.professor || "",
         description: discipline.description || "",
         isActive: (discipline.status ?? "active") === "active",
+        isSequential: (discipline.lessonAccessMode ?? "free") === "sequential",
       })
+      if (discipline.id) {
+        void disciplineHasStudentLessonProgress(discipline.id)
+          .then(setLessonAccessModeLocked)
+          .catch(() => setLessonAccessModeLocked(false))
+      }
     } else {
       reset({
         name: "",
@@ -119,6 +137,7 @@ export function DisciplineDialog({
         professor: "",
         description: "",
         isActive: false,
+        isSequential: false,
       })
     }
   }, [open, discipline, reset])
@@ -269,6 +288,29 @@ export function DisciplineDialog({
             <p className="text-xs text-muted-foreground">
               Usada como fundo no topo da página da disciplina (PNG, JPEG ou WebP, até 5 MB).
             </p>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="isSequential">Aulas sequenciais</Label>
+              <p className="text-xs text-muted-foreground">
+                {lessonAccessModeLocked
+                  ? "Não é possível alterar: alunos já iniciaram esta disciplina."
+                  : "Quando ativo, o aluno só avança após concluir a aula anterior."}
+              </p>
+            </div>
+            <Controller
+              name="isSequential"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="isSequential"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={lessonAccessModeLocked}
+                />
+              )}
+            />
           </div>
 
           <div className="flex items-center justify-between rounded-lg border p-3">

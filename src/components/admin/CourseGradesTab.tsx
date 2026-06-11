@@ -160,6 +160,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         professor: data.professor,
         description: data.description,
         status: data.status,
+        lessonAccessMode: data.lessonAccessMode,
       }
 
       if (selectedDiscipline) {
@@ -168,6 +169,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
           data: core,
           coverFile: data.coverFile,
           removeCover: data.removeCover,
+          skipLessonAccessMode: data.lessonAccessModeLocked,
         })
         toast.success("Disciplina atualizada com sucesso!")
         return
