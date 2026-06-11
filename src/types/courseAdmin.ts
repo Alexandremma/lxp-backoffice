@@ -1,4 +1,4 @@
-export type CourseCategory = "graduation" | "postgraduate" | "extension"
+export type CourseCategory = "graduation" | "postgraduate" | "extension" | "free_course"
 
 export type CourseStatus = "draft" | "active" | "archived"
 

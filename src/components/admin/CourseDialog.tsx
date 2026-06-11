@@ -31,6 +31,7 @@ const categoryOptions = [
   { value: "graduation", label: "Graduação" },
   { value: "postgraduate", label: "Pós-Graduação" },
   { value: "extension", label: "Extensão" },
+  { value: "free_course", label: "Curso livre" },
 ]
 
 const statusOptions = [

@@ -68,6 +68,7 @@ const categoryConfig = {
   graduation: { label: "Graduação", variant: "default" as const },
   postgraduate: { label: "Pós-Graduação", variant: "info" as const },
   extension: { label: "Extensão", variant: "secondary" as const },
+  free_course: { label: "Curso livre", variant: "outline" as const },
 }
 
 const COURSE_TABS = {
@@ -338,6 +339,7 @@ const CoursesPage = () => {
                 <SelectItem value="graduation">Graduação</SelectItem>
                 <SelectItem value="postgraduate">Pós-Graduação</SelectItem>
                 <SelectItem value="extension">Extensão</SelectItem>
+                <SelectItem value="free_course">Curso livre</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters && (

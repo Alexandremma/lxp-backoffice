@@ -37,6 +37,7 @@ const categoryConfig = {
   graduation: { label: "Graduação", variant: "default" as const },
   postgraduate: { label: "Pós-Graduação", variant: "info" as const },
   extension: { label: "Extensão", variant: "secondary" as const },
+  free_course: { label: "Curso livre", variant: "outline" as const },
 }
 
 const COURSE_TABS = ["overview", "grades", "content", "students"] as const
