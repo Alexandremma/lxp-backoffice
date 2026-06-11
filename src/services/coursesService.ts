@@ -48,6 +48,8 @@ export type StudentOption = {
     enrollmentCount: number
 }
 
+export type LessonAccessMode = "free" | "sequential"
+
 export type CourseDisciplineAdmin = {
     id: string
     periodId: string
@@ -59,6 +61,7 @@ export type CourseDisciplineAdmin = {
     description?: string
     coverImagePath?: string
     status: "active" | "inactive"
+    lessonAccessMode: LessonAccessMode
     linkedTrailId?: string
     linkedTrailName?: string
     linkedLibraryLinkId?: string
@@ -627,7 +630,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
     const periodIds = periodRows.map((p) => p.id)
     const { data: disciplinesData, error: disciplinesError } = await supabase
         .from("lxp_course_disciplines")
-        .select("id,course_period_id,name,code,workload,credits,professor,status,description,cover_image_path")
+        .select("id,course_period_id,name,code,workload,credits,professor,status,description,cover_image_path,lesson_access_mode")
         .in("course_period_id", periodIds)
         .order("created_at", { ascending: true })
 
@@ -644,6 +647,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
         status: "active" | "inactive"
         description: string | null
         cover_image_path: string | null
+        lesson_access_mode: LessonAccessMode | null
     }>
 
     const disciplineIds = disciplineRows.map((d) => d.id)
@@ -693,6 +697,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
             description: row.description?.trim() || undefined,
             coverImagePath: row.cover_image_path ?? undefined,
             status: row.status ?? "active",
+            lessonAccessMode: row.lesson_access_mode ?? "free",
             linkedTrailId: link?.contentId,
             linkedTrailName: link?.contentName,
             linkedLibraryLinkId: link?.linkId,
@@ -791,6 +796,25 @@ export async function deleteCoursePeriodAdmin(periodId: string): Promise<void> {
     })
 }
 
+export async function disciplineHasStudentLessonProgress(disciplineId: string): Promise<boolean> {
+    const { data: link, error: linkError } = await supabase
+        .from("lxp_course_library_links")
+        .select("library_content_id")
+        .eq("course_discipline_id", disciplineId)
+        .eq("library_content_type", "discipline")
+        .maybeSingle()
+    if (linkError) throw linkError
+    const externalId = (link as { library_content_id?: string } | null)?.library_content_id
+    if (!externalId) return false
+
+    const { count, error } = await supabase
+        .from("lxp_student_lesson_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("external_discipline_id", externalId)
+    if (error) throw error
+    return (count ?? 0) > 0
+}
+
 export async function createCourseDisciplineAdmin(
     periodId: string,
     data: {
@@ -801,6 +825,7 @@ export async function createCourseDisciplineAdmin(
         professor?: string
         description?: string
         status?: "active" | "inactive"
+        lessonAccessMode?: LessonAccessMode
     },
 ): Promise<string> {
     const { data: row, error } = await supabase
@@ -814,6 +839,7 @@ export async function createCourseDisciplineAdmin(
             professor: data.professor ?? null,
             description: data.description?.trim() || null,
             status: data.status ?? "inactive",
+            lesson_access_mode: data.lessonAccessMode ?? "free",
         })
         .select("id")
         .single()
@@ -875,20 +901,27 @@ export async function updateCourseDisciplineAdmin(
         professor?: string
         description?: string
         status?: "active" | "inactive"
+        lessonAccessMode?: LessonAccessMode
     },
+    options?: { skipLessonAccessMode?: boolean },
 ): Promise<void> {
+    const updatePayload: Record<string, unknown> = {
+        name: data.name,
+        code: data.code,
+        workload: data.workload,
+        credits: data.credits,
+        professor: data.professor ?? null,
+        description: data.description?.trim() || null,
+        updated_at: new Date().toISOString(),
+    }
+    if (data.status !== undefined) updatePayload.status = data.status
+    if (!options?.skipLessonAccessMode && data.lessonAccessMode !== undefined) {
+        updatePayload.lesson_access_mode = data.lessonAccessMode
+    }
+
     const { error } = await supabase
         .from("lxp_course_disciplines")
-        .update({
-            name: data.name,
-            code: data.code,
-            workload: data.workload,
-            credits: data.credits,
-            professor: data.professor ?? null,
-            description: data.description?.trim() || null,
-            ...(data.status !== undefined ? { status: data.status } : {}),
-            updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", disciplineId)
 
     if (error) throw error

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import {
+  type LessonAccessMode,
   createCourseDisciplineAdmin,
   uploadDisciplineCoverAdmin,
 } from "@/services/coursesService"
@@ -19,6 +20,7 @@ export function useCreateCourseDiscipline(courseId?: string) {
         professor?: string
         description?: string
         status?: "active" | "inactive"
+        lessonAccessMode?: LessonAccessMode
       }
       coverFile?: File | null
     }) => {

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import {
+  type LessonAccessMode,
   removeDisciplineCoverAdmin,
   updateCourseDisciplineAdmin,
   uploadDisciplineCoverAdmin,
@@ -20,11 +21,15 @@ export function useUpdateCourseDiscipline(courseId?: string) {
         professor?: string
         description?: string
         status?: "active" | "inactive"
+        lessonAccessMode?: LessonAccessMode
       }
       coverFile?: File | null
       removeCover?: boolean
+      skipLessonAccessMode?: boolean
     }) => {
-      await updateCourseDisciplineAdmin(payload.disciplineId, payload.data)
+      await updateCourseDisciplineAdmin(payload.disciplineId, payload.data, {
+        skipLessonAccessMode: payload.skipLessonAccessMode,
+      })
       if (payload.removeCover) {
         await removeDisciplineCoverAdmin(payload.disciplineId)
       } else if (payload.coverFile) {

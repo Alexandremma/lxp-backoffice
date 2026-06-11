@@ -312,7 +312,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             name: "category",
             kind: "column",
             sqlType: "text",
-            description: "graduation | postgraduate | extension (Step 2).",
+            description: "graduation | postgraduate | extension | free_course (Step 2, Step 32).",
           },
           { name: "periods", kind: "column", sqlType: "integer", description: "Quantidade de períodos/semestres (1–20)." },
           {
@@ -362,6 +362,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "credits", kind: "column", sqlType: "integer", description: "Créditos." },
           { name: "professor", kind: "column", sqlType: "text", description: "Professor responsável (opcional)." },
           { name: "status", kind: "column", sqlType: "text", description: "active | inactive." },
+          {
+            name: "lesson_access_mode",
+            kind: "column",
+            sqlType: "text",
+            description: "Step 32: free (aulas livres) | sequential (próxima após concluir anterior).",
+          },
           {
             name: "description",
             kind: "column",
