@@ -171,6 +171,15 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
           removeCover: data.removeCover,
           skipLessonAccessMode: data.lessonAccessModeLocked,
         })
+        setSelectedDiscipline((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...core,
+                lessonAccessMode: data.lessonAccessMode,
+              }
+            : null,
+        )
         toast.success("Disciplina atualizada com sucesso!")
         return
       }
@@ -183,6 +192,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
       toast.success("Disciplina adicionada com sucesso!")
     } catch (e) {
       toast.error(getAdminErrorMessage("courses-disciplines", e))
+      throw e
     }
   }
 

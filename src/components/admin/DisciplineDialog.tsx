@@ -80,6 +80,7 @@ export function DisciplineDialog({
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
   const [removeCover, setRemoveCover] = useState(false)
   const [lessonAccessModeLocked, setLessonAccessModeLocked] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const {
     register,
@@ -158,18 +159,27 @@ export function DisciplineDialog({
       toast.error("Vincule uma disciplina externa antes de ativar para os alunos.")
       return
     }
-    await onSave({
-      name: data.name,
-      code: data.code,
-      workload: data.workload,
-      credits: data.credits,
-      professor: data.professor || undefined,
-      description: data.description?.trim() || undefined,
-      status: data.isActive ? "active" : "inactive",
-      coverFile,
-      removeCover,
-    })
-    onOpenChange(false)
+    setIsSaving(true)
+    try {
+      await onSave({
+        name: data.name,
+        code: data.code,
+        workload: data.workload,
+        credits: data.credits,
+        professor: data.professor || undefined,
+        description: data.description?.trim() || undefined,
+        status: data.isActive ? "active" : "inactive",
+        lessonAccessMode: data.isSequential ? "sequential" : "free",
+        lessonAccessModeLocked,
+        coverFile,
+        removeCover,
+      })
+      onOpenChange(false)
+    } catch {
+      // Erro tratado no handler pai; mantém modal aberto.
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -337,10 +347,12 @@ export function DisciplineDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Salvando..." : "Salvar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
