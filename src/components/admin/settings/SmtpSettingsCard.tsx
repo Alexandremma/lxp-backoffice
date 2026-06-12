@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, Mail, Pencil, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { DEFAULT_SMTP_SETTINGS, useSmtpSettings } from "@/hooks/queries/useSmtpSettings"
 import { useUpdateSmtpSettings } from "@/hooks/mutations/useUpdateSmtpSettings"
+import { useSendSmtpTestEmail } from "@/hooks/mutations/useSendSmtpTestEmail"
 import { usePermission } from "@/hooks/usePermission"
+import { useAuth } from "@/hooks/use-auth"
 import { formatSmtpPortInput, parseSmtpPort } from "@/lib/inputMasks"
 import { smtpSettingsFormSchema } from "@/lib/settingsSchemas"
 import type { SmtpSettingsValue } from "@/types/settings"
@@ -24,19 +27,36 @@ function toFormState(data: SmtpSettingsValue): SmtpFormState {
     }
 }
 
+function describeActiveSource(data: SmtpSettingsValue | undefined): string {
+    if (!data) return "Nenhum SMTP configurado"
+    if (data.enabled && data.host && data.fromEmail && data.passwordConfigured) {
+        return "SMTP da instituição (ativo)"
+    }
+    return "Fallback B42 (quando configurado no ambiente)"
+}
+
 export function SmtpSettingsCard() {
+    const { user } = useAuth()
     const { can } = usePermission()
     const canEdit = can("configuracoes.editar")
     const { data, isLoading, isError, error } = useSmtpSettings()
     const updateSettings = useUpdateSmtpSettings()
+    const sendTestEmail = useSendSmtpTestEmail()
     const [form, setForm] = useState<SmtpFormState | null>(null)
     const [isEditing, setIsEditing] = useState(false)
+    const [testRecipient, setTestRecipient] = useState("")
 
     const fieldsDisabled = !isEditing || updateSettings.isPending
 
     useEffect(() => {
         if (data) setForm(toFormState(data))
     }, [data])
+
+    useEffect(() => {
+        if (!testRecipient && user?.email) setTestRecipient(user.email)
+    }, [user?.email, testRecipient])
+
+    const activeSourceLabel = useMemo(() => describeActiveSource(data), [data])
 
     const handleStartEdit = () => {
         if (data) setForm(toFormState(data))
@@ -57,6 +77,7 @@ export function SmtpSettingsCard() {
             user: form.user,
             fromEmail: form.fromEmail,
             fromName: form.fromName,
+            replyTo: form.replyTo,
             secure: form.secure,
             password: form.password,
         })
@@ -64,6 +85,12 @@ export function SmtpSettingsCard() {
             toast.error(parsed.error.errors[0]?.message ?? "Revise os campos de SMTP.")
             return
         }
+
+        if (parsed.data.enabled && !parsed.data.password && !form.passwordConfigured) {
+            toast.error("Informe a senha SMTP para ativar o envio pela instituição.")
+            return
+        }
+
         try {
             await updateSettings.mutateAsync({
                 enabled: parsed.data.enabled,
@@ -72,14 +99,35 @@ export function SmtpSettingsCard() {
                 user: parsed.data.user ?? "",
                 fromEmail: parsed.data.fromEmail ?? "",
                 fromName: parsed.data.fromName ?? DEFAULT_SMTP_SETTINGS.fromName,
+                replyTo: parsed.data.replyTo ?? "",
                 secure: parsed.data.secure,
                 password: parsed.data.password,
+                passwordConfigured: form.passwordConfigured,
             })
             toast.success("Configurações de e-mail salvas.")
             setIsEditing(false)
         } catch (err) {
             console.error(err)
-            toast.error("Não foi possível salvar as configurações de e-mail.")
+            const message = err instanceof Error ? err.message : "Não foi possível salvar as configurações de e-mail."
+            toast.error(message)
+        }
+    }
+
+    const handleSendTest = async () => {
+        const recipient = testRecipient.trim()
+        if (!recipient) {
+            toast.error("Informe o destinatário do teste.")
+            return
+        }
+
+        try {
+            const result = await sendTestEmail.mutateAsync(recipient)
+            const sourceLabel = result.source === "institution" ? "instituição" : "B42"
+            toast.success(`E-mail de teste enviado (${sourceLabel}) para ${result.to}.`)
+        } catch (err) {
+            console.error(err)
+            const message = err instanceof Error ? err.message : "Não foi possível enviar o e-mail de teste."
+            toast.error(message)
         }
     }
 
@@ -112,7 +160,7 @@ export function SmtpSettingsCard() {
                         <Mail className="h-5 w-5" />
                         Configurações de Email
                     </CardTitle>
-                    <CardDescription>Configure o servidor SMTP para envio de e-mails</CardDescription>
+                    <CardDescription>SMTP direto da instituição, com fallback B42 quando inativo</CardDescription>
                 </div>
                 {canEdit && !isEditing && (
                     <Button variant="outline" size="sm" onClick={handleStartEdit}>
@@ -122,18 +170,29 @@ export function SmtpSettingsCard() {
                 )}
             </CardHeader>
             <CardContent className="space-y-6">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{activeSourceLabel}</Badge>
+                    {form.passwordConfigured ? (
+                        <Badge variant="secondary">Senha configurada</Badge>
+                    ) : (
+                        <Badge variant="outline">Senha pendente</Badge>
+                    )}
+                </div>
+
                 <Alert>
                     <AlertDescription>
-                        O envio real de e-mails (convites, recuperação de senha) depende da ativação do
-                        SMTP pela instituição. Os dados abaixo já são salvos para quando o provedor for
-                        configurado.
+                        A senha SMTP nunca é exibida após salvar e não fica acessível no navegador. Convites,
+                        recuperação de senha e demais e-mails de autenticação usam o mesmo SMTP (instituição ou
+                        fallback B42) após ativar o Auth Hook no Supabase.
                     </AlertDescription>
                 </Alert>
 
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                     <div className="space-y-0.5">
-                        <Label>SMTP ativo</Label>
-                        <p className="text-sm text-muted-foreground">Habilitar envio quando o servidor estiver pronto</p>
+                        <Label>SMTP institucional ativo</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Quando desligado, o envio usa o fallback B42 (se configurado no ambiente)
+                        </p>
                     </div>
                     <Switch
                         checked={form.enabled}
@@ -187,7 +246,13 @@ export function SmtpSettingsCard() {
                             id="smtp-password"
                             type="password"
                             value={form.password ?? ""}
-                            placeholder={isEditing ? "Deixe em branco para manter a atual" : "••••••••"}
+                            placeholder={
+                                form.passwordConfigured
+                                    ? isEditing
+                                        ? "Deixe em branco para manter a atual"
+                                        : "••••••••"
+                                    : "Informe a senha SMTP"
+                            }
                             disabled={fieldsDisabled}
                             readOnly={!isEditing}
                             autoComplete="new-password"
@@ -220,10 +285,24 @@ export function SmtpSettingsCard() {
                         />
                     </div>
                 </div>
+                <div className="space-y-2">
+                    <Label htmlFor="smtp-reply-to">Reply-To (opcional)</Label>
+                    <Input
+                        id="smtp-reply-to"
+                        type="email"
+                        value={form.replyTo ?? ""}
+                        placeholder="suporte@instituicao.edu.br"
+                        disabled={fieldsDisabled}
+                        readOnly={!isEditing}
+                        onChange={(e) => setForm({ ...form, replyTo: e.target.value })}
+                    />
+                </div>
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                     <div className="space-y-0.5">
                         <Label>SSL/TLS</Label>
-                        <p className="text-sm text-muted-foreground">Usar conexão segura</p>
+                        <p className="text-sm text-muted-foreground">
+                            Ative para porta 465; desative para 587 com STARTTLS
+                        </p>
                     </div>
                     <Switch
                         checked={form.secure ?? true}
@@ -231,6 +310,33 @@ export function SmtpSettingsCard() {
                         onCheckedChange={(checked) => setForm({ ...form, secure: checked })}
                     />
                 </div>
+
+                {canEdit && (
+                    <div className="space-y-3 rounded-lg border p-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="smtp-test-recipient">Destinatário do teste</Label>
+                            <Input
+                                id="smtp-test-recipient"
+                                type="email"
+                                value={testRecipient}
+                                placeholder="seu-email@instituicao.edu.br"
+                                onChange={(e) => setTestRecipient(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            disabled={sendTestEmail.isPending || updateSettings.isPending}
+                            onClick={() => void handleSendTest()}
+                        >
+                            {sendTestEmail.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Mail className="mr-2 h-4 w-4" />
+                            )}
+                            Enviar e-mail de teste
+                        </Button>
+                    </div>
+                )}
 
                 {isEditing && canEdit && (
                     <div className="flex flex-wrap gap-2">
@@ -245,17 +351,6 @@ export function SmtpSettingsCard() {
                         <Button variant="outline" onClick={handleCancelEdit} disabled={updateSettings.isPending}>
                             <X className="mr-2 h-4 w-4" />
                             Cancelar
-                        </Button>
-                        <Button
-                            variant="outline"
-                            disabled={updateSettings.isPending}
-                            onClick={() =>
-                                toast.info(
-                                    "Envio de teste será habilitado quando o SMTP institucional estiver ativo.",
-                                )
-                            }
-                        >
-                            Enviar e-mail de teste
                         </Button>
                     </div>
                 )}

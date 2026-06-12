@@ -51,6 +51,12 @@ export const smtpSettingsFormSchema = z.object({
         .optional()
         .default(""),
     fromName: z.string().trim().max(120).optional().default(""),
+    replyTo: z
+        .string()
+        .trim()
+        .refine((v) => !v || z.string().email().safeParse(v).success, "Reply-To inválido")
+        .optional()
+        .default(""),
     secure: z.boolean().optional().default(true),
     password: z.string().optional(),
 })
