@@ -30,6 +30,7 @@ const ACTION_VERB: Record<string, string> = {
     "gamification.badges.reevaluate_all": "reevaliou badges de todos os alunos",
     "institution.update": "atualizou dados da instituição",
     "smtp.update": "atualizou configurações de e-mail (SMTP)",
+    "smtp.test_sent": "enviou e-mail de teste (SMTP)",
     "plan.upgrade_requested": "solicitou contato sobre upgrade de plano",
     "team.invite": "convidou membro da equipe",
     "team.invite_resend": "reenviou convite da equipe",

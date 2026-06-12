@@ -31,7 +31,10 @@ export type SmtpSettingsValue = {
     user: string
     fromEmail: string
     fromName?: string
+    replyTo?: string
     secure?: boolean
+    /** Definido pela Edge; senha nunca é exposta ao front. */
+    passwordConfigured?: boolean
 }
 
 export type SettingsDashboardUsage = {
