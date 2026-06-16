@@ -360,6 +360,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "code", kind: "column", sqlType: "text", description: "Código (ex.: ADS103)." },
           { name: "workload", kind: "column", sqlType: "integer", description: "Carga horária (h)." },
           { name: "credits", kind: "column", sqlType: "integer", description: "Créditos." },
+          {
+            name: "credits_enabled",
+            kind: "column",
+            sqlType: "boolean",
+            description: "Step 36: quando false, créditos não são usados (credits=0) e o portal não exibe.",
+          },
           { name: "professor", kind: "column", sqlType: "text", description: "Professor responsável (opcional)." },
           { name: "status", kind: "column", sqlType: "text", description: "active | inactive." },
           {

@@ -21,16 +21,27 @@ import {
 } from "@/services/coursesService"
 import { toast } from "sonner"
 
-const disciplineSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório").max(200),
-  code: z.string().min(1, "Código é obrigatório").max(20),
-  workload: z.number().min(1, "Carga horária deve ser maior que 0").max(500),
-  credits: z.number().min(0, "Créditos não pode ser negativo").max(100),
-  professor: z.string().max(100).optional(),
-  description: z.string().max(2000).optional(),
-  isActive: z.boolean(),
-  isSequential: z.boolean(),
-})
+const disciplineSchema = z
+  .object({
+    name: z.string().min(1, "Nome é obrigatório").max(200),
+    code: z.string().min(1, "Código é obrigatório").max(20),
+    workload: z.number().min(1, "Carga horária deve ser maior que 0").max(500),
+    useCredits: z.boolean(),
+    credits: z.number().min(0, "Créditos não pode ser negativo").max(100),
+    professor: z.string().max(100).optional(),
+    description: z.string().max(2000).optional(),
+    isActive: z.boolean(),
+    isSequential: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.useCredits && data.credits < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe ao menos 1 crédito",
+        path: ["credits"],
+      })
+    }
+  })
 
 type DisciplineFormData = z.infer<typeof disciplineSchema>
 
@@ -38,6 +49,7 @@ export type DisciplineDialogSavePayload = {
   name: string
   code: string
   workload: number
+  creditsEnabled: boolean
   credits: number
   professor?: string
   description?: string
@@ -57,6 +69,7 @@ interface DisciplineDialogProps {
     code: string
     workload: number
     credits: number
+    creditsEnabled?: boolean
     professor?: string
     description?: string
     coverImagePath?: string
@@ -87,6 +100,7 @@ export function DisciplineDialog({
     handleSubmit,
     reset,
     control,
+    watch,
     formState: { errors },
   } = useForm<DisciplineFormData>({
     resolver: zodResolver(disciplineSchema),
@@ -94,6 +108,7 @@ export function DisciplineDialog({
       name: "",
       code: "",
       workload: 60,
+      useCredits: true,
       credits: 4,
       professor: "",
       description: "",
@@ -101,6 +116,8 @@ export function DisciplineDialog({
       isSequential: false,
     },
   })
+
+  const useCredits = watch("useCredits")
 
   const persistedCoverUrl = discipline?.coverImagePath
     ? getDisciplineCoverPublicUrl(discipline.coverImagePath)
@@ -114,11 +131,13 @@ export function DisciplineDialog({
     setRemoveCover(false)
     setLessonAccessModeLocked(false)
     if (discipline) {
+      const creditsEnabled = discipline.creditsEnabled ?? true
       reset({
         name: discipline.name,
         code: discipline.code,
         workload: discipline.workload,
-        credits: discipline.credits,
+        useCredits: creditsEnabled,
+        credits: creditsEnabled ? discipline.credits : 4,
         professor: discipline.professor || "",
         description: discipline.description || "",
         isActive: (discipline.status ?? "active") === "active",
@@ -134,6 +153,7 @@ export function DisciplineDialog({
         name: "",
         code: "",
         workload: 60,
+        useCredits: true,
         credits: 4,
         professor: "",
         description: "",
@@ -165,7 +185,8 @@ export function DisciplineDialog({
         name: data.name,
         code: data.code,
         workload: data.workload,
-        credits: data.credits,
+        creditsEnabled: data.useCredits,
+        credits: data.useCredits ? data.credits : 0,
         professor: data.professor || undefined,
         description: data.description?.trim() || undefined,
         status: data.isActive ? "active" : "inactive",
@@ -203,7 +224,7 @@ export function DisciplineDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Código</Label>
               <Input
@@ -230,7 +251,29 @@ export function DisciplineDialog({
                 <p className="text-sm text-destructive">{errors.workload.message}</p>
               )}
             </div>
+          </div>
 
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="useCredits">Informar créditos</Label>
+              <p className="text-xs text-muted-foreground">
+                Quando desativado, créditos não serão cadastrados nem exibidos para os alunos.
+              </p>
+            </div>
+            <Controller
+              name="useCredits"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="useCredits"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
+          </div>
+
+          {useCredits && (
             <div className="space-y-2">
               <Label htmlFor="credits">Créditos</Label>
               <Input
@@ -244,7 +287,7 @@ export function DisciplineDialog({
                 <p className="text-sm text-destructive">{errors.credits.message}</p>
               )}
             </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="professor">Professor (opcional)</Label>
@@ -263,9 +306,6 @@ export function DisciplineDialog({
               rows={3}
               {...register("description")}
             />
-            <p className="text-xs text-muted-foreground">
-              Visível apenas para o aluno. Não inclua detalhes técnicos de integração.
-            </p>
           </div>
 
           <div className="space-y-2">

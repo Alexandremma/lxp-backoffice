@@ -57,6 +57,7 @@ export type CourseDisciplineAdmin = {
     code: string
     workload: number
     credits: number
+    creditsEnabled: boolean
     professor?: string
     description?: string
     coverImagePath?: string
@@ -630,7 +631,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
     const periodIds = periodRows.map((p) => p.id)
     const { data: disciplinesData, error: disciplinesError } = await supabase
         .from("lxp_course_disciplines")
-        .select("id,course_period_id,name,code,workload,credits,professor,status,description,cover_image_path,lesson_access_mode")
+        .select("id,course_period_id,name,code,workload,credits,credits_enabled,professor,status,description,cover_image_path,lesson_access_mode")
         .in("course_period_id", periodIds)
         .order("created_at", { ascending: true })
 
@@ -643,6 +644,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
         code: string
         workload: number
         credits: number
+        credits_enabled: boolean
         professor: string | null
         status: "active" | "inactive"
         description: string | null
@@ -693,6 +695,7 @@ export async function getCourseGradesAdmin(courseId: string): Promise<CoursePeri
             code: row.code,
             workload: row.workload ?? 0,
             credits: row.credits ?? 0,
+            creditsEnabled: row.credits_enabled ?? true,
             professor: row.professor ?? undefined,
             description: row.description?.trim() || undefined,
             coverImagePath: row.cover_image_path ?? undefined,
@@ -822,12 +825,14 @@ export async function createCourseDisciplineAdmin(
         code: string
         workload: number
         credits: number
+        creditsEnabled?: boolean
         professor?: string
         description?: string
         status?: "active" | "inactive"
         lessonAccessMode?: LessonAccessMode
     },
 ): Promise<string> {
+    const creditsEnabled = data.creditsEnabled ?? true
     const { data: row, error } = await supabase
         .from("lxp_course_disciplines")
         .insert({
@@ -835,7 +840,8 @@ export async function createCourseDisciplineAdmin(
             name: data.name,
             code: data.code,
             workload: data.workload,
-            credits: data.credits,
+            credits: creditsEnabled ? data.credits : 0,
+            credits_enabled: creditsEnabled,
             professor: data.professor ?? null,
             description: data.description?.trim() || null,
             status: data.status ?? "inactive",
@@ -898,6 +904,7 @@ export async function updateCourseDisciplineAdmin(
         code: string
         workload: number
         credits: number
+        creditsEnabled?: boolean
         professor?: string
         description?: string
         status?: "active" | "inactive"
@@ -905,11 +912,13 @@ export async function updateCourseDisciplineAdmin(
     },
     options?: { skipLessonAccessMode?: boolean },
 ): Promise<void> {
+    const creditsEnabled = data.creditsEnabled ?? true
     const updatePayload: Record<string, unknown> = {
         name: data.name,
         code: data.code,
         workload: data.workload,
-        credits: data.credits,
+        credits: creditsEnabled ? data.credits : 0,
+        credits_enabled: creditsEnabled,
         professor: data.professor ?? null,
         description: data.description?.trim() || null,
         updated_at: new Date().toISOString(),

@@ -18,6 +18,7 @@ export function useUpdateCourseDiscipline(courseId?: string) {
         code: string
         workload: number
         credits: number
+        creditsEnabled?: boolean
         professor?: string
         description?: string
         status?: "active" | "inactive"
