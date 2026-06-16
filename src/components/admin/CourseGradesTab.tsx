@@ -157,6 +157,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
         code: data.code,
         workload: data.workload,
         credits: data.credits,
+        creditsEnabled: data.creditsEnabled,
         professor: data.professor,
         description: data.description,
         status: data.status,
@@ -348,7 +349,9 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                                       <Clock className="h-3 w-3" />
                                       {discipline.workload}h
                                     </span>
-                                    <span>{discipline.credits} créditos</span>
+                                    {discipline.creditsEnabled && (
+                                      <span>{discipline.credits} créditos</span>
+                                    )}
                                     {discipline.professor && (
                                       <span className="flex items-center gap-1">
                                         <User className="h-3 w-3" />
