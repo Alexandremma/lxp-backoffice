@@ -13,6 +13,7 @@ export function useCreateCertificateTemplateAdmin() {
       name: string
       description?: string | null
       institution_name?: string | null
+      layout_kind?: "default" | "custom"
     }) => createCertificateTemplateAdmin(input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.certificates.templates })
@@ -32,6 +33,8 @@ export function useUpdateCertificateTemplateAdmin() {
         is_default: boolean
         institution_name: string
         institution_logo_path: string | null
+        layout_kind: "default" | "custom"
+        background_image_path: string | null
       }>
     }) => updateCertificateTemplateAdmin(args.id, args.patch),
     onSuccess: () => {

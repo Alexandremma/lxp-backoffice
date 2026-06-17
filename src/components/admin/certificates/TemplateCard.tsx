@@ -60,6 +60,9 @@ export function TemplateCard({
             Padrão
           </Badge>
         )}
+        <Badge variant="outline" className="absolute bottom-2 left-2">
+          {template.layout_kind === "custom" ? "Personalizado" : "Modelo padrão"}
+        </Badge>
         <Badge
           variant={template.is_active ? "success-muted" : "outline"}
           className="absolute top-2 right-2"

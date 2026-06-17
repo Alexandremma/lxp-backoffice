@@ -1,10 +1,17 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -33,7 +40,8 @@ import {
   type CertificateSignatureRow,
   type CertificateTemplateRow,
 } from "@/services/certificatesAdminService"
-import { openCertificatePrintWindow, snapshotRecordToPrintPayload } from "@/lib/certificatePrint"
+import { downloadCertificatePdfFile } from "@/lib/certificatePdfDownload"
+import { snapshotRecordToPrintPayload } from "@/lib/certificatePrint"
 import { useTemplateSignatureSlots } from "@/hooks/mutations/useTemplateSignatureMutationsAdmin"
 
 import { RequirePermission } from "@/components/auth/RequirePermission"
@@ -67,6 +75,7 @@ const CertificatesPage = () => {
   const [newTemplateOpen, setNewTemplateOpen] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState("")
   const [newTemplateInstitution, setNewTemplateInstitution] = useState("B42 Edtech")
+  const [newTemplateLayoutKind, setNewTemplateLayoutKind] = useState<"default" | "custom">("default")
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false)
   const [editingSignature, setEditingSignature] = useState<CertificateSignatureRow | null>(null)
 
@@ -81,6 +90,32 @@ const CertificatesPage = () => {
   const templates = templatesQ.data ?? []
   const signatures = signaturesQ.data ?? []
   const issues = useMemo(() => issuesQ.data ?? [], [issuesQ.data])
+
+  useEffect(() => {
+    if (!templatesQ.data) return
+    if (editingTemplate?.id) {
+      const fresh = templatesQ.data.find((t) => t.id === editingTemplate.id)
+      if (
+        fresh &&
+        (fresh.background_image_path !== editingTemplate.background_image_path ||
+          fresh.institution_logo_path !== editingTemplate.institution_logo_path ||
+          fresh.updated_at !== editingTemplate.updated_at)
+      ) {
+        setEditingTemplate(fresh)
+      }
+    }
+    if (previewTemplate?.id) {
+      const fresh = templatesQ.data.find((t) => t.id === previewTemplate.id)
+      if (
+        fresh &&
+        (fresh.background_image_path !== previewTemplate.background_image_path ||
+          fresh.institution_logo_path !== previewTemplate.institution_logo_path ||
+          fresh.updated_at !== previewTemplate.updated_at)
+      ) {
+        setPreviewTemplate(fresh)
+      }
+    }
+  }, [templatesQ.data, editingTemplate, previewTemplate])
 
   const emissionRows: EmissionTableRow[] = useMemo(
     () =>
@@ -116,25 +151,27 @@ const CertificatesPage = () => {
       const snap = row.raw.snapshot
       if (snap && typeof snap === "object") {
         const enriched = await enrichSnapshotRecord(snap, row.raw.template_id)
-        await openCertificatePrintWindow({
-          ...snapshotRecordToPrintPayload(enriched, {
+        await downloadCertificatePdfFile(
+          snapshotRecordToPrintPayload(enriched, {
             studentName: row.studentName,
             disciplineName: row.courseName,
             issuedAt: row.issuedAt,
             validationCode: row.validationCode,
           }),
-        })
+        )
+        toast.success("Certificado baixado.")
         return
       }
       toast.warning(
-        "Emissão legada sem snapshot. Abrindo PDF com os dados atuais do banco.",
+        "Emissão legada sem snapshot. Gerando PDF com os dados atuais do banco.",
       )
-      await openCertificatePrintWindow({
+      await downloadCertificatePdfFile({
         studentName: row.studentName,
         disciplineName: row.courseName,
         issuedAt: row.issuedAt,
         validationCode: row.validationCode,
       })
+      toast.success("Certificado baixado.")
     } catch (e) {
       toast.error("Não foi possível gerar o PDF do certificado.")
       console.error(e)
@@ -204,11 +241,13 @@ const CertificatesPage = () => {
       const created = await createTemplate.mutateAsync({
         name,
         institution_name: newTemplateInstitution.trim() || "B42 Edtech",
+        layout_kind: newTemplateLayoutKind,
       })
       toast.success("Template criado. Abra o editor para personalizar.")
       setNewTemplateOpen(false)
       setNewTemplateName("")
       setNewTemplateInstitution("B42 Edtech")
+      setNewTemplateLayoutKind("default")
       setEditingTemplate(created)
     } catch (e) {
       toast.error("Não foi possível criar o template.")
@@ -407,7 +446,14 @@ const CertificatesPage = () => {
           </Tabs>
 
           {/* Novo template (passo 1: nome + instituição → abre o editor) */}
-          <Dialog open={newTemplateOpen} onOpenChange={setNewTemplateOpen}>
+          <Dialog open={newTemplateOpen} onOpenChange={(o) => {
+            setNewTemplateOpen(o)
+            if (!o) {
+              setNewTemplateName("")
+              setNewTemplateInstitution("B42 Edtech")
+              setNewTemplateLayoutKind("default")
+            }
+          }}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Novo template</DialogTitle>
@@ -434,6 +480,27 @@ const CertificatesPage = () => {
                     placeholder="B42 Edtech"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tpl-new-layout">Tipo de modelo</Label>
+                  <Select
+                    value={newTemplateLayoutKind}
+                    onValueChange={(v) => setNewTemplateLayoutKind(v as "default" | "custom")}
+                  >
+                    <SelectTrigger id="tpl-new-layout">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Modelo padrão</SelectItem>
+                      <SelectItem value="custom">Modelo personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {newTemplateLayoutKind === "custom" && (
+                    <p className="text-xs text-muted-foreground">
+                      Imagem de fundo em paisagem — recomendado 1754×1240 px (proporção A4), PNG ou JPG.
+                      Faça o upload no editor após criar.
+                    </p>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setNewTemplateOpen(false)}>
@@ -455,7 +522,7 @@ const CertificatesPage = () => {
 
           {/* Preview rápido (somente leitura) */}
           <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-            <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-4 overflow-hidden">
+            <DialogContent className="flex max-w-5xl flex-col gap-4">
               <DialogHeader className="shrink-0">
                 <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
                 <DialogDescription>
@@ -463,13 +530,12 @@ const CertificatesPage = () => {
                 </DialogDescription>
               </DialogHeader>
               {previewTemplate && previewPayload && (
-                <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-muted/25 p-4">
-                  <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/80 p-4">
-                    <CertificatePreviewFrame
-                      payload={previewPayload}
-                      className="h-[280px] w-full max-w-3xl rounded-md border bg-white shadow-sm lg:h-[360px]"
-                    />
-                  </div>
+                <div className="flex justify-center rounded-lg bg-muted/20 p-3">
+                  <CertificatePreviewFrame
+                    payload={previewPayload}
+                    className="w-full"
+                    maxHeight="min(52vh, 480px)"
+                  />
                 </div>
               )}
               <DialogFooter className="shrink-0">
@@ -479,17 +545,14 @@ const CertificatesPage = () => {
                 {previewTemplate && previewPayload && (
                   <Button
                     onClick={() => {
-                      void openCertificatePrintWindow({
-                        ...previewPayload,
-                        autoPrint: true,
-                      }).catch((e) => {
-                        toast.error("Não foi possível abrir a impressão.")
+                      void downloadCertificatePdfFile(previewPayload).catch((e) => {
+                        toast.error("Não foi possível baixar o PDF.")
                         console.error(e)
                       })
                     }}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    Gerar PDF (impressão)
+                    Baixar PDF
                   </Button>
                 )}
               </DialogFooter>

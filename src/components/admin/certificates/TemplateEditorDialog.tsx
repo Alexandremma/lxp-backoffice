@@ -36,11 +36,11 @@ import {
   useSetTemplateSignatureSlot,
   useTemplateSignatureSlots,
   useUploadInstitutionLogo,
+  useUploadTemplateBackground,
+  useRemoveTemplateBackground,
 } from "@/hooks/mutations/useTemplateSignatureMutationsAdmin"
-import {
-  openCertificatePrintWindow,
-  type CertificatePrintPayload,
-} from "@/lib/certificatePrint"
+import { downloadCertificatePdfFile } from "@/lib/certificatePdfDownload"
+import type { CertificatePrintPayload } from "@/lib/certificatePrint"
 
 import { CertificatePreviewFrame } from "./CertificatePreviewFrame"
 
@@ -63,11 +63,15 @@ export function TemplateEditorDialog({
   const [description, setDescription] = useState("")
   const [institutionName, setInstitutionName] = useState("")
   const [institutionLogoFile, setInstitutionLogoFile] = useState<File | null>(null)
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null)
   const [localLogoUrl, setLocalLogoUrl] = useState<string | null>(null)
+  const [localBackgroundUrl, setLocalBackgroundUrl] = useState<string | null>(null)
   const [isActive, setIsActive] = useState(true)
 
   const updateTemplate = useUpdateCertificateTemplateAdmin()
   const uploadLogo = useUploadInstitutionLogo()
+  const uploadBackground = useUploadTemplateBackground()
+  const removeBackground = useRemoveTemplateBackground()
   const setSlot = useSetTemplateSignatureSlot()
   const removeSlot = useRemoveTemplateSignatureSlot()
   const slotsQ = useTemplateSignatureSlots(template?.id)
@@ -78,7 +82,9 @@ export function TemplateEditorDialog({
     setDescription(template.description ?? "")
     setInstitutionName(template.institution_name || "B42 Edtech")
     setInstitutionLogoFile(null)
+    setBackgroundFile(null)
     setLocalLogoUrl(null)
+    setLocalBackgroundUrl(null)
     setIsActive(template.is_active)
   }, [open, template])
 
@@ -92,10 +98,27 @@ export function TemplateEditorDialog({
     return () => URL.revokeObjectURL(url)
   }, [institutionLogoFile])
 
+  useEffect(() => {
+    if (!backgroundFile) {
+      setLocalBackgroundUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(backgroundFile)
+    setLocalBackgroundUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [backgroundFile])
+
   const persistedLogoUrl = useMemo(
     () => getSignatureImagePublicUrl(template?.institution_logo_path ?? null),
     [template?.institution_logo_path],
   )
+
+  const persistedBackgroundUrl = useMemo(
+    () => getSignatureImagePublicUrl(template?.background_image_path ?? null),
+    [template?.background_image_path],
+  )
+
+  const isCustomTemplate = template?.layout_kind === "custom"
 
   const signaturesBySlot = useMemo(() => {
     const map = new Map<number, TemplateSignatureSlot>()
@@ -108,7 +131,12 @@ export function TemplateEditorDialog({
   const previewPayload: CertificatePrintPayload = useMemo(() => {
     if (!template) {
       return buildCertificateTemplatePreviewPayload({
-        template: { institution_name: "B42 Edtech", institution_logo_path: null },
+        template: {
+          institution_name: "B42 Edtech",
+          institution_logo_path: null,
+          layout_kind: "default",
+          background_image_path: null,
+        },
         slots: [],
       })
     }
@@ -122,8 +150,17 @@ export function TemplateEditorDialog({
       slots,
       institutionNameOverride: institutionName,
       institutionLogoUrlOverride: localLogoUrl ?? persistedLogoUrl,
+      backgroundImageUrlOverride: localBackgroundUrl ?? persistedBackgroundUrl,
     })
-  }, [template, institutionName, localLogoUrl, persistedLogoUrl, signaturesBySlot])
+  }, [
+    template,
+    institutionName,
+    localLogoUrl,
+    persistedLogoUrl,
+    localBackgroundUrl,
+    persistedBackgroundUrl,
+    signaturesBySlot,
+  ])
 
   if (!template) return null
 
@@ -146,6 +183,16 @@ export function TemplateEditorDialog({
       toast.error("Informe o nome do template.")
       return
     }
+    if (isCustomTemplate) {
+      const hasPersistedBackground = Boolean(template.background_image_path?.trim())
+      const hasNewBackground = Boolean(backgroundFile)
+      if (!hasPersistedBackground && !hasNewBackground) {
+        toast.error(
+          "Templates personalizados exigem uma imagem de fundo. Envie o arquivo antes de salvar.",
+        )
+        return
+      }
+    }
     try {
       await updateTemplate.mutateAsync({
         id: template.id,
@@ -161,6 +208,10 @@ export function TemplateEditorDialog({
         await uploadLogo.mutateAsync({ templateId: template.id, file: institutionLogoFile })
       }
 
+      if (backgroundFile) {
+        await uploadBackground.mutateAsync({ templateId: template.id, file: backgroundFile })
+      }
+
       toast.success("Template salvo.")
       onOpenChange(false)
     } catch (err) {
@@ -169,11 +220,34 @@ export function TemplateEditorDialog({
     }
   }
 
-  const handlePrintPreview = () => {
-    void openCertificatePrintWindow({ ...previewPayload, autoPrint: true }).catch((err) => {
+  const handleDownloadPreview = () => {
+    void downloadCertificatePdfFile(previewPayload).catch((err) => {
+      toast.error("Não foi possível baixar o PDF.")
       console.error(err)
     })
   }
+
+  const handleRemoveBackground = async () => {
+    if (!template.background_image_path?.trim() && !localBackgroundUrl) return
+    try {
+      if (template.background_image_path?.trim()) {
+        await removeBackground.mutateAsync(template.id)
+      }
+      setBackgroundFile(null)
+      setLocalBackgroundUrl(null)
+      const input = document.getElementById("tpl-bg") as HTMLInputElement | null
+      if (input) input.value = ""
+      toast.success("Imagem de fundo removida.")
+    } catch (err) {
+      toast.error("Não foi possível remover a imagem de fundo.")
+      console.error(err)
+    }
+  }
+
+  const hasBackgroundPreview =
+    Boolean(localBackgroundUrl) ||
+    Boolean(persistedBackgroundUrl) ||
+    Boolean(template.background_image_path?.trim())
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,6 +260,9 @@ export function TemplateEditorDialog({
                 Padrão
               </Badge>
             )}
+            <Badge variant="outline" className="ml-1">
+              {isCustomTemplate ? "Personalizado" : "Modelo padrão"}
+            </Badge>
           </DialogTitle>
           <DialogDescription>
             Pré-visualização atualiza em tempo real. Os dados do aluno e da disciplina vêm da
@@ -193,15 +270,13 @@ export function TemplateEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_340px]">
-          {/* Painel de preview — padrão Canva/Figma: canvas centralizado, fundo neutro */}
-          <div className="flex min-h-[280px] flex-col border-b bg-muted/25 p-5 lg:min-h-0 lg:border-b-0 lg:border-r">
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/80 p-4">
-              <CertificatePreviewFrame
-                payload={previewPayload}
-                className="h-[260px] w-full max-w-3xl rounded-md border bg-white shadow-sm lg:h-full lg:max-h-[420px]"
-              />
-            </div>
+        <div className="grid min-h-[min(52vh,480px)] min-h-0 flex-1 items-stretch lg:grid-cols-[minmax(0,1.15fr)_340px]">
+          {/* Painel de preview — certificado escala para preencher largura e altura */}
+          <div className="flex h-full min-h-0 min-w-0 flex-col border-b bg-muted/20 p-1.5 lg:border-b-0 lg:border-r">
+            <CertificatePreviewFrame
+              payload={previewPayload}
+              className="h-full w-full min-h-0"
+            />
           </div>
 
           {/* Formulário — scroll independente */}
@@ -257,6 +332,46 @@ export function TemplateEditorDialog({
               )}
             </div>
 
+            {isCustomTemplate && (
+              <div className="space-y-2 border-t pt-4">
+                <Label htmlFor="tpl-bg">Imagem de fundo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Paisagem — recomendado 1754×1240 px (proporção A4), PNG ou JPG.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="tpl-bg"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => setBackgroundFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                </div>
+                {(localBackgroundUrl || persistedBackgroundUrl) && (
+                  <img
+                    src={localBackgroundUrl ?? persistedBackgroundUrl ?? ""}
+                    alt="fundo do certificado"
+                    className="mt-1 h-24 w-full rounded border object-cover"
+                  />
+                )}
+                {hasBackgroundPreview && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1"
+                    disabled={removeBackground.isPending}
+                    onClick={() => void handleRemoveBackground()}
+                  >
+                    {removeBackground.isPending && (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    )}
+                    Remover fundo
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2 border-t pt-4">
               <Label className="block mb-1">Assinaturas</Label>
               {signaturesLibrary.length === 0 && (
@@ -301,14 +416,22 @@ export function TemplateEditorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button variant="outline" onClick={handlePrintPreview}>
-            Gerar PDF (impressão)
+          <Button variant="outline" onClick={handleDownloadPreview}>
+            Baixar PDF
           </Button>
           <Button
             onClick={() => void handleSave()}
-            disabled={updateTemplate.isPending || uploadLogo.isPending}
+            disabled={
+              updateTemplate.isPending ||
+              uploadLogo.isPending ||
+              uploadBackground.isPending ||
+              removeBackground.isPending
+            }
           >
-            {(updateTemplate.isPending || uploadLogo.isPending) && (
+            {(updateTemplate.isPending ||
+              uploadLogo.isPending ||
+              uploadBackground.isPending ||
+              removeBackground.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             Salvar template
