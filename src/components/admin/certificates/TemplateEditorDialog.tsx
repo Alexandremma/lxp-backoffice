@@ -177,8 +177,8 @@ export function TemplateEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             Editar template
             {template.is_default && (
@@ -193,13 +193,27 @@ export function TemplateEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid lg:grid-cols-[1fr_360px] gap-6 max-h-[70vh] overflow-y-auto pr-2 pb-4">
-          <CertificatePreviewFrame payload={previewPayload} className="w-full h-[640px] border rounded-lg bg-white" />
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_340px]">
+          {/* Painel de preview — padrão Canva/Figma: canvas centralizado, fundo neutro */}
+          <div className="flex min-h-[280px] flex-col border-b bg-muted/25 p-5 lg:min-h-0 lg:border-b-0 lg:border-r">
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/80 p-4">
+              <CertificatePreviewFrame
+                payload={previewPayload}
+                className="h-[260px] w-full max-w-3xl rounded-md border bg-white shadow-sm lg:h-full lg:max-h-[420px]"
+              />
+            </div>
+          </div>
 
-          <div className="space-y-4 pr-2">
+          {/* Formulário — scroll independente */}
+          <div className="max-h-[50vh] space-y-4 overflow-y-auto px-5 py-5 lg:max-h-none lg:overflow-y-auto">
             <div className="space-y-2">
               <Label htmlFor="tpl-name">Nome do template</Label>
-              <Input id="tpl-name" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                id="tpl-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex.: Certificado de conclusão 2026"
+              />
             </div>
 
             <div className="space-y-2">
@@ -209,6 +223,7 @@ export function TemplateEditorDialog({
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Uso interno — ex.: template padrão para cursos de graduação"
               />
             </div>
 
@@ -275,14 +290,14 @@ export function TemplateEditorDialog({
               })}
             </div>
 
-            <div className="flex items-center justify-between border-t pt-4 mb-4">
+            <div className="flex items-center justify-between border-t pt-4">
               <Label className="text-sm">Template ativo</Label>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex-wrap gap-2">
+        <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

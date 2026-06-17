@@ -1,4 +1,5 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
+import { buildCertificateValidationUrl } from "@/lib/certificatePublicUrls"
 import type { CertificatePrintPayload } from "@/lib/certificatePrint"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -110,7 +111,7 @@ export function buildCertificateTemplatePreviewPayload(input: {
       input.institutionLogoUrlOverride ??
       getSignatureImagePublicUrl(input.template.institution_logo_path),
     signatures,
-    validateBaseUrl: typeof window !== "undefined" ? window.location.origin : "",
+    validationUrl: buildCertificateValidationUrl(CERTIFICATE_PREVIEW_SAMPLE.validationCode),
     autoPrint: false,
   }
 }

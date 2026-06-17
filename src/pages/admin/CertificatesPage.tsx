@@ -123,7 +123,6 @@ const CertificatesPage = () => {
             issuedAt: row.issuedAt,
             validationCode: row.validationCode,
           }),
-          validateBaseUrl: window.location.origin,
         })
         return
       }
@@ -135,7 +134,6 @@ const CertificatesPage = () => {
         disciplineName: row.courseName,
         issuedAt: row.issuedAt,
         validationCode: row.validationCode,
-        validateBaseUrl: window.location.origin,
       })
     } catch (e) {
       toast.error("Não foi possível gerar o PDF do certificado.")
@@ -457,7 +455,7 @@ const CertificatesPage = () => {
 
           {/* Preview rápido (somente leitura) */}
           <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-            <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-4 overflow-hidden">
+            <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-4 overflow-hidden">
               <DialogHeader className="shrink-0">
                 <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
                 <DialogDescription>
@@ -465,11 +463,13 @@ const CertificatesPage = () => {
                 </DialogDescription>
               </DialogHeader>
               {previewTemplate && previewPayload && (
-                <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-white">
-                  <CertificatePreviewFrame
-                    payload={previewPayload}
-                    className="h-full min-h-[480px] w-full rounded-lg border-0 bg-white"
-                  />
+                <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-muted/25 p-4">
+                  <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/80 p-4">
+                    <CertificatePreviewFrame
+                      payload={previewPayload}
+                      className="h-[280px] w-full max-w-3xl rounded-md border bg-white shadow-sm lg:h-[360px]"
+                    />
+                  </div>
                 </div>
               )}
               <DialogFooter className="shrink-0">

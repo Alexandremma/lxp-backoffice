@@ -100,11 +100,21 @@ export function SignatureFormDialog({ open, signature, onOpenChange }: Signature
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="sig-name-input">Nome do signatário</Label>
-            <Input id="sig-name-input" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="sig-name-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex.: Maria Silva"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="sig-title-input">Cargo / título</Label>
-            <Input id="sig-title-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input
+              id="sig-title-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex.: Diretora Acadêmica"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="sig-file-input">Imagem da assinatura (PNG/JPG/WebP)</Label>
