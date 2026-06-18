@@ -25,7 +25,7 @@ export function CertificatePreviewFrame({
 }: CertificatePreviewFrameProps) {
   const [debounced, setDebounced] = useState(payload)
   const [embedded, setEmbedded] = useState<CertificatePrintPayload | null>(null)
-  const [scale, setScale] = useState(1)
+  const [scale, setScale] = useState(0.5)
   const outerRef = useRef<HTMLDivElement>(null)
   const timer = useRef<number | null>(null)
 
@@ -88,18 +88,19 @@ export function CertificatePreviewFrame({
 
   const scaledW = A4_LANDSCAPE_WIDTH_PX * scale
   const scaledH = A4_LANDSCAPE_HEIGHT_PX * scale
+  const fillsParent = !maxHeight
 
   return (
     <div
       ref={outerRef}
       className={cn(
-        "flex w-full justify-center",
-        maxHeight ? "h-auto items-center" : "h-full min-h-0 items-center",
+        "flex w-full justify-center overflow-hidden",
+        fillsParent ? "h-full max-h-full min-h-0 items-center" : "h-auto items-center",
         className,
       )}
       style={
         maxHeight
-          ? { maxHeight, height: scaledH, minHeight: scaledH }
+          ? { maxHeight, height: scaledH }
           : undefined
       }
     >

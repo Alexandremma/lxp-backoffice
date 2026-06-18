@@ -522,7 +522,7 @@ const CertificatesPage = () => {
 
           {/* Preview rápido (somente leitura) */}
           <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-            <DialogContent className="flex max-w-5xl flex-col gap-4">
+            <DialogContent className="flex h-[92vh] max-h-[92vh] w-[min(96vw,72rem)] max-w-none flex-col gap-3 overflow-hidden">
               <DialogHeader className="shrink-0">
                 <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
                 <DialogDescription>
@@ -530,11 +530,10 @@ const CertificatesPage = () => {
                 </DialogDescription>
               </DialogHeader>
               {previewTemplate && previewPayload && (
-                <div className="flex justify-center rounded-lg bg-muted/20 p-3">
+                <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg bg-muted/20 p-1">
                   <CertificatePreviewFrame
                     payload={previewPayload}
-                    className="w-full"
-                    maxHeight="min(52vh, 480px)"
+                    className="h-full w-full min-h-0"
                   />
                 </div>
               )}
