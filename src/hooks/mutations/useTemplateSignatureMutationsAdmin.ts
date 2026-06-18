@@ -5,6 +5,8 @@ import {
   removeTemplateSignatureSlot,
   setTemplateSignatureSlot,
   uploadInstitutionLogo,
+  uploadTemplateBackground,
+  removeTemplateBackground,
 } from "@/services/certificatesAdminService"
 
 export function useTemplateSignatureSlots(templateId: string | null | undefined) {
@@ -47,6 +49,27 @@ export function useUploadInstitutionLogo() {
   return useMutation({
     mutationFn: (input: { templateId: string; file: File }) =>
       uploadInstitutionLogo(input.templateId, input.file),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.certificates.templates })
+    },
+  })
+}
+
+export function useUploadTemplateBackground() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { templateId: string; file: File }) =>
+      uploadTemplateBackground(input.templateId, input.file),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.certificates.templates })
+    },
+  })
+}
+
+export function useRemoveTemplateBackground() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (templateId: string) => removeTemplateBackground(templateId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.certificates.templates })
     },

@@ -36,11 +36,11 @@ import {
   useSetTemplateSignatureSlot,
   useTemplateSignatureSlots,
   useUploadInstitutionLogo,
+  useUploadTemplateBackground,
+  useRemoveTemplateBackground,
 } from "@/hooks/mutations/useTemplateSignatureMutationsAdmin"
-import {
-  openCertificatePrintWindow,
-  type CertificatePrintPayload,
-} from "@/lib/certificatePrint"
+import { downloadCertificatePdfFile } from "@/lib/certificatePdfDownload"
+import type { CertificatePrintPayload } from "@/lib/certificatePrint"
 
 import { CertificatePreviewFrame } from "./CertificatePreviewFrame"
 
@@ -63,11 +63,15 @@ export function TemplateEditorDialog({
   const [description, setDescription] = useState("")
   const [institutionName, setInstitutionName] = useState("")
   const [institutionLogoFile, setInstitutionLogoFile] = useState<File | null>(null)
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null)
   const [localLogoUrl, setLocalLogoUrl] = useState<string | null>(null)
+  const [localBackgroundUrl, setLocalBackgroundUrl] = useState<string | null>(null)
   const [isActive, setIsActive] = useState(true)
 
   const updateTemplate = useUpdateCertificateTemplateAdmin()
   const uploadLogo = useUploadInstitutionLogo()
+  const uploadBackground = useUploadTemplateBackground()
+  const removeBackground = useRemoveTemplateBackground()
   const setSlot = useSetTemplateSignatureSlot()
   const removeSlot = useRemoveTemplateSignatureSlot()
   const slotsQ = useTemplateSignatureSlots(template?.id)
@@ -78,7 +82,9 @@ export function TemplateEditorDialog({
     setDescription(template.description ?? "")
     setInstitutionName(template.institution_name || "B42 Edtech")
     setInstitutionLogoFile(null)
+    setBackgroundFile(null)
     setLocalLogoUrl(null)
+    setLocalBackgroundUrl(null)
     setIsActive(template.is_active)
   }, [open, template])
 
@@ -92,10 +98,27 @@ export function TemplateEditorDialog({
     return () => URL.revokeObjectURL(url)
   }, [institutionLogoFile])
 
+  useEffect(() => {
+    if (!backgroundFile) {
+      setLocalBackgroundUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(backgroundFile)
+    setLocalBackgroundUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [backgroundFile])
+
   const persistedLogoUrl = useMemo(
     () => getSignatureImagePublicUrl(template?.institution_logo_path ?? null),
     [template?.institution_logo_path],
   )
+
+  const persistedBackgroundUrl = useMemo(
+    () => getSignatureImagePublicUrl(template?.background_image_path ?? null),
+    [template?.background_image_path],
+  )
+
+  const isCustomTemplate = template?.layout_kind === "custom"
 
   const signaturesBySlot = useMemo(() => {
     const map = new Map<number, TemplateSignatureSlot>()
@@ -108,7 +131,12 @@ export function TemplateEditorDialog({
   const previewPayload: CertificatePrintPayload = useMemo(() => {
     if (!template) {
       return buildCertificateTemplatePreviewPayload({
-        template: { institution_name: "B42 Edtech", institution_logo_path: null },
+        template: {
+          institution_name: "B42 Edtech",
+          institution_logo_path: null,
+          layout_kind: "default",
+          background_image_path: null,
+        },
         slots: [],
       })
     }
@@ -122,8 +150,17 @@ export function TemplateEditorDialog({
       slots,
       institutionNameOverride: institutionName,
       institutionLogoUrlOverride: localLogoUrl ?? persistedLogoUrl,
+      backgroundImageUrlOverride: localBackgroundUrl ?? persistedBackgroundUrl,
     })
-  }, [template, institutionName, localLogoUrl, persistedLogoUrl, signaturesBySlot])
+  }, [
+    template,
+    institutionName,
+    localLogoUrl,
+    persistedLogoUrl,
+    localBackgroundUrl,
+    persistedBackgroundUrl,
+    signaturesBySlot,
+  ])
 
   if (!template) return null
 
@@ -146,6 +183,16 @@ export function TemplateEditorDialog({
       toast.error("Informe o nome do template.")
       return
     }
+    if (isCustomTemplate) {
+      const hasPersistedBackground = Boolean(template.background_image_path?.trim())
+      const hasNewBackground = Boolean(backgroundFile)
+      if (!hasPersistedBackground && !hasNewBackground) {
+        toast.error(
+          "Templates personalizados exigem uma imagem de fundo. Envie o arquivo antes de salvar.",
+        )
+        return
+      }
+    }
     try {
       await updateTemplate.mutateAsync({
         id: template.id,
@@ -161,6 +208,10 @@ export function TemplateEditorDialog({
         await uploadLogo.mutateAsync({ templateId: template.id, file: institutionLogoFile })
       }
 
+      if (backgroundFile) {
+        await uploadBackground.mutateAsync({ templateId: template.id, file: backgroundFile })
+      }
+
       toast.success("Template salvo.")
       onOpenChange(false)
     } catch (err) {
@@ -169,16 +220,39 @@ export function TemplateEditorDialog({
     }
   }
 
-  const handlePrintPreview = () => {
-    void openCertificatePrintWindow({ ...previewPayload, autoPrint: true }).catch((err) => {
+  const handleDownloadPreview = () => {
+    void downloadCertificatePdfFile(previewPayload).catch((err) => {
+      toast.error("Não foi possível baixar o PDF.")
       console.error(err)
     })
   }
 
+  const handleRemoveBackground = async () => {
+    if (!template.background_image_path?.trim() && !localBackgroundUrl) return
+    try {
+      if (template.background_image_path?.trim()) {
+        await removeBackground.mutateAsync(template.id)
+      }
+      setBackgroundFile(null)
+      setLocalBackgroundUrl(null)
+      const input = document.getElementById("tpl-bg") as HTMLInputElement | null
+      if (input) input.value = ""
+      toast.success("Imagem de fundo removida.")
+    } catch (err) {
+      toast.error("Não foi possível remover a imagem de fundo.")
+      console.error(err)
+    }
+  }
+
+  const hasBackgroundPreview =
+    Boolean(localBackgroundUrl) ||
+    Boolean(persistedBackgroundUrl) ||
+    Boolean(template.background_image_path?.trim())
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle className="flex items-center gap-2">
             Editar template
             {template.is_default && (
@@ -186,6 +260,9 @@ export function TemplateEditorDialog({
                 Padrão
               </Badge>
             )}
+            <Badge variant="outline" className="ml-1">
+              {isCustomTemplate ? "Personalizado" : "Modelo padrão"}
+            </Badge>
           </DialogTitle>
           <DialogDescription>
             Pré-visualização atualiza em tempo real. Os dados do aluno e da disciplina vêm da
@@ -193,13 +270,25 @@ export function TemplateEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid lg:grid-cols-[1fr_360px] gap-6 max-h-[70vh] overflow-y-auto pr-2 pb-4">
-          <CertificatePreviewFrame payload={previewPayload} className="w-full h-[640px] border rounded-lg bg-white" />
+        <div className="grid min-h-[min(52vh,480px)] min-h-0 flex-1 items-stretch lg:grid-cols-[minmax(0,1.15fr)_340px]">
+          {/* Painel de preview — certificado escala para preencher largura e altura */}
+          <div className="flex h-full min-h-0 min-w-0 flex-col border-b bg-muted/20 p-1.5 lg:border-b-0 lg:border-r">
+            <CertificatePreviewFrame
+              payload={previewPayload}
+              className="h-full w-full min-h-0"
+            />
+          </div>
 
-          <div className="space-y-4 pr-2">
+          {/* Formulário — scroll independente */}
+          <div className="max-h-[50vh] space-y-4 overflow-y-auto px-5 py-5 lg:max-h-none lg:overflow-y-auto">
             <div className="space-y-2">
               <Label htmlFor="tpl-name">Nome do template</Label>
-              <Input id="tpl-name" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                id="tpl-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex.: Certificado de conclusão 2026"
+              />
             </div>
 
             <div className="space-y-2">
@@ -209,6 +298,7 @@ export function TemplateEditorDialog({
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Uso interno — ex.: template padrão para cursos de graduação"
               />
             </div>
 
@@ -241,6 +331,46 @@ export function TemplateEditorDialog({
                 />
               )}
             </div>
+
+            {isCustomTemplate && (
+              <div className="space-y-2 border-t pt-4">
+                <Label htmlFor="tpl-bg">Imagem de fundo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Paisagem — recomendado 1754×1240 px (proporção A4), PNG ou JPG.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="tpl-bg"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => setBackgroundFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                </div>
+                {(localBackgroundUrl || persistedBackgroundUrl) && (
+                  <img
+                    src={localBackgroundUrl ?? persistedBackgroundUrl ?? ""}
+                    alt="fundo do certificado"
+                    className="mt-1 h-24 w-full rounded border object-cover"
+                  />
+                )}
+                {hasBackgroundPreview && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1"
+                    disabled={removeBackground.isPending}
+                    onClick={() => void handleRemoveBackground()}
+                  >
+                    {removeBackground.isPending && (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    )}
+                    Remover fundo
+                  </Button>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2 border-t pt-4">
               <Label className="block mb-1">Assinaturas</Label>
@@ -275,25 +405,33 @@ export function TemplateEditorDialog({
               })}
             </div>
 
-            <div className="flex items-center justify-between border-t pt-4 mb-4">
+            <div className="flex items-center justify-between border-t pt-4">
               <Label className="text-sm">Template ativo</Label>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex-wrap gap-2">
+        <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button variant="outline" onClick={handlePrintPreview}>
-            Gerar PDF (impressão)
+          <Button variant="outline" onClick={handleDownloadPreview}>
+            Baixar PDF
           </Button>
           <Button
             onClick={() => void handleSave()}
-            disabled={updateTemplate.isPending || uploadLogo.isPending}
+            disabled={
+              updateTemplate.isPending ||
+              uploadLogo.isPending ||
+              uploadBackground.isPending ||
+              removeBackground.isPending
+            }
           >
-            {(updateTemplate.isPending || uploadLogo.isPending) && (
+            {(updateTemplate.isPending ||
+              uploadLogo.isPending ||
+              uploadBackground.isPending ||
+              removeBackground.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             Salvar template

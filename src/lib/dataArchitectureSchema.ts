@@ -132,6 +132,18 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             sqlType: "text",
             description: "Caminho do logo institucional no bucket `certificate-signatures` (Step 26, opcional).",
           },
+          {
+            name: "layout_kind",
+            kind: "column",
+            sqlType: "text",
+            description: "default = borda roxa; custom = fundo com imagem (Step 37).",
+          },
+          {
+            name: "background_image_path",
+            kind: "column",
+            sqlType: "text",
+            description: "Imagem de fundo A4 paisagem no bucket `certificate-signatures` (Step 37, opcional).",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
         ],

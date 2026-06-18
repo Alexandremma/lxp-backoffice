@@ -12,6 +12,7 @@ interface ImportMetaEnv {
   readonly VITE_LXP_ALUNOS_LOGIN_URL?: string
   readonly VITE_LXP_ALUNOS_SET_PASSWORD_URL?: string
   readonly VITE_BACKOFFICE_SET_PASSWORD_URL?: string
+  readonly VITE_LXP_ALUNOS_PUBLIC_ORIGIN?: string
 }
 
 interface ImportMeta {
