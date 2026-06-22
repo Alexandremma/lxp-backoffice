@@ -787,7 +787,6 @@ const StudentsPage = () => {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         student={selectedStudent}
-        dataMode
       />
 
       {/* Novo aluno (UI reservada — botão desabilitado até Auth Admin) */}
