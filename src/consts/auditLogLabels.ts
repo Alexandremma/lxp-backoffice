@@ -36,6 +36,8 @@ const ACTION_VERB: Record<string, string> = {
     "team.invite_resend": "reenviou convite da equipe",
     "team.member_update": "atualizou membro da equipe",
     "team.member_delete": "removeu membro da equipe",
+    "comment.moderate_delete": "removeu comentário na moderação",
+    "comment.staff_create": "publicou comentário da equipe na aula",
     "course.period.create": "criou período do curso",
     "course.period.update": "atualizou período do curso",
     "course.period.delete": "excluiu período do curso",
@@ -56,6 +58,7 @@ const ENTITY_LABEL: Record<string, string> = {
     institution_settings: "Instituição",
     subscription: "Plano",
     backoffice_team_member: "Equipe",
+    lxp_lesson_comment: "Comentário",
     lxp_course_period: "Período",
 }
 
