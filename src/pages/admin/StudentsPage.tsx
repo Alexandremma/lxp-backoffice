@@ -54,7 +54,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import type { StudentAdmin as Student } from "@/types/studentAdmin"
-import type { CourseStudentRow } from "@/services/coursesService"
+import type { CourseStudentRow } from "@/types/courseEnrollments"
 import { useGetStudentsAdmin } from "@/hooks/queries/useGetStudentsAdmin"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
 import { useState, useMemo } from "react"

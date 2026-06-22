@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type CoursePeriodAdmin } from "@/services/coursesService"
+import type { CoursePeriodAdmin } from "@/types/courseGrades"
 
 export type PeriodGradeForm = {
   name: string

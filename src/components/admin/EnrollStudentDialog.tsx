@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, UserPlus, Users } from "lucide-react"
+import type { StudentOption } from "@/types/courseEnrollments"
 
 interface EnrollStudentDialogProps {
   open: boolean
@@ -24,15 +25,6 @@ interface EnrollStudentDialogProps {
   allStudents: StudentOption[]
   onEnroll: (studentIds: string[]) => Promise<void>
   isSubmitting?: boolean
-}
-
-export type StudentOption = {
-  id: string
-  name: string
-  email: string
-  avatar?: string
-  status: "active" | "inactive" | "blocked"
-  enrollmentCount: number
 }
 
 const statusConfig = {

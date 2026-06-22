@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import {
-  type LessonAccessMode,
   createCourseDisciplineAdmin,
   uploadDisciplineCoverAdmin,
-} from "@/services/coursesService"
+} from "@/services/courses"
+import type { LessonAccessMode } from "@/types/discipline"
 
 export function useCreateCourseDiscipline(courseId?: string) {
   const queryClient = useQueryClient()

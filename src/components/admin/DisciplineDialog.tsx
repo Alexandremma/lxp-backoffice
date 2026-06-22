@@ -17,8 +17,8 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   disciplineHasStudentLessonProgress,
   getDisciplineCoverPublicUrl,
-  type LessonAccessMode,
-} from "@/services/coursesService"
+} from "@/services/courses"
+import type { LessonAccessMode } from "@/types/discipline"
 import { toast } from "sonner"
 
 const disciplineSchema = z
