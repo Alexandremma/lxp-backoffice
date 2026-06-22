@@ -1,17 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import {
-  type LessonAccessMode,
-  createCourseDisciplineAdmin,
+  removeDisciplineCoverAdmin,
+  updateCourseDisciplineAdmin,
   uploadDisciplineCoverAdmin,
-} from "@/services/coursesService"
+} from "@/services/courses"
+import type { LessonAccessMode } from "@/types/discipline"
 
-export function useCreateCourseDiscipline(courseId?: string) {
+export function useUpdateCourseDiscipline(courseId?: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (payload: {
-      periodId: string
+      disciplineId: string
       data: {
         name: string
         code: string
@@ -24,12 +25,17 @@ export function useCreateCourseDiscipline(courseId?: string) {
         lessonAccessMode?: LessonAccessMode
       }
       coverFile?: File | null
+      removeCover?: boolean
+      skipLessonAccessMode?: boolean
     }) => {
-      const disciplineId = await createCourseDisciplineAdmin(payload.periodId, payload.data)
-      if (payload.coverFile) {
-        await uploadDisciplineCoverAdmin(disciplineId, payload.coverFile)
+      await updateCourseDisciplineAdmin(payload.disciplineId, payload.data, {
+        skipLessonAccessMode: payload.skipLessonAccessMode,
+      })
+      if (payload.removeCover) {
+        await removeDisciplineCoverAdmin(payload.disciplineId)
+      } else if (payload.coverFile) {
+        await uploadDisciplineCoverAdmin(payload.disciplineId, payload.coverFile)
       }
-      return disciplineId
     },
     onSuccess: () => {
       if (!courseId) return

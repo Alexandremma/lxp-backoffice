@@ -16,3 +16,11 @@ export type CourseAdmin = {
 
 /** Dados editáveis no modal de curso (períodos são gerenciados só na aba Grades). */
 export type CourseAdminInput = Pick<CourseAdmin, "name" | "description" | "category" | "status">
+
+export type UpsertCourseAdminPayload = {
+    name: string
+    description: string
+    category: CourseAdmin["category"]
+    status: CourseStatus
+    externalLibraryId?: string
+}

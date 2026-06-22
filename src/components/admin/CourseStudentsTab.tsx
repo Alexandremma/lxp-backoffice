@@ -45,8 +45,8 @@ import { ptBR } from "date-fns/locale"
 import { toast } from "@/hooks/use-toast"
 import { EnrollStudentDialog } from "./EnrollStudentDialog"
 import { useGetCourseStudents } from "@/hooks/queries/useGetCourseStudents"
-import { useEnrollCourseStudents } from "@/hooks/queries/useEnrollCourseStudents"
-import { useSetCourseEnrollmentStatus } from "@/hooks/queries/useSetCourseEnrollmentStatus"
+import { useEnrollCourseStudents } from "@/hooks/mutations/useEnrollCourseStudents"
+import { useSetCourseEnrollmentStatus } from "@/hooks/mutations/useSetCourseEnrollmentStatus"
 import { StudentDetailsDialog } from "@/components/admin/StudentDetailsDialog"
 import type { StudentAdmin } from "@/types/studentAdmin"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
@@ -389,7 +389,6 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         student={selectedStudent}
-        dataMode
       />
     </div>
   )

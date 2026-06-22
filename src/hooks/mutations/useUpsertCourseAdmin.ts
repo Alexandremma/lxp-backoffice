@@ -1,11 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
-import {
-    createCourseAdmin,
-    updateCourseAdmin,
-    type UpsertCourseAdminPayload,
-} from "@/services/coursesService"
+import { createCourseAdmin, updateCourseAdmin } from "@/services/courses"
+import type { UpsertCourseAdminPayload } from "@/types/courseAdmin"
 
 type UpsertCoursePayload =
     | ({ mode: "create" } & UpsertCourseAdminPayload)

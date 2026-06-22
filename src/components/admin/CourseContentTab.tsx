@@ -29,8 +29,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useGetCourseContent } from "@/hooks/queries/useGetCourseContent"
-import { useUnlinkCourseContent } from "@/hooks/queries/useUnlinkCourseContent"
-import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
+import { useUnlinkCourseContent } from "@/hooks/mutations/useUnlinkCourseContent"
+import { useLinkCourseContent } from "@/hooks/mutations/useLinkCourseContent"
 import { useGetCourseGrades } from "@/hooks/queries/useGetCourseGrades"
 import {
   Select,

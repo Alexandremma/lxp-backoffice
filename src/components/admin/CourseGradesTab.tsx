@@ -17,42 +17,31 @@ import {
 import {
   Plus,
   MoreHorizontal,
-  Link2,
-  Unlink2,
   Edit,
   Trash2,
   BookOpen,
-  Clock,
-  User,
-  CheckCircle2,
-  Circle,
-  AlertCircle,
 } from "lucide-react"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
 import { GradeDialog } from "./GradeDialog"
 import { DisciplineDialog, type DisciplineDialogSavePayload } from "./DisciplineDialog"
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
+import { CourseDisciplineRow } from "./course-grades/CourseDisciplineRow"
+import { gradeStatusConfig } from "./course-grades/gradeStatusConfig"
 import { toast } from "sonner"
-import type { CourseDisciplineAdmin, CoursePeriodAdmin } from "@/services/coursesService"
+import type { CourseDisciplineAdmin, CoursePeriodAdmin } from "@/types/courseGrades"
 import { useGetCourseGrades } from "@/hooks/queries/useGetCourseGrades"
-import { useCreateCoursePeriod } from "@/hooks/queries/useCreateCoursePeriod"
-import { useUpdateCoursePeriod } from "@/hooks/queries/useUpdateCoursePeriod"
-import { useDeleteCoursePeriod } from "@/hooks/queries/useDeleteCoursePeriod"
-import { useCreateCourseDiscipline } from "@/hooks/queries/useCreateCourseDiscipline"
-import { useUpdateCourseDiscipline } from "@/hooks/queries/useUpdateCourseDiscipline"
-import { useDeleteCourseDiscipline } from "@/hooks/queries/useDeleteCourseDiscipline"
-import { useLinkCourseContent } from "@/hooks/queries/useLinkCourseContent"
-import { useUnlinkCourseContent } from "@/hooks/queries/useUnlinkCourseContent"
+import { useCreateCoursePeriod } from "@/hooks/mutations/useCreateCoursePeriod"
+import { useUpdateCoursePeriod } from "@/hooks/mutations/useUpdateCoursePeriod"
+import { useDeleteCoursePeriod } from "@/hooks/mutations/useDeleteCoursePeriod"
+import { useCreateCourseDiscipline } from "@/hooks/mutations/useCreateCourseDiscipline"
+import { useUpdateCourseDiscipline } from "@/hooks/mutations/useUpdateCourseDiscipline"
+import { useDeleteCourseDiscipline } from "@/hooks/mutations/useDeleteCourseDiscipline"
+import { useLinkCourseContent } from "@/hooks/mutations/useLinkCourseContent"
+import { useUnlinkCourseContent } from "@/hooks/mutations/useUnlinkCourseContent"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
 interface CourseGradesTabProps {
   courseId: string
-}
-
-const gradeStatusConfig = {
-  current: { label: "Em Andamento", variant: "info" as const, icon: AlertCircle },
-  completed: { label: "Concluído", variant: "success" as const, icon: CheckCircle2 },
-  upcoming: { label: "Próximo", variant: "secondary" as const, icon: Circle },
 }
 
 export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
@@ -330,90 +319,15 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
                 <AccordionContent className="px-6 pb-6">
                   <div className="space-y-3">
                     {grade.disciplines.map((discipline) => (
-                      <Card key={discipline.id} className="border-dashed">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <BookOpen className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="font-medium">{discipline.name}</p>
-                                    {discipline.status === "inactive" && (
-                                      <Badge variant="secondary">Inativa</Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                                    <span className="font-mono">{discipline.code}</span>
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {discipline.workload}h
-                                    </span>
-                                    {discipline.creditsEnabled && (
-                                      <span>{discipline.credits} créditos</span>
-                                    )}
-                                    {discipline.professor && (
-                                      <span className="flex items-center gap-1">
-                                        <User className="h-3 w-3" />
-                                        {discipline.professor}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              {discipline.linkedTrailId ? (
-                                <Badge variant="outline" className="gap-1 bg-success/10 text-success border-success/30">
-                                  <Link2 className="h-3 w-3" />
-                                  {discipline.linkedTrailName}
-                                </Badge>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleLinkLibrary(discipline)}
-                                >
-                                  <Link2 className="h-4 w-4 mr-2" />
-                                  Vincular Disciplina
-                                </Button>
-                              )}
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon-sm">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleLinkLibrary(discipline)}>
-                                    <Link2 className="h-4 w-4 mr-2" />
-                                    {discipline.linkedTrailId ? "Substituir vínculo" : "Vincular Disciplina"}
-                                  </DropdownMenuItem>
-                                  {discipline.linkedTrailId && (
-                                    <DropdownMenuItem onClick={() => void handleUnlinkLibrary(discipline)}>
-                                      <Unlink2 className="h-4 w-4 mr-2" />
-                                      Desvincular Disciplina
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onClick={() => handleEditDiscipline(discipline, grade.id)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Editar Disciplina
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteDiscipline(discipline, grade.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Remover
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <CourseDisciplineRow
+                        key={discipline.id}
+                        discipline={discipline}
+                        gradeId={grade.id}
+                        onLink={handleLinkLibrary}
+                        onUnlink={handleUnlinkLibrary}
+                        onEdit={handleEditDiscipline}
+                        onDelete={handleDeleteDiscipline}
+                      />
                     ))}
 
                     <Button

@@ -19,7 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type CourseGrade } from "@/lib/mock-data"
+import type { CoursePeriodAdmin } from "@/types/courseGrades"
+
+export type PeriodGradeForm = {
+  name: string
+  status: "current" | "completed" | "upcoming"
+}
 
 const gradeSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(100),
@@ -31,8 +36,8 @@ type GradeFormData = z.infer<typeof gradeSchema>
 interface GradeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  grade?: CourseGrade | null
-  onSave: (data: { name: string; status: "current" | "completed" | "upcoming" }) => void
+  grade?: Pick<CoursePeriodAdmin, "name" | "status"> | null
+  onSave: (data: PeriodGradeForm) => void
 }
 
 const statusOptions = [
