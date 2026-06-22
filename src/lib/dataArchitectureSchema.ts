@@ -605,7 +605,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_lesson_comments",
-        purpose: "Discussão na aula (público entre alunos); XP 15 (post) / 30 (resposta) via trigger.",
+        purpose: "Discussão na aula; XP para alunos (15/30). Equipe modera via portal aluno (STEP 38).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Comentário." },
           {
@@ -613,7 +613,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             kind: "fk",
             sqlType: "uuid",
             fkRef: "public.lxp_profiles",
-            description: "Autor.",
+            description: "Autor (perfil do aluno ou da equipe).",
           },
           { name: "external_discipline_id", kind: "column", sqlType: "text", description: "Disciplina (trailId)." },
           { name: "external_unit_id", kind: "column", sqlType: "text", description: "Aula (lessonId)." },
@@ -625,6 +625,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
             description: "Null = comentário raiz; preenchido = resposta.",
           },
           { name: "body", kind: "column", sqlType: "text", description: "Texto (1–2000 caracteres)." },
+          {
+            name: "author_team_role",
+            kind: "column",
+            sqlType: "text",
+            description: "Null = aluno; admin/coordinator/professor = comentário da equipe (sem XP).",
+          },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
           { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última edição." },
         ],
