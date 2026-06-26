@@ -6,7 +6,7 @@ import { SkeletonTable } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import {
   Table,
   TableBody,
@@ -130,7 +130,8 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
       enrollments: student.enrollments,
       lastAccess: student.lastAccess ?? new Date().toISOString(),
       createdAt: student.createdAt ?? new Date().toISOString(),
-      avatar: student.avatar,
+      avatarPath: student.avatarPath ?? null,
+      avatarUpdatedAt: student.avatarUpdatedAt ?? null,
     }
   }
 
@@ -281,12 +282,14 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                   <TableRow key={student.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={student.avatar} />
-                          <AvatarFallback>
-                            {student.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          name={student.name}
+                          email={student.email}
+                          avatarPath={student.avatarPath}
+                          updatedAt={student.avatarUpdatedAt}
+                          className="h-9 w-9"
+                          fallbackClassName="bg-primary/10 text-primary text-xs"
+                        />
                         <div>
                           <p className="font-medium">{student.name}</p>
                           <p className="text-sm text-muted-foreground">{student.email}</p>

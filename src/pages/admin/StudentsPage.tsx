@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import {
   Table,
   TableBody,
@@ -92,7 +92,8 @@ function courseRowToStudent(row: CourseStudentRow): Student {
     enrollments: row.enrollments,
     lastAccess: row.lastAccess ?? new Date().toISOString(),
     createdAt: row.createdAt ?? new Date().toISOString(),
-    avatar: row.avatar,
+    avatarPath: row.avatarPath ?? null,
+    avatarUpdatedAt: row.avatarUpdatedAt ?? null,
     phone: row.phone ?? null,
     birthDate: row.birthDate ?? null,
   }
@@ -585,16 +586,14 @@ const StudentsPage = () => {
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={student.avatar} alt={student.name} />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {student.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <UserAvatar
+                            name={student.name}
+                            email={student.email}
+                            avatarPath={student.avatarPath}
+                            updatedAt={student.avatarUpdatedAt}
+                            className="h-9 w-9"
+                            fallbackClassName="bg-primary/10 text-primary text-xs"
+                          />
                           <div>
                             <p className="font-medium">{student.name}</p>
                             <p className="text-sm text-muted-foreground">{student.email}</p>

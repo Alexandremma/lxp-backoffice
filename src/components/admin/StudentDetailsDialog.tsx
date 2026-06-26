@@ -8,7 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -50,12 +50,14 @@ export function StudentDetailsDialog({
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={student.avatar} />
-              <AvatarFallback className="text-lg">
-                {student.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              name={student.name}
+              email={student.email}
+              avatarPath={student.avatarPath}
+              updatedAt={student.avatarUpdatedAt}
+              className="h-16 w-16"
+              fallbackClassName="text-lg"
+            />
             <div>
               <DialogTitle className="text-xl">{student.name}</DialogTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">

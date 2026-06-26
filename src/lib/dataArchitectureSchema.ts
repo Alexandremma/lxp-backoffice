@@ -1,8 +1,8 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–31 (certificados N:M + snapshot, gamificação,
- * configurações/auditoria, RBAC equipe). App jun/2026: auth modular, preview/PDF por slots,
- * `actorProfileService` para `updated_by` e fallback de ator na auditoria.
+ * Atualizado com migrations Steps 14–40 (certificados N:M + snapshot, gamificação,
+ * configurações/auditoria, RBAC equipe, curso livre, avatares). App jun/2026: auth modular,
+ * preview/PDF por slots, `actorProfileService`, avatares self-service, guards bootstrap-only.
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -42,11 +42,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members` — papéis **admin / coordenador / professor**; legados normalizados no app), certificados (templates + biblioteca N:M + snapshot imutável), gamificação, cursos e **configurações** (`lxp_institution_settings`, `lxp_audit_logs`). UI: `/admin/gamificacao`, `/admin/certificados`, `/admin/configuracoes`. RPCs: `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`. **App (jun/2026):** auth em `AuthProvider` + `use-auth` + `auth-events`; preview/PDF de template via slots N:M (`buildCertificateTemplatePreviewPayload`); `updated_by` resolvido por `auth.uid()` → `lxp_profiles` (`actorProfileService`). **23 tabelas** · migrations até **Step 31** + seeds homolog.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members` — papéis **admin / coordenador / professor**; RLS granular Step 39), certificados (templates + biblioteca N:M + snapshot imutável; layout custom Step 37), gamificação, cursos (`free_course` Step 32) e **configurações** (`lxp_institution_settings`, `lxp_institution_smtp_secret` Step 35, `lxp_audit_logs`). UI: `/admin/gamificacao`, `/admin/certificados`, `/admin/configuracoes`, `/admin/perfil`. RPCs: `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`, `lxp_get_profile_display()`. **App (jun/2026):** auth em `AuthProvider` + `use-auth` + `auth-events`; avatares self-service (`avatarService` + bucket `user-avatars`); listagens admin com `UserAvatar`; preview/PDF via slots N:M; `updated_by` via `actorProfileService`. **24 tabelas** · migrations até **Step 40** + seeds homolog.",
     tables: [
       {
         name: "backoffice_team_members",
-        purpose: "Membros da equipe com acesso ao painel; vínculo com usuário Auth após convite.",
+        purpose:
+          "Membros da equipe com acesso ao painel; vínculo com usuário Auth após convite. Foto via `lxp_profiles.avatar_path` (Step 40 — sem coluna própria). RLS Step 39: SELECT equipe; UPDATE própria linha ou admin/coordenador; DELETE só admin.",
         columns: [
           {
             name: "id",
@@ -313,6 +314,34 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
         ],
       },
       {
+        name: "lxp_institution_smtp_secret",
+        purpose:
+          "Senha SMTP cifrada fora do jsonb de `lxp_institution_settings` (Step 35); sem policies RLS — leitura/escrita somente service role / Edge Functions.",
+        columns: [
+          {
+            name: "id",
+            kind: "pk",
+            sqlType: "text",
+            description: "Chave fixa `institution` (singleton).",
+          },
+          {
+            name: "password_ciphertext",
+            kind: "column",
+            sqlType: "text",
+            description: "Senha AES-GCM; nunca exposta ao client autenticado.",
+          },
+          { name: "password_iv", kind: "column", sqlType: "text", description: "IV do ciphertext." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Última rotação da senha." },
+          {
+            name: "updated_by",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Admin que salvou via Edge `update-smtp-settings`.",
+          },
+        ],
+      },
+      {
         name: "lxp_courses",
         purpose: "Cursos/trilhas ofertados pela instituição.",
         columns: [
@@ -440,11 +469,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Alunos",
     schemaHighlight: "student.*",
     intro:
-      "Perfil, matrículas, progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (download via snapshot imutável). Conteúdo via **Alice**; validação pública `lxp_validate_certificate_public(code)`. **App (jun/2026):** auth modular (`AuthProvider` + `use-auth` + `auth-events`); `ProtectedRoute` com papel e perfil ausente; gate de matrícula bloqueada 1×/sessão; PDF tolera chaves mistas no snapshot; logout limpa cache React Query.",
+      "Perfil (self-service + avatar Step 40), matrículas (`free_course` auto-matrícula Step 32–34), progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (download via snapshot imutável). Conteúdo via **Alice**; validação pública `lxp_validate_certificate_public(code)`. Autores de comentários: RPC `lxp_get_profile_display` (foto + nome, sem PII). **App (jun/2026):** auth modular; guards bootstrap-only + refetch silencioso; skeletons contextuais; `/perfil` + `TopBar` com `UserAvatar`; equipe modera comentários (Step 38).",
     tables: [
       {
         name: "lxp_profiles",
-        purpose: "Perfil LXP vinculado ao Auth; papel student ou admin (portal usa student).",
+        purpose:
+          "Perfil LXP vinculado ao Auth; alunos e equipe compartilham esta tabela (foto única em `avatar_path`). Portal aluno usa role student.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Identificador do perfil (usado em FKs de progresso)." },
           {
@@ -459,6 +489,13 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           { name: "phone", kind: "column", sqlType: "text", description: "Telefone opcional." },
           { name: "birth_date", kind: "column", sqlType: "date", description: "Data de nascimento opcional." },
           {
+            name: "avatar_path",
+            kind: "column",
+            sqlType: "text",
+            description:
+              "Step 40: caminho relativo no bucket `user-avatars` (`{user_id}/avatar.{ext}`). CHECK: primeiro segmento = `user_id`. Upload self-service; leitura pública via Storage.",
+          },
+          {
             name: "role",
             kind: "column",
             sqlType: "text",
@@ -466,12 +503,12 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
               "student (portal aluno) | admin (legado). Acesso ao backoffice = linha em backoffice_team_members; RBAC = team_members.role.",
           },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
-          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Atualização (cache-bust da foto na UI)." },
         ],
       },
       {
         name: "lxp_enrollments",
-        purpose: "Matrícula do aluno em um curso.",
+        purpose: "Matrícula do aluno em um curso. Auto-matrícula pelo aluno: somente cursos `free_course` ativos (RLS Steps 32–34).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Matrícula." },
           {
@@ -605,7 +642,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_lesson_comments",
-        purpose: "Discussão na aula; XP para alunos (15/30). Equipe modera via portal aluno (STEP 38).",
+        purpose:
+          "Discussão na aula; XP para alunos (15/30). Equipe modera via portal aluno (Step 38). Avatares dos autores via RPC `lxp_get_profile_display` (Step 40).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Comentário." },
           {

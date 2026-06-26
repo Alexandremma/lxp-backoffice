@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, UserPlus, Users } from "lucide-react"
@@ -139,16 +139,14 @@ export function EnrollStudentDialog({
                         onCheckedChange={() => handleToggleStudent(student.id)}
                         disabled={isSubmitting}
                       />
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={student.avatar} />
-                        <AvatarFallback>
-                          {student.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={student.name}
+                        email={student.email}
+                        avatarPath={student.avatarPath}
+                        updatedAt={student.avatarUpdatedAt}
+                        className="h-10 w-10"
+                        fallbackClassName="text-xs"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">
                           {student.name}
