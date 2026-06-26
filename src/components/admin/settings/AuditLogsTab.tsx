@@ -5,7 +5,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuditLogs } from "@/hooks/queries/useAuditLogs"
 import { queryKeys } from "@/consts/queryKeys"
 import { useQueryClient } from "@tanstack/react-query"
-import { Clock, Loader2, Shield, User } from "lucide-react"
+import { Clock, Shield, User } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
+import { SkeletonList } from "@/components/ui/skeleton"
 
 export function AuditLogsTab() {
     const queryClient = useQueryClient()
@@ -31,14 +33,13 @@ export function AuditLogsTab() {
                         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.list({ limit: 50 }) })
                     }
                 >
-                    {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Atualizar"}
+                    {isFetching ? <LoadingSpinner size="sm" /> : "Atualizar"}
                 </Button>
             </CardHeader>
             <CardContent className="p-0">
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-16 text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                        Carregando logs…
+                    <div className="p-4">
+                        <SkeletonList items={5} />
                     </div>
                 ) : isError ? (
                     <p className="px-6 pb-6 text-sm text-destructive">

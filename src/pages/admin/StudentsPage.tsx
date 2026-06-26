@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import {
   Plus,
@@ -50,7 +51,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Unlock,
-  Loader2,
   AlertCircle,
 } from "lucide-react"
 import type { StudentAdmin as Student } from "@/types/studentAdmin"
@@ -411,16 +411,9 @@ const StudentsPage = () => {
         </Alert>
       )}
 
-      {isLoading && (
-        <Card className="mb-6">
-          <CardContent className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            Carregando alunos do Supabase…
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats Cards */}
+      {isLoading ? (
+        <SkeletonStatCards className="mb-6" />
+      ) : (
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
           <CardContent className="pt-6">
@@ -481,6 +474,7 @@ const StudentsPage = () => {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Filters */}
       <Card className="mb-6">
@@ -531,6 +525,10 @@ const StudentsPage = () => {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          {isLoading ? (
+            <SkeletonTable rows={8} columns={6} />
+          ) : (
+            <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -778,6 +776,8 @@ const StudentsPage = () => {
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </CardContent>
       </Card>

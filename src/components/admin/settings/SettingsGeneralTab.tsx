@@ -9,13 +9,13 @@ import { formatTeamRoleLabel, mapSubscriptionFeaturesToDisplay } from "@/consts/
 import { useAdminAccountCard } from "@/hooks/queries/useAdminAccountCard"
 import { useSettingsDashboard } from "@/hooks/queries/useSettingsDashboard"
 import { planUsageFromDashboard, type PlanUsageStatus } from "@/lib/planLimits"
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import {
     BarChart3,
     Building2,
     Check,
     Crown,
-    Loader2,
     User,
     Users,
     Zap,
@@ -29,12 +29,7 @@ export function SettingsGeneralTab() {
     const { data: adminAccount, isLoading: adminLoading } = useAdminAccountCard()
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                Carregando informações do plano…
-            </div>
-        )
+        return <SkeletonCard className="mb-6" />
     }
 
     if (isError || !dashboard) {
@@ -72,9 +67,9 @@ export function SettingsGeneralTab() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {adminLoading ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Carregando perfil…
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-40" />
+                                <Skeleton className="h-4 w-56" />
                             </div>
                         ) : (
                             <>

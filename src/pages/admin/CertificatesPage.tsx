@@ -22,8 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Award, Calendar, Download, Edit, FileText, Loader2, Plus, Search, User } from "lucide-react"
+import { Award, Calendar, Download, Edit, FileText, Plus, Search, User } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 
 import { useCertificateTemplatesAdmin } from "@/hooks/queries/useCertificateTemplatesAdmin"
 import { useCertificateSignaturesAdmin } from "@/hooks/queries/useCertificateSignaturesAdmin"
@@ -283,9 +285,9 @@ const CertificatesPage = () => {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando…
+        <div className="space-y-6">
+          <SkeletonStatCards className="mb-2" />
+          <SkeletonTable rows={6} columns={5} />
         </div>
       ) : errorMsg ? (
         <Card className="border-destructive/50">
@@ -511,7 +513,7 @@ const CertificatesPage = () => {
                   disabled={createTemplate.isPending}
                 >
                   {createTemplate.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingSpinner size="sm" />
                   ) : (
                     "Criar e personalizar"
                   )}

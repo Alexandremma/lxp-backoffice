@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Mail, Pencil, Save, X } from "lucide-react"
+import { Mail, Pencil, Save, X } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
+import { SkeletonCard } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -132,14 +134,7 @@ export function SmtpSettingsCard() {
     }
 
     if (isLoading || !form) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center py-16 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Carregando configurações de e-mail…
-                </CardContent>
-            </Card>
-        )
+        return <SkeletonCard />
     }
 
     if (isError) {
@@ -329,7 +324,7 @@ export function SmtpSettingsCard() {
                             onClick={() => void handleSendTest()}
                         >
                             {sendTestEmail.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingSpinner size="sm" className="mr-2" />
                             ) : (
                                 <Mail className="mr-2 h-4 w-4" />
                             )}
@@ -342,7 +337,7 @@ export function SmtpSettingsCard() {
                     <div className="flex flex-wrap gap-2">
                         <Button onClick={() => void handleSave()} disabled={updateSettings.isPending}>
                             {updateSettings.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingSpinner size="sm" className="mr-2" />
                             ) : (
                                 <Save className="mr-2 h-4 w-4" />
                             )}

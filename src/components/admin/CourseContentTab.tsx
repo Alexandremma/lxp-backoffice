@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
@@ -188,11 +189,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="font-medium mb-1">Carregando conteúdos...</p>
-              <p className="text-sm text-muted-foreground">Aguarde um instante</p>
-            </div>
+            <SkeletonTable rows={6} columns={6} />
           ) : filteredContent.length > 0 ? (
             <Table>
               <TableHeader>

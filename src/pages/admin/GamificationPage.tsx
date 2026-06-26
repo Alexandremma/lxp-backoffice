@@ -41,10 +41,11 @@ import {
   TrendingUp,
   Plus,
   Trash2,
-  Loader2,
   RefreshCw,
 } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 import { BadgeDialog } from "@/components/admin/BadgeDialog"
 import { BadgeCard } from "@/components/admin/BadgeCard"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -253,9 +254,9 @@ const GamificationPage = () => {
       <PageHeader title="Gamificação" description="Configure XP, badges e regras de níveis" />
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando…
+        <div className="space-y-6">
+          <SkeletonStatCards className="mb-2" />
+          <SkeletonTable rows={6} columns={4} />
         </div>
       ) : err ? (
         <Card className="border-destructive/50">
@@ -442,7 +443,7 @@ const GamificationPage = () => {
                           }}
                         >
                           {reevaluateBadges.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <LoadingSpinner size="sm" className="mr-2" />
                           ) : (
                             <RefreshCw className="mr-2 h-4 w-4" />
                           )}
