@@ -9,6 +9,7 @@ import { formatTeamRoleLabel, mapSubscriptionFeaturesToDisplay } from "@/consts/
 import { useAdminAccountCard } from "@/hooks/queries/useAdminAccountCard"
 import { useSettingsDashboard } from "@/hooks/queries/useSettingsDashboard"
 import { planUsageFromDashboard, type PlanUsageStatus } from "@/lib/planLimits"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { cn } from "@/lib/utils"
 import {
     BarChart3,
@@ -29,12 +30,7 @@ export function SettingsGeneralTab() {
     const { data: adminAccount, isLoading: adminLoading } = useAdminAccountCard()
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                Carregando informações do plano…
-            </div>
-        )
+        return <PageLoadingState variant="section" title="Carregando informações do plano…" />
     }
 
     if (isError || !dashboard) {
@@ -72,10 +68,7 @@ export function SettingsGeneralTab() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {adminLoading ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Carregando perfil…
-                            </div>
+                            <PageLoadingState variant="inline" title="Carregando perfil…" />
                         ) : (
                             <>
                                 <div className="flex items-center gap-4">

@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react"
 import { RequirePermission } from "@/components/auth/RequirePermission"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
@@ -262,11 +263,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="font-medium mb-1">Carregando alunos...</p>
-              <p className="text-sm text-muted-foreground">Aguarde um instante...</p>
-            </div>
+            <PageLoadingState variant="section" title="Carregando alunos…" description="Aguarde um instante" />
           ) : filteredStudents.length > 0 ? (
             <Table>
               <TableHeader>

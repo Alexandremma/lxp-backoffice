@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { useGetCourseRecentActivity } from "@/hooks/queries/useGetCourseRecentActivity"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 
 const statusConfig = {
   active: { label: "Ativo", variant: "success" as const },
@@ -90,15 +91,17 @@ const CourseDetailsPage = () => {
   if (!course) {
     return (
       <AdminLayout>
+        {isLoading ? (
+          <PageLoadingState variant="section" title="Carregando curso…" className="h-[60vh]" />
+        ) : (
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-          <h2 className="text-2xl font-semibold">
-            {isLoading ? "Carregando..." : "Curso não encontrado"}
-          </h2>
+          <h2 className="text-2xl font-semibold">Curso não encontrado</h2>
           <Button variant="outline" onClick={() => navigate("/admin/cursos")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar para Cursos
           </Button>
         </div>
+        )}
       </AdminLayout>
     )
   }

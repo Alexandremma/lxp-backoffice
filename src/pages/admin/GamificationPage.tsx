@@ -45,6 +45,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 import { toast } from "sonner"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { BadgeDialog } from "@/components/admin/BadgeDialog"
 import { BadgeCard } from "@/components/admin/BadgeCard"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -253,10 +254,7 @@ const GamificationPage = () => {
       <PageHeader title="Gamificação" description="Configure XP, badges e regras de níveis" />
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando…
-        </div>
+        <PageLoadingState variant="section" title="Carregando gamificação…" />
       ) : err ? (
         <Card className="border-destructive/50">
           <CardHeader>

@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { Progress } from "@/components/ui/progress"
 import {
   Plus,
@@ -412,12 +413,7 @@ const StudentsPage = () => {
       )}
 
       {isLoading && (
-        <Card className="mb-6">
-          <CardContent className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            Carregando alunos do Supabase…
-          </CardContent>
-        </Card>
+        <PageLoadingState variant="card" title="Carregando alunos…" className="mb-6" />
       )}
 
       {/* Stats Cards */}

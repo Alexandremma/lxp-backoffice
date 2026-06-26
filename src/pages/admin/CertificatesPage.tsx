@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Award, Calendar, Download, Edit, FileText, Loader2, Plus, Search, User } from "lucide-react"
 import { toast } from "sonner"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 
 import { useCertificateTemplatesAdmin } from "@/hooks/queries/useCertificateTemplatesAdmin"
 import { useCertificateSignaturesAdmin } from "@/hooks/queries/useCertificateSignaturesAdmin"
@@ -283,10 +284,7 @@ const CertificatesPage = () => {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando…
-        </div>
+        <PageLoadingState variant="section" title="Carregando certificados…" />
       ) : errorMsg ? (
         <Card className="border-destructive/50">
           <CardHeader>

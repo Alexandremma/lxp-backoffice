@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Building2, Loader2, Pencil, Save, X } from "lucide-react"
 import { toast } from "sonner"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { INSTITUTION_FIELD_PLACEHOLDERS } from "@/consts/institutionDefaults"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -108,14 +109,7 @@ export function InstitutionSettingsCard() {
     }
 
     if (isLoading || !form) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center py-16 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Carregando dados da instituição…
-                </CardContent>
-            </Card>
-        )
+        return <PageLoadingState variant="card" title="Carregando dados da instituição…" />
     }
 
     if (isError) {

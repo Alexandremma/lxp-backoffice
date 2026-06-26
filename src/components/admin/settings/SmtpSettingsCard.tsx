@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Loader2, Mail, Pencil, Save, X } from "lucide-react"
 import { toast } from "sonner"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -132,14 +133,7 @@ export function SmtpSettingsCard() {
     }
 
     if (isLoading || !form) {
-        return (
-            <Card>
-                <CardContent className="flex items-center justify-center py-16 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Carregando configurações de e-mail…
-                </CardContent>
-            </Card>
-        )
+        return <PageLoadingState variant="card" title="Carregando configurações de e-mail…" />
     }
 
     if (isError) {
