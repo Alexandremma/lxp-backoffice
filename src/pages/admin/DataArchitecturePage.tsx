@@ -84,7 +84,7 @@ const DataArchitecturePage = () => {
                   variant="outline"
                   className="border-orange-500/40 bg-orange-500/5 font-mono text-[11px] text-orange-400"
                 >
-                  23 tabelas · public
+                  24 tabelas · public
                 </Badge>
                 <Badge
                   variant="outline"
@@ -96,7 +96,7 @@ const DataArchitecturePage = () => {
                   variant="outline"
                   className="border-emerald-500/40 bg-emerald-500/5 font-mono text-[11px] text-emerald-500"
                 >
-                  Step 31 · jun/2026
+                  Step 40 · jun/2026
                 </Badge>
               </div>
             }
