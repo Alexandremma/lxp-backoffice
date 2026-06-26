@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Database,
+  User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NavLink } from "@/components/NavLink"
@@ -20,7 +21,7 @@ interface NavItem {
   title: string
   url: string
   icon: React.ElementType
-  permission: PermissionId
+  permission?: PermissionId
 }
 
 const navigationItems: NavItem[] = [
@@ -32,6 +33,7 @@ const navigationItems: NavItem[] = [
   { title: "Certificados", url: "/admin/certificados", icon: Award, permission: "certificados.visualizar" },
   { title: "Modelo de dados", url: "/admin/modelo-dados", icon: Database, permission: "dev.modelo_dados" },
   { title: "Geral", url: "/admin/configuracoes", icon: Settings, permission: "configuracoes.visualizar" },
+  { title: "Perfil", url: "/admin/perfil", icon: User },
 ]
 
 interface AdminSidebarProps {
@@ -46,6 +48,7 @@ const AdminSidebar = ({ collapsed = false, className }: AdminSidebarProps) => {
 
   const visibleItems = navigationItems.filter(
     (item) =>
+      !item.permission ||
       can(item.permission) ||
       location.pathname === item.url ||
       location.pathname.startsWith(item.url + "/"),

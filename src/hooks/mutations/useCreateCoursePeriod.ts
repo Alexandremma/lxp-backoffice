@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
-import { createCoursePeriodAdmin } from "@/services/coursesService"
+import { createCoursePeriodAdmin } from "@/services/courses"
 
 export function useCreateCoursePeriod(courseId?: string) {
   const queryClient = useQueryClient()

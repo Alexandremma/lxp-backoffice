@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
 import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
-import { deleteCoursePeriodAdmin } from "@/services/coursesService"
+import { deleteCoursePeriodAdmin } from "@/services/courses"
 
 export function useDeleteCoursePeriod(courseId?: string) {
   const queryClient = useQueryClient()

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
-import { linkCourseContentAdmin } from "@/services/coursesService"
+import { linkCourseContentAdmin } from "@/services/courses"
 
 export function useLinkCourseContent(courseId?: string) {
   const queryClient = useQueryClient()

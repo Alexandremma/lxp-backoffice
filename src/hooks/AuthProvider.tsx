@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useCallback, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthContext, type LxpProfile } from "@/hooks/auth-context";
@@ -9,6 +9,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<LxpProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loadProfileForUser = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from("lxp_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[use-auth] Erro ao buscar lxp_profiles:", error.message);
+    }
+
+    return (data as LxpProfile) ?? null;
+  }, []);
+
+  const refetchProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    const nextProfile = await loadProfileForUser(user.id);
+    setProfile(nextProfile);
+  }, [user, loadProfileForUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -25,17 +49,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser(currentSession?.user ?? null);
 
       if (currentSession?.user) {
-        const { data, error } = await supabase
-          .from("lxp_profiles")
-          .select("*")
-          .eq("user_id", currentSession.user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.warn("[use-auth] Erro ao buscar lxp_profiles:", error.message);
-        }
-
-        setProfile((data as LxpProfile) ?? null);
+        const nextProfile = await loadProfileForUser(currentSession.user.id);
+        setProfile(nextProfile);
       } else {
         setProfile(null);
       }
@@ -64,19 +79,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(true);
       void (async () => {
         try {
-          const { data, error } = await supabase
-            .from("lxp_profiles")
-            .select("*")
-            .eq("user_id", nextSession.user.id)
-            .maybeSingle();
-
-          if (error) {
-            console.warn(
-              "[use-auth] Erro ao buscar lxp_profiles (onAuthStateChange):",
-              error.message,
-            );
-          }
-          setProfile((data as LxpProfile) ?? null);
+          const nextProfile = await loadProfileForUser(nextSession.user.id);
+          setProfile(nextProfile);
         } finally {
           setLoading(false);
         }
@@ -87,13 +91,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [loadProfileForUser]);
 
   const value = {
     user,
     session,
     profile,
     loading,
+    refetchProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
