@@ -65,10 +65,11 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <UserAvatar
                 name={displayName}
+                email={displayEmail}
+                genericLabel="Membro"
                 avatarPath={profile?.avatar_path}
                 updatedAt={profile?.updated_at}
                 className="h-9 w-9"
-                fallbackClassName="bg-primary text-primary-foreground"
               />
             </Button>
           </DropdownMenuTrigger>

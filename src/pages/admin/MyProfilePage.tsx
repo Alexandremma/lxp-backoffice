@@ -123,6 +123,8 @@ const MyProfilePage = () => {
             <div className="flex items-center gap-4 min-w-0">
               <AvatarUploadField
                 name={member.name}
+                email={member.email}
+                genericLabel="Membro"
                 avatarPath={profile?.avatar_path}
                 updatedAt={profile?.updated_at}
                 disabled={!isEditing}
