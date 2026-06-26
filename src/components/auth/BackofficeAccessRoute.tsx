@@ -2,8 +2,10 @@ import { ReactElement } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import type { PermissionId } from "@/consts/permissions"
 import { can } from "@/consts/permissions"
+import { AppBootstrapScreen } from "@/components/states/AppBootstrapScreen"
 import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember"
 import { useAuth } from "@/hooks/use-auth"
+import { isQueryBootstrapping } from "@/lib/routeGuard"
 import { permissionForPath } from "@/lib/routePermissions"
 
 type BackofficeAccessRouteProps = {
@@ -14,18 +16,15 @@ type BackofficeAccessRouteProps = {
 
 export function BackofficeAccessRoute({ element, permission }: BackofficeAccessRouteProps) {
   const location = useLocation()
-  const { session, loading: authLoading } = useAuth()
-  const { data: member, isLoading: memberLoading } = useBackofficeMember()
+  const { session, loading: authBootstrapping } = useAuth()
+  const { data: member, isPending: memberPending } = useBackofficeMember()
+  const memberBootstrapping = isQueryBootstrapping(memberPending, member ?? undefined)
 
   const required =
     permission ?? permissionForPath(location.pathname) ?? "dashboard.visualizar"
 
-  if (authLoading || memberLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Carregando...
-      </div>
-    )
+  if (authBootstrapping || memberBootstrapping) {
+    return <AppBootstrapScreen />
   }
 
   if (!session) {

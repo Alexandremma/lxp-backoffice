@@ -1,14 +1,20 @@
-import { PropsWithChildren, useCallback, useEffect, useState } from "react";
+import { PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthContext, type LxpProfile } from "@/hooks/auth-context";
-import { shouldRefetchAuthProfile } from "@/hooks/auth-events";
+import { shouldBlockUiForAuthProfileFetch, shouldRefetchAuthProfile } from "@/hooks/auth-events";
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<LxpProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const profileRef = useRef<LxpProfile | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isResolvingProfile, setIsResolvingProfile] = useState(false);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   const loadProfileForUser = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -38,7 +44,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let isMounted = true;
 
     const init = async () => {
-      setLoading(true);
+      setIsInitializing(true);
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setProfile(null);
       }
 
-      setLoading(false);
+      setIsInitializing(false);
     };
 
     void init();
@@ -68,7 +74,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (!nextSession?.user) {
         setProfile(null);
-        setLoading(false);
+        setIsResolvingProfile(false);
         return;
       }
 
@@ -76,13 +82,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      setLoading(true);
+      const userId = nextSession.user.id;
+      const hasProfileForCurrentUser = profileRef.current?.user_id === userId;
+      const blockUi = shouldBlockUiForAuthProfileFetch(event, hasProfileForCurrentUser);
+
+      if (blockUi) {
+        setIsResolvingProfile(true);
+      }
+
       void (async () => {
         try {
-          const nextProfile = await loadProfileForUser(nextSession.user.id);
+          const nextProfile = await loadProfileForUser(userId);
           setProfile(nextProfile);
         } finally {
-          setLoading(false);
+          if (blockUi) {
+            setIsResolvingProfile(false);
+          }
         }
       })();
     });
@@ -92,6 +107,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       subscription.unsubscribe();
     };
   }, [loadProfileForUser]);
+
+  const loading = isInitializing || isResolvingProfile;
 
   const value = {
     user,
