@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { PanelLeftClose, PanelLeftOpen, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,19 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { TEAM_ROLE_LABELS } from "@/consts/teamRoles"
+import { useAuth } from "@/hooks/use-auth"
 import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember"
 import { useLogout } from "@/hooks/use-logout"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
-
-function initialsFromDisplay(label: string): string {
-  const t = label.trim()
-  if (!t) return "?"
-  const parts = t.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  }
-  return t.slice(0, 2).toUpperCase()
-}
 
 interface AdminTopBarProps {
   isSidebarOpen: boolean
@@ -35,6 +26,7 @@ interface AdminTopBarProps {
 const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
   const navigate = useNavigate()
   const { logout } = useLogout()
+  const { profile } = useAuth()
   const { data: member } = useBackofficeMember()
 
   const displayName = useMemo(
@@ -47,11 +39,6 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
   const roleLabel = useMemo(
     () => (member ? TEAM_ROLE_LABELS[member.role] : ""),
     [member],
-  )
-
-  const avatarInitials = useMemo(
-    () => initialsFromDisplay(displayName === "Membro" && displayEmail ? displayEmail : displayName),
-    [displayName, displayEmail],
   )
 
   return (
@@ -76,12 +63,13 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="/placeholder.svg" alt={displayName} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {avatarInitials}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={displayName}
+                avatarPath={profile?.avatar_path}
+                updatedAt={profile?.updated_at}
+                className="h-9 w-9"
+                fallbackClassName="bg-primary text-primary-foreground"
+              />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

@@ -1,0 +1,20 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/consts/queryKeys";
+import { useAuth } from "@/hooks/use-auth";
+import { uploadUserAvatar } from "@/services/avatarService";
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  const { user, profile, refetchProfile } = useAuth();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      return uploadUserAvatar(user.id, file, profile?.avatar_path);
+    },
+    onSuccess: async () => {
+      await refetchProfile();
+      void queryClient.invalidateQueries({ queryKey: queryKeys.backoffice.member() });
+    },
+  });
+}

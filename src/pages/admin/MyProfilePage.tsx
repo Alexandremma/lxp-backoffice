@@ -8,13 +8,14 @@ import { SkeletonCard } from "@/components/ui/skeleton"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUploadField } from "@/components/profile/AvatarUploadField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { TEAM_ROLE_LABELS } from "@/consts/teamRoles";
+import { useAuth } from "@/hooks/use-auth";
 import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember";
 import { useUpdateOwnTeamMemberProfile } from "@/hooks/mutations/useUpdateOwnTeamMemberProfile";
 
@@ -33,16 +34,6 @@ function formatDateBr(value: string | null | undefined): string {
   return date.toLocaleDateString("pt-BR");
 }
 
-function initialsFromDisplay(label: string): string {
-  const trimmed = label.trim();
-  if (!trimmed) return "?";
-  const parts = trimmed.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return trimmed.slice(0, 2).toUpperCase();
-}
-
 function memberFormValues(member: NonNullable<ReturnType<typeof useBackofficeMember>["data"]>): ProfileFormValues {
   return {
     name: member.name?.trim() || "",
@@ -52,6 +43,7 @@ function memberFormValues(member: NonNullable<ReturnType<typeof useBackofficeMem
 }
 
 const MyProfilePage = () => {
+  const { profile } = useAuth();
   const { data: member, isLoading, isError, error } = useBackofficeMember();
   const updateProfile = useUpdateOwnTeamMemberProfile();
   const [isEditing, setIsEditing] = useState(false);
@@ -60,12 +52,6 @@ const MyProfilePage = () => {
     () => (member ? TEAM_ROLE_LABELS[member.role] : ""),
     [member],
   );
-
-  const avatarInitials = useMemo(() => {
-    if (!member) return "?";
-    const label = member.name?.trim() || member.email || "Membro";
-    return initialsFromDisplay(label);
-  }, [member]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -135,12 +121,12 @@ const MyProfilePage = () => {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
-              <Avatar className="h-16 w-16 shrink-0">
-                <AvatarImage src="/placeholder.svg" alt={member.name} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                  {avatarInitials}
-                </AvatarFallback>
-              </Avatar>
+              <AvatarUploadField
+                name={member.name}
+                avatarPath={profile?.avatar_path}
+                updatedAt={profile?.updated_at}
+                disabled={!isEditing}
+              />
               <div className="min-w-0">
                 <CardTitle>{member.name}</CardTitle>
                 <CardDescription>{member.email || "—"}</CardDescription>
