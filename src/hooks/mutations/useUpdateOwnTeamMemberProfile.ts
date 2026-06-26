@@ -18,6 +18,7 @@ export function useUpdateOwnTeamMemberProfile() {
     onSuccess: async () => {
       await refetchProfile();
       void queryClient.invalidateQueries({ queryKey: queryKeys.backoffice.member() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.settings.adminAccount() });
     },
   });
 }

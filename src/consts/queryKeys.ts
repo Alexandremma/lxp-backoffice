@@ -34,6 +34,10 @@ export const queryKeys = {
         institution: ["settings", "institution"] as const,
         subscription: ["settings", "subscription"] as const,
         smtp: ["settings", "smtp"] as const,
+        adminAccount: (userId?: string) =>
+            (userId
+                ? (["settings", "admin-account", userId] as const)
+                : (["settings", "admin-account"] as const)),
     },
     auditLogs: {
         list: (params?: { limit?: number; offset?: number }) =>

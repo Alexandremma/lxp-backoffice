@@ -111,7 +111,7 @@ export function SettingsGeneralTab() {
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                     <Button variant="outline" size="sm" asChild>
-                                        <Link to="/admin/equipe">Editar perfil em Equipe</Link>
+                                        <Link to="/admin/perfil">Editar perfil</Link>
                                     </Button>
                                 </div>
                             </>
