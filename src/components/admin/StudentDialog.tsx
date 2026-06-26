@@ -32,7 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { StudentAdmin } from "@/types/studentAdmin"
-import { ChevronDown, Loader2, X } from "lucide-react"
+import { ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function formatPhoneBr(value: string): string {
@@ -344,8 +344,7 @@ export function StudentDialog({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button type="submit" disabled={isSubmitting} loading={isSubmitting}>
                 {isSubmitting
                   ? "Salvando..."
                   : isEditing

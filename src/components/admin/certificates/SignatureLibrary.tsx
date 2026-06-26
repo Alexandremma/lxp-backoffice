@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Trash2, Pencil, Loader2 } from "lucide-react"
+import { Trash2, Pencil } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import {
   Dialog,
   DialogContent,
@@ -142,7 +143,7 @@ export function SignatureFormDialog({ open, signature, onOpenChange }: Signature
             disabled={createSig.isPending || updateSig.isPending}
           >
             {(createSig.isPending || updateSig.isPending) && (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <LoadingSpinner size="sm" className="mr-2" />
             )}
             Salvar
           </Button>

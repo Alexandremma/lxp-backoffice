@@ -51,7 +51,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Unlock,
-  Loader2,
   AlertCircle,
 } from "lucide-react"
 import type { StudentAdmin as Student } from "@/types/studentAdmin"

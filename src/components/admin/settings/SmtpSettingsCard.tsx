@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Mail, Pencil, Save, X } from "lucide-react"
+import { Mail, Pencil, Save, X } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
 import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -323,7 +324,7 @@ export function SmtpSettingsCard() {
                             onClick={() => void handleSendTest()}
                         >
                             {sendTestEmail.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingSpinner size="sm" className="mr-2" />
                             ) : (
                                 <Mail className="mr-2 h-4 w-4" />
                             )}
@@ -336,7 +337,7 @@ export function SmtpSettingsCard() {
                     <div className="flex flex-wrap gap-2">
                         <Button onClick={() => void handleSave()} disabled={updateSettings.isPending}>
                             {updateSettings.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingSpinner size="sm" className="mr-2" />
                             ) : (
                                 <Save className="mr-2 h-4 w-4" />
                             )}

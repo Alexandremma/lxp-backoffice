@@ -22,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Award, Calendar, Download, Edit, FileText, Loader2, Plus, Search, User } from "lucide-react"
+import { Award, Calendar, Download, Edit, FileText, Plus, Search, User } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
 import { PageLoadingState } from "@/components/states/PageLoadingState"
 
@@ -509,7 +510,7 @@ const CertificatesPage = () => {
                   disabled={createTemplate.isPending}
                 >
                   {createTemplate.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingSpinner size="sm" />
                   ) : (
                     "Criar e personalizar"
                   )}

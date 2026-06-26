@@ -40,7 +40,6 @@ import {
     ChevronRight,
     Edit,
     GraduationCap,
-    Loader2,
     Mail,
     MoreHorizontal,
     Plus,

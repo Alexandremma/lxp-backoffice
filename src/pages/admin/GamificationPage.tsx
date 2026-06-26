@@ -41,9 +41,9 @@ import {
   TrendingUp,
   Plus,
   Trash2,
-  Loader2,
   RefreshCw,
 } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
 import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { BadgeDialog } from "@/components/admin/BadgeDialog"
@@ -440,7 +440,7 @@ const GamificationPage = () => {
                           }}
                         >
                           {reevaluateBadges.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <LoadingSpinner size="sm" className="mr-2" />
                           ) : (
                             <RefreshCw className="mr-2 h-4 w-4" />
                           )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import {
   A4_LANDSCAPE_HEIGHT_PX,
   A4_LANDSCAPE_WIDTH_PX,
@@ -124,9 +125,10 @@ export function CertificatePreviewFrame({
           />
         ) : (
           <div
-            className="flex items-center justify-center bg-white text-sm text-muted-foreground"
+            className="flex items-center justify-center gap-2 bg-white text-sm text-muted-foreground"
             style={{ width: scaledW, height: Math.min(scaledH, 120) }}
           >
+            <LoadingSpinner size="sm" />
             Carregando preview…
           </div>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { Building2, Loader2, Pencil, Save, X } from "lucide-react"
+import { Building2, Pencil, Save, X } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
 import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { INSTITUTION_FIELD_PLACEHOLDERS } from "@/consts/institutionDefaults"
@@ -231,7 +232,7 @@ export function InstitutionSettingsCard() {
                             >
                                 {uploadingLogo ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <LoadingSpinner size="sm" className="mr-2" />
                                         Enviando…
                                     </>
                                 ) : (
@@ -249,7 +250,7 @@ export function InstitutionSettingsCard() {
                     <div className="flex flex-wrap gap-2">
                         <Button onClick={() => void handleSave()} disabled={updateSettings.isPending || uploadingLogo}>
                             {updateSettings.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingSpinner size="sm" className="mr-2" />
                             ) : (
                                 <Save className="mr-2 h-4 w-4" />
                             )}

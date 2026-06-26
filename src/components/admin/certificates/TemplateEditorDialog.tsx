@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Upload } from "lucide-react"
+import { Upload } from "lucide-react"
+import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import {
   Dialog,
   DialogContent,
@@ -364,7 +365,7 @@ export function TemplateEditorDialog({
                     onClick={() => void handleRemoveBackground()}
                   >
                     {removeBackground.isPending && (
-                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      <LoadingSpinner size="sm" className="mr-2 h-3.5 w-3.5" />
                     )}
                     Remover fundo
                   </Button>
@@ -432,7 +433,7 @@ export function TemplateEditorDialog({
               uploadLogo.isPending ||
               uploadBackground.isPending ||
               removeBackground.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <LoadingSpinner size="sm" className="mr-2" />
             )}
             Salvar template
           </Button>

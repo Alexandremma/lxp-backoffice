@@ -15,9 +15,9 @@ import {
     ArrowRight,
     TrendingUp,
     UserCheck,
-    Loader2,
     Shield,
 } from "lucide-react"
+import { PageLoadingState } from "@/components/states/PageLoadingState"
 import { Link } from "react-router-dom"
 import { useGetAdminDashboardStats } from "@/hooks/queries/useGetAdminDashboardStats"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
@@ -179,10 +179,11 @@ const Dashboard = () => {
             </div>
 
             {isLoading && (
-                <div className="mb-8 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Atualizando indicadores do dashboard...
-                </div>
+                <PageLoadingState
+                    variant="inline"
+                    title="Atualizando indicadores do dashboard…"
+                    className="mb-8"
+                />
             )}
 
             <div className="mb-8">
