@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { normalizeTeamRole, type TeamRole } from "@/consts/teamRoles"
+import { queryKeys } from "@/consts/queryKeys"
 import { useAuth } from "@/hooks/use-auth"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -17,7 +18,7 @@ export function useBackofficeMember() {
   const { user } = useAuth()
 
   return useQuery({
-    queryKey: ["backoffice", "member", user?.id],
+    queryKey: queryKeys.backoffice.member(user?.id),
     queryFn: async (): Promise<BackofficeMemberContext | null> => {
       if (!user) return null
 

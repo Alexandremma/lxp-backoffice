@@ -20,6 +20,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import CoursesPage from "./pages/admin/CoursesPage";
 import DataArchitecturePage from "./pages/admin/DataArchitecturePage";
 import ClientIntakePage from "./pages/admin/ClientIntakePage";
+import MyProfilePage from "./pages/admin/MyProfilePage";
 import NotFound from "./pages/NotFound";
 
 const guard = (
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/admin/gamificacao" element={guard(<GamificationPage />)} />
               <Route path="/admin/certificados" element={guard(<CertificatesPage />)} />
               <Route path="/admin/configuracoes" element={guard(<SettingsPage />)} />
+              <Route path="/admin/perfil" element={guard(<MyProfilePage />)} />
               <Route path="/admin/modelo-dados" element={guard(<DataArchitecturePage />)} />
               <Route path="/admin/roteiro-cliente" element={guard(<ClientIntakePage />)} />
 

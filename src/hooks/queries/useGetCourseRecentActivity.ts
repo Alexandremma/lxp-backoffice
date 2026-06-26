@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
-import { getCourseRecentActivityAdmin } from "@/services/coursesService"
+import { getCourseRecentActivityAdmin } from "@/services/courses"
 
 export function useGetCourseRecentActivity(courseId?: string) {
     return useQuery({

@@ -34,10 +34,17 @@ export const queryKeys = {
         institution: ["settings", "institution"] as const,
         subscription: ["settings", "subscription"] as const,
         smtp: ["settings", "smtp"] as const,
+        adminAccount: (userId?: string) =>
+            (userId
+                ? (["settings", "admin-account", userId] as const)
+                : (["settings", "admin-account"] as const)),
     },
     auditLogs: {
         list: (params?: { limit?: number; offset?: number }) =>
             ["audit-logs", "list", params?.limit ?? 50, params?.offset ?? 0] as const,
+    },
+    backoffice: {
+        member: (userId?: string) => ["backoffice", "member", userId] as const,
     },
 } as const;
 

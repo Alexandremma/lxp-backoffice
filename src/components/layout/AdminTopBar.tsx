@@ -1,5 +1,6 @@
 import { useMemo } from "react"
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { PanelLeftClose, PanelLeftOpen, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -32,6 +33,7 @@ interface AdminTopBarProps {
 }
 
 const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
+  const navigate = useNavigate()
   const { logout } = useLogout()
   const { data: member } = useBackofficeMember()
 
@@ -97,6 +99,15 @@ const AdminTopBar = ({ isSidebarOpen, onToggleSidebar }: AdminTopBarProps) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault()
+                navigate("/admin/perfil")
+              }}
+            >
+              <User className="mr-2 h-4 w-4" />
+              Perfil
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onSelect={(e) => {

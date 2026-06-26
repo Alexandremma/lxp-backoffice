@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
-import { getCourseLinkedContentAdmin } from "@/services/coursesService"
+import { getCourseLinkedContentAdmin } from "@/services/courses"
 
 export function useGetCourseContent(courseId?: string) {
   return useQuery({

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import { queryKeys } from "@/consts/queryKeys"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -14,7 +15,7 @@ export function useAdminAccountCard() {
     const { user, profile } = useAuth()
 
     return useQuery({
-        queryKey: ["settings", "admin-account", user?.id],
+        queryKey: queryKeys.settings.adminAccount(user?.id),
         queryFn: async (): Promise<AdminAccountCardData | null> => {
             if (!user) return null
 

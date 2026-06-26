@@ -10,6 +10,7 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionId> = {
   "/admin/gamificacao": "gamificacao.visualizar",
   "/admin/certificados": "certificados.visualizar",
   "/admin/configuracoes": "configuracoes.visualizar",
+  "/admin/perfil": "acesso.login",
   "/admin/modelo-dados": "dev.modelo_dados",
   "/admin/roteiro-cliente": "dev.roteiro_cliente",
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { queryKeys } from "@/consts/queryKeys"
-import { getAllStudentsAdmin } from "@/services/coursesService"
+import { getAllStudentsAdmin } from "@/services/courses"
 
 export function useGetStudentsAdmin() {
     return useQuery({
