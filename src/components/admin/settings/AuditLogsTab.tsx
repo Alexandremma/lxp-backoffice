@@ -7,7 +7,7 @@ import { queryKeys } from "@/consts/queryKeys"
 import { useQueryClient } from "@tanstack/react-query"
 import { Clock, Shield, User } from "lucide-react"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonList } from "@/components/ui/skeleton"
 
 export function AuditLogsTab() {
     const queryClient = useQueryClient()
@@ -38,7 +38,9 @@ export function AuditLogsTab() {
             </CardHeader>
             <CardContent className="p-0">
                 {isLoading ? (
-                    <PageLoadingState variant="section" title="Carregando logs…" className="py-16" />
+                    <div className="p-4">
+                        <SkeletonList items={5} />
+                    </div>
                 ) : isError ? (
                     <p className="px-6 pb-6 text-sm text-destructive">
                         Erro ao carregar auditoria: {(error as Error).message}

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Building2, Mail, Pencil, Save, User, X } from "lucide-react";
 import { toast } from "sonner";
-import { PageLoadingState } from "@/components/states/PageLoadingState";
+import { SkeletonCard } from "@/components/ui/skeleton"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -106,7 +106,7 @@ const MyProfilePage = () => {
   if (isLoading) {
     return (
       <AdminLayout>
-        <PageLoadingState variant="section" title="Carregando perfil…" />
+        <SkeletonCard className="max-w-2xl" />
       </AdminLayout>
     );
   }

@@ -45,7 +45,7 @@ import {
 } from "lucide-react"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 import { BadgeDialog } from "@/components/admin/BadgeDialog"
 import { BadgeCard } from "@/components/admin/BadgeCard"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -254,7 +254,10 @@ const GamificationPage = () => {
       <PageHeader title="Gamificação" description="Configure XP, badges e regras de níveis" />
 
       {loading ? (
-        <PageLoadingState variant="section" title="Carregando gamificação…" />
+        <div className="space-y-6">
+          <SkeletonStatCards className="mb-2" />
+          <SkeletonTable rows={6} columns={4} />
+        </div>
       ) : err ? (
         <Card className="border-destructive/50">
           <CardHeader>

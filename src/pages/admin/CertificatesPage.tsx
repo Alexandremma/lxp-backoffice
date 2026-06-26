@@ -25,7 +25,7 @@ import {
 import { Award, Calendar, Download, Edit, FileText, Plus, Search, User } from "lucide-react"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 
 import { useCertificateTemplatesAdmin } from "@/hooks/queries/useCertificateTemplatesAdmin"
 import { useCertificateSignaturesAdmin } from "@/hooks/queries/useCertificateSignaturesAdmin"
@@ -285,7 +285,10 @@ const CertificatesPage = () => {
       />
 
       {loading ? (
-        <PageLoadingState variant="section" title="Carregando certificados…" />
+        <div className="space-y-6">
+          <SkeletonStatCards className="mb-2" />
+          <SkeletonTable rows={6} columns={5} />
+        </div>
       ) : errorMsg ? (
         <Card className="border-destructive/50">
           <CardHeader>

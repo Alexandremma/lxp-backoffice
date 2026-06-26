@@ -21,7 +21,7 @@ import {
   Trash2,
   BookOpen,
 } from "lucide-react"
-import { QueryStateCard } from "@/components/states/QueryStateCard"
+import { SkeletonList } from "@/components/ui/skeleton"
 import { LibraryLinkDialog } from "./LibraryLinkDialog"
 import { GradeDialog } from "./GradeDialog"
 import { DisciplineDialog, type DisciplineDialogSavePayload } from "./DisciplineDialog"
@@ -253,11 +253,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
 
       {/* Grades Accordion */}
       {isLoading ? (
-        <QueryStateCard
-          state="loading"
-          title="Carregando grades…"
-          description="Aguarde um instante"
-        />
+        <SkeletonList items={3} />
       ) : grades.length > 0 ? (
         <Accordion type="multiple" defaultValue={grades.map((g) => g.id)} className="space-y-4">
           {grades.map((grade) => {

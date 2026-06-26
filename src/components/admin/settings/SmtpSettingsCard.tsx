@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Mail, Pencil, Save, X } from "lucide-react"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonCard } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -134,7 +134,7 @@ export function SmtpSettingsCard() {
     }
 
     if (isLoading || !form) {
-        return <PageLoadingState variant="card" title="Carregando configurações de e-mail…" />
+        return <SkeletonCard />
     }
 
     if (isError) {

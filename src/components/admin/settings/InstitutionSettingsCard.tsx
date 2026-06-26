@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Building2, Pencil, Save, X } from "lucide-react"
 import { LoadingSpinner } from "@/components/states/LoadingSpinner"
 import { toast } from "sonner"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonCard } from "@/components/ui/skeleton"
 import { INSTITUTION_FIELD_PLACEHOLDERS } from "@/consts/institutionDefaults"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -110,7 +110,7 @@ export function InstitutionSettingsCard() {
     }
 
     if (isLoading || !form) {
-        return <PageLoadingState variant="card" title="Carregando dados da instituição…" />
+        return <SkeletonCard />
     }
 
     if (isError) {

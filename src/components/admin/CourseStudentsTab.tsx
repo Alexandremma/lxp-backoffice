@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react"
 import { RequirePermission } from "@/components/auth/RequirePermission"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
@@ -263,7 +263,7 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <PageLoadingState variant="section" title="Carregando alunos…" description="Aguarde um instante" />
+            <SkeletonTable rows={6} columns={6} />
           ) : filteredStudents.length > 0 ? (
             <Table>
               <TableHeader>

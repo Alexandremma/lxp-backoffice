@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -245,10 +245,9 @@ const TeamPage = () => {
                 </Alert>
             )}
 
-            {isLoading && (
-                <PageLoadingState variant="card" title="Carregando equipe…" className="mb-6" />
-            )}
-
+            {isLoading ? (
+                <SkeletonStatCards count={3} columnsClassName="sm:grid-cols-3" className="mb-6" />
+            ) : (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-6">
                 {(Object.keys(roleConfig) as TeamRole[]).map((role) => {
                     const Icon = roleConfig[role].icon
@@ -271,6 +270,7 @@ const TeamPage = () => {
                     )
                 })}
             </div>
+            )}
 
             <Card className="mb-6">
                 <CardContent className="pt-6">
@@ -324,6 +324,10 @@ const TeamPage = () => {
 
             <Card>
                 <CardContent className="p-0">
+                    {isLoading ? (
+                        <SkeletonTable rows={8} columns={6} />
+                    ) : (
+                    <>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -476,6 +480,8 @@ const TeamPage = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+                    </>
                     )}
                 </CardContent>
             </Card>

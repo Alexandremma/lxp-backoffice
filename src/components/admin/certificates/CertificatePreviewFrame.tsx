@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { LoadingSpinner } from "@/components/states/LoadingSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   A4_LANDSCAPE_HEIGHT_PX,
   A4_LANDSCAPE_WIDTH_PX,
@@ -16,6 +16,34 @@ type CertificatePreviewFrameProps = {
   className?: string
   /** Limite opcional de altura (ex.: modais menores). Sem valor, preenche o container pai. */
   maxHeight?: string
+}
+
+/** Placeholder A4 paisagem enquanto imagens/HTML do certificado são montados. */
+function CertificatePreviewSkeleton() {
+  return (
+    <div
+      className="absolute inset-0 flex flex-col bg-white p-[7%]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Carregando preview do certificado"
+    >
+      <div className="flex justify-center pt-[4%]">
+        <Skeleton className="h-5 w-[42%] max-w-xs" />
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-[8%]">
+        <Skeleton className="h-3 w-[70%]" />
+        <Skeleton className="h-7 w-[52%]" />
+        <Skeleton className="h-3 w-[60%]" />
+        <Skeleton className="h-3 w-[48%]" />
+      </div>
+      <div className="flex justify-around px-[10%] pb-[6%]">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-20" />
+      </div>
+      <Skeleton className="absolute bottom-[6%] left-[6%] h-14 w-14 rounded-sm" />
+    </div>
+  )
 }
 
 /** Renderiza o certificado em iframe A4 paisagem, escalado para caber no container. */
@@ -124,13 +152,7 @@ export function CertificatePreviewFrame({
             }}
           />
         ) : (
-          <div
-            className="flex items-center justify-center gap-2 bg-white text-sm text-muted-foreground"
-            style={{ width: scaledW, height: Math.min(scaledH, 120) }}
-          >
-            <LoadingSpinner size="sm" />
-            Carregando preview…
-          </div>
+          <CertificatePreviewSkeleton />
         )}
       </div>
     </div>

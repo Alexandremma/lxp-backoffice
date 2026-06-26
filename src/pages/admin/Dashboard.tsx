@@ -17,7 +17,7 @@ import {
     UserCheck,
     Shield,
 } from "lucide-react"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "react-router-dom"
 import { useGetAdminDashboardStats } from "@/hooks/queries/useGetAdminDashboardStats"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
@@ -52,7 +52,7 @@ const Dashboard = () => {
             permission: "alunos.visualizar",
             color: "text-blue-500",
             bgColor: "bg-blue-500/10",
-            stats: isLoading ? "Carregando..." : `${stats.totalAlunos.toLocaleString("pt-BR")} alunos`,
+            stats: isLoading ? "" : `${stats.totalAlunos.toLocaleString("pt-BR")} alunos`,
         },
         {
             title: "Equipe",
@@ -62,7 +62,7 @@ const Dashboard = () => {
             permission: "equipe.visualizar",
             color: "text-purple-500",
             bgColor: "bg-purple-500/10",
-            stats: isLoading ? "Carregando..." : `${stats.totalColaboradores} membros`,
+            stats: isLoading ? "" : `${stats.totalColaboradores} membros`,
         },
         {
             title: "Cursos",
@@ -72,7 +72,7 @@ const Dashboard = () => {
             permission: "cursos.visualizar",
             color: "text-green-500",
             bgColor: "bg-green-500/10",
-            stats: isLoading ? "Carregando..." : `${stats.totalCursos} cursos`,
+            stats: isLoading ? "" : `${stats.totalCursos} cursos`,
         },
         {
             title: "Gamificação",
@@ -140,8 +140,12 @@ const Dashboard = () => {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{isLoading ? "..." : stats.totalAlunos.toLocaleString("pt-BR")}</div>
-                        <p className="text-xs text-muted-foreground mt-1">{stats.alunosAtivos} com matrícula ativa</p>
+                        <div className="text-2xl font-bold">
+                            {isLoading ? <Skeleton className="h-8 w-16" /> : stats.totalAlunos.toLocaleString("pt-BR")}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {isLoading ? <Skeleton className="h-3 w-28 mt-1" /> : `${stats.alunosAtivos} com matrícula ativa`}
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -150,7 +154,9 @@ const Dashboard = () => {
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{isLoading ? "..." : stats.totalCursos}</div>
+                        <div className="text-2xl font-bold">
+                            {isLoading ? <Skeleton className="h-8 w-10" /> : stats.totalCursos}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">Cursos cadastrados</p>
                     </CardContent>
                 </Card>
@@ -160,7 +166,9 @@ const Dashboard = () => {
                         <UserCog className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{isLoading ? "..." : stats.totalColaboradores}</div>
+                        <div className="text-2xl font-bold">
+                            {isLoading ? <Skeleton className="h-8 w-10" /> : stats.totalColaboradores}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">Membros da equipe</p>
                     </CardContent>
                 </Card>
@@ -170,21 +178,19 @@ const Dashboard = () => {
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{isLoading ? "..." : stats.alunosAtivos.toLocaleString("pt-BR")}</div>
+                        <div className="text-2xl font-bold">
+                            {isLoading ? <Skeleton className="h-8 w-16" /> : stats.alunosAtivos.toLocaleString("pt-BR")}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {stats.totalAlunos > 0 ? Math.round((stats.alunosAtivos / stats.totalAlunos) * 100) : 0}% dos alunos cadastrados
+                            {isLoading ? (
+                                <Skeleton className="h-3 w-36 mt-1" />
+                            ) : (
+                                `${stats.totalAlunos > 0 ? Math.round((stats.alunosAtivos / stats.totalAlunos) * 100) : 0}% dos alunos cadastrados`
+                            )}
                         </p>
                     </CardContent>
                 </Card>
             </div>
-
-            {isLoading && (
-                <PageLoadingState
-                    variant="inline"
-                    title="Atualizando indicadores do dashboard…"
-                    className="mb-8"
-                />
-            )}
 
             <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-4">Acesso Rápido</h2>
@@ -205,7 +211,13 @@ const Dashboard = () => {
                                         <CardDescription>{item.description}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-muted-foreground">{item.stats}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {isLoading && !item.stats ? (
+                                                <Skeleton className="h-4 w-24" />
+                                            ) : (
+                                                item.stats
+                                            )}
+                                        </p>
                                     </CardContent>
                                 </Card>
                             </Link>

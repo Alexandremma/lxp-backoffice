@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
@@ -189,7 +189,7 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <PageLoadingState variant="section" title="Carregando conteúdos…" description="Aguarde um instante" />
+            <SkeletonTable rows={6} columns={6} />
           ) : filteredContent.length > 0 ? (
             <Table>
               <TableHeader>

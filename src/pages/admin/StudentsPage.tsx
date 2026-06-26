@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { PageLoadingState } from "@/components/states/PageLoadingState"
+import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import {
   Plus,
@@ -411,11 +411,9 @@ const StudentsPage = () => {
         </Alert>
       )}
 
-      {isLoading && (
-        <PageLoadingState variant="card" title="Carregando alunos…" className="mb-6" />
-      )}
-
-      {/* Stats Cards */}
+      {isLoading ? (
+        <SkeletonStatCards className="mb-6" />
+      ) : (
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
           <CardContent className="pt-6">
@@ -476,6 +474,7 @@ const StudentsPage = () => {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Filters */}
       <Card className="mb-6">
@@ -526,6 +525,10 @@ const StudentsPage = () => {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          {isLoading ? (
+            <SkeletonTable rows={8} columns={6} />
+          ) : (
+            <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -773,6 +776,8 @@ const StudentsPage = () => {
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </CardContent>
       </Card>
