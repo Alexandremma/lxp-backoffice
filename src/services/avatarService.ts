@@ -114,6 +114,36 @@ export function getUserAvatarPublicUrl(
   return data.publicUrl;
 }
 
+export type ProfileDisplay = {
+  id: string;
+  name: string | null;
+  avatar_path: string | null;
+  updated_at: string;
+};
+
+const PROFILE_DISPLAY_BATCH_SIZE = 50;
+
+export async function fetchProfileDisplay(profileIds: string[]): Promise<ProfileDisplay[]> {
+  const uniqueIds = [...new Set(profileIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const rows: ProfileDisplay[] = [];
+  for (let index = 0; index < uniqueIds.length; index += PROFILE_DISPLAY_BATCH_SIZE) {
+    const chunk = uniqueIds.slice(index, index + PROFILE_DISPLAY_BATCH_SIZE);
+    const { data, error } = await supabase.rpc("lxp_get_profile_display", {
+      p_profile_ids: chunk,
+    });
+    if (error) throw error;
+    rows.push(...((data ?? []) as ProfileDisplay[]));
+  }
+
+  return rows;
+}
+
+export function profileDisplayById(displays: ProfileDisplay[]): Map<string, ProfileDisplay> {
+  return new Map(displays.map((row) => [row.id, row]));
+}
+
 export async function uploadUserAvatar(
   userId: string,
   file: File,

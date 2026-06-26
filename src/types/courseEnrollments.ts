@@ -10,7 +10,8 @@ export type CourseStudentRow = {
     id: string
     name: string
     email: string
-    avatar?: string
+    avatarPath?: string | null
+    avatarUpdatedAt?: string | null
     status: "active" | "inactive" | "blocked"
     lastAccess?: string | null
     /** ISO — perfil criado em */
@@ -24,7 +25,8 @@ export type StudentOption = {
     id: string
     name: string
     email: string
-    avatar?: string
+    avatarPath?: string | null
+    avatarUpdatedAt?: string | null
     status: "active" | "inactive" | "blocked"
     enrollmentCount: number
 }

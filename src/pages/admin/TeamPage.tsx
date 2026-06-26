@@ -1,6 +1,7 @@
 import { useMemo, useState, type ElementType } from "react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { UserAvatar } from "@/components/profile/UserAvatar"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
@@ -347,13 +348,15 @@ const TeamPage = () => {
                                         <TableRow key={member.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
-                                                        {member.name
-                                                            .split(" ")
-                                                            .map((part) => part[0])
-                                                            .join("")
-                                                            .slice(0, 2)}
-                                                    </div>
+                                                    <UserAvatar
+                                                        name={member.name}
+                                                        email={member.email}
+                                                        genericLabel="Membro"
+                                                        avatarPath={member.avatarPath}
+                                                        updatedAt={member.avatarUpdatedAt}
+                                                        className="h-9 w-9"
+                                                        fallbackClassName="bg-primary/10 text-primary text-xs"
+                                                    />
                                                     <div>
                                                         <p className="font-medium">{member.name}</p>
                                                         <p className="text-sm text-muted-foreground">{member.email}</p>

@@ -1,4 +1,5 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
+import { fetchProfileDisplay, profileDisplayById } from "@/services/avatarService"
 import { supabase } from "@/lib/supabaseClient"
 import type {
     CourseEnrollment,
@@ -6,6 +7,20 @@ import type {
     StudentOption,
 } from "@/types/courseEnrollments"
 import { deriveStudentStatus, normalizeEnrollmentStatus } from "./enrollmentMappers"
+
+function attachAvatarFields<T extends { id: string }>(
+    rows: T[],
+    displayById: Map<string, { avatar_path: string | null; updated_at: string }>,
+): (T & { avatarPath: string | null; avatarUpdatedAt: string | null })[] {
+    return rows.map((row) => {
+        const display = displayById.get(row.id)
+        return {
+            ...row,
+            avatarPath: display?.avatar_path ?? null,
+            avatarUpdatedAt: display?.updated_at ?? null,
+        }
+    })
+}
 
 export async function getCourseStudentsAdmin(courseId: string, courseName: string): Promise<{
     enrolledStudents: CourseStudentRow[]
@@ -38,13 +53,12 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
         enrMap.set(e.student_profile_id, { created_at: e.created_at, status: e.status }),
     )
 
-    const enrolledRows: CourseStudentRow[] = enrolledProfiles.map((p) => {
+    const enrolledRowsBase = enrolledProfiles.map((p) => {
         const enrInfo = enrMap.get(p.id)
         return {
             id: p.id,
             name: p.name ?? p.email ?? p.id,
             email: p.email ?? "",
-            avatar: "/placeholder.svg",
             status: enrInfo?.status === "inactive" ? "inactive" : "active",
             lastAccess: p.updated_at ?? null,
             enrollments: [
@@ -78,16 +92,28 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
         counts.set(e.student_profile_id, (counts.get(e.student_profile_id) ?? 0) + 1)
     })
 
-    const options: StudentOption[] = (all ?? []).map((p: { id: string; name: string | null; email: string | null }) => ({
-        id: p.id,
-        name: p.name ?? p.email ?? p.id,
-        email: p.email ?? "",
-        avatar: "/placeholder.svg",
-        status: "active",
-        enrollmentCount: counts.get(p.id) ?? 0,
-    }))
+    const optionsBase: Omit<StudentOption, "avatarPath" | "avatarUpdatedAt">[] = (all ?? []).map(
+        (p: { id: string; name: string | null; email: string | null }) => ({
+            id: p.id,
+            name: p.name ?? p.email ?? p.id,
+            email: p.email ?? "",
+            status: "active" as const,
+            enrollmentCount: counts.get(p.id) ?? 0,
+        }),
+    )
 
-    return { enrolledStudents: enrolledRows, allStudents: options }
+    const profileIds = [
+        ...new Set([
+            ...enrolledRowsBase.map((row) => row.id),
+            ...optionsBase.map((row) => row.id),
+        ]),
+    ]
+    const displayById = profileDisplayById(await fetchProfileDisplay(profileIds))
+
+    const enrolledStudents = attachAvatarFields(enrolledRowsBase, displayById) as CourseStudentRow[]
+    const allStudents = attachAvatarFields(optionsBase, displayById) as StudentOption[]
+
+    return { enrolledStudents, allStudents }
 }
 
 /**
@@ -203,7 +229,7 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
         rawStatusByStudent.get(row.student_profile_id)!.push(row.status)
     }
 
-    return (profiles ?? []).map((p: {
+    const rowsBase = (profiles ?? []).map((p: {
         id: string
         name: string | null
         email: string | null
@@ -217,7 +243,6 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
             id: p.id,
             name: p.name ?? p.email ?? p.id,
             email: p.email ?? "",
-            avatar: "/placeholder.svg",
             status: deriveStudentStatus(rawStatusByStudent.get(p.id) ?? []),
             lastAccess: p.updated_at,
             createdAt: p.created_at,
@@ -226,6 +251,9 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
             enrollments,
         }
     })
+
+    const displayById = profileDisplayById(await fetchProfileDisplay(rowsBase.map((row) => row.id)))
+    return attachAvatarFields(rowsBase, displayById) as CourseStudentRow[]
 }
 
 export async function enrollStudentsAdmin(courseId: string, studentIds: string[]): Promise<void> {

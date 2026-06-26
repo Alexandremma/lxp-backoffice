@@ -1,5 +1,6 @@
 import type { TeamRole } from "@/consts/teamRoles"
 import { DEFAULT_DEPARTMENT_BY_ROLE, normalizeTeamRole } from "@/consts/teamRoles"
+import { fetchProfileDisplay, profileDisplayById } from "@/services/avatarService"
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
@@ -15,6 +16,8 @@ export type TeamMemberAdminRow = {
     createdAt: string
     updatedAt: string
     updatedBy: string | null
+    avatarPath?: string | null
+    avatarUpdatedAt?: string | null
 }
 
 type TeamInviteErrorCode =
@@ -91,7 +94,7 @@ export async function getTeamMembersAdmin(): Promise<TeamMemberAdminRow[]> {
 
     if (error) throw error
 
-    return (data ?? []).map((row) => ({
+    const members = (data ?? []).map((row) => ({
         id: row.id as string,
         userId: row.user_id as string,
         name: (row.name as string | null) ?? "Sem nome",
@@ -102,6 +105,34 @@ export async function getTeamMembersAdmin(): Promise<TeamMemberAdminRow[]> {
         updatedAt: row.updated_at as string,
         updatedBy: (row.updated_by as string | null) ?? null,
     }))
+
+    const userIds = members.map((member) => member.userId).filter(Boolean)
+    if (userIds.length === 0) return members
+
+    const { data: profileLinks, error: profileLinksError } = await supabase
+        .from("lxp_profiles")
+        .select("id,user_id")
+        .in("user_id", userIds)
+
+    if (profileLinksError) throw profileLinksError
+
+    const profileIdByUserId = new Map<string, string>()
+    for (const link of profileLinks ?? []) {
+        profileIdByUserId.set(link.user_id as string, link.id as string)
+    }
+
+    const displays = await fetchProfileDisplay([...profileIdByUserId.values()])
+    const displayByProfileId = profileDisplayById(displays)
+
+    return members.map((member) => {
+        const profileId = profileIdByUserId.get(member.userId)
+        const display = profileId ? displayByProfileId.get(profileId) : undefined
+        return {
+            ...member,
+            avatarPath: display?.avatar_path ?? null,
+            avatarUpdatedAt: display?.updated_at ?? null,
+        }
+    })
 }
 
 export async function createTeamMemberAdmin(params: {

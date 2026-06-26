@@ -17,5 +17,6 @@ export type StudentAdmin = {
     createdAt: string
     phone?: string | null
     birthDate?: string | null
-    avatar?: string
+    avatarPath?: string | null
+    avatarUpdatedAt?: string | null
 }
