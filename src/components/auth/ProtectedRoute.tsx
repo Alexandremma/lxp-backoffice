@@ -1,7 +1,9 @@
 import { ReactElement } from "react";
 import { Navigate } from "react-router-dom";
+import { AppBootstrapScreen } from "@/components/states/AppBootstrapScreen";
 import { useBackofficeMember } from "@/hooks/queries/useBackofficeMember";
 import { useAuth } from "@/hooks/use-auth";
+import { isQueryBootstrapping } from "@/lib/routeGuard";
 
 type ProtectedRouteProps = {
   element: ReactElement;
@@ -13,15 +15,13 @@ type ProtectedRouteProps = {
 };
 
 export const ProtectedRoute = ({ element, requiredRole }: ProtectedRouteProps) => {
-  const { session, loading: authLoading } = useAuth();
-  const { data: member, isLoading: memberLoading } = useBackofficeMember();
+  const { session, loading: authBootstrapping } = useAuth();
+  const { data: member, isPending: memberPending } = useBackofficeMember();
+  const memberBootstrapping =
+    requiredRole === "admin" && isQueryBootstrapping(memberPending, member ?? undefined);
 
-  if (authLoading || (requiredRole === "admin" && memberLoading)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Carregando...
-      </div>
-    );
+  if (authBootstrapping || memberBootstrapping) {
+    return <AppBootstrapScreen />;
   }
 
   if (!session) {
@@ -38,4 +38,3 @@ export const ProtectedRoute = ({ element, requiredRole }: ProtectedRouteProps) =
 
   return element;
 };
-
