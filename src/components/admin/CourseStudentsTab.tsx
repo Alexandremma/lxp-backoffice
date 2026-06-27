@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { SkeletonTable } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
+import { ProgressPercentBar } from "@/components/admin/ProgressPercentBar"
+import { averageEnrollmentProgress } from "@/lib/studentCourseProgress"
 import { UserAvatar } from "@/components/profile/UserAvatar"
 import {
   Table,
@@ -94,12 +95,12 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
 
   const avgProgress =
     enrolledStudents.length > 0
-      ? Math.round(
-        enrolledStudents.reduce((sum, s) => {
-          const enrollment = s.enrollments.find((e) => e.courseId === courseId)
-          return sum + (enrollment?.progress || 0)
-        }, 0) / enrolledStudents.length,
-      )
+      ? averageEnrollmentProgress(
+          enrolledStudents.map((student) => {
+            const enrollment = student.enrollments.find((entry) => entry.courseId === courseId)
+            return enrollment?.progress ?? 0
+          }),
+        )
       : 0
 
   const activeCount = enrolledStudents.filter((s) => s.status === "active").length
@@ -303,14 +304,8 @@ export function CourseStudentsTab({ courseId, courseName }: CourseStudentsTabPro
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const enrollment = student.enrollments.find(e => e.courseId === courseId)
-                        const progress = enrollment?.progress || 0
-                        return (
-                          <div className="flex items-center gap-3 min-w-[120px]">
-                            <Progress value={progress} className="h-2 flex-1" />
-                            <span className="text-sm font-medium w-10">{progress}%</span>
-                          </div>
-                        )
+                        const enrollment = student.enrollments.find((entry) => entry.courseId === courseId)
+                        return <ProgressPercentBar value={enrollment?.progress ?? 0} />
                       })()}
                     </TableCell>
                     <TableCell>

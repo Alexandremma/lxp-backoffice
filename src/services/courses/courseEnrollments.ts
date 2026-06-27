@@ -6,6 +6,12 @@ import type {
     CourseStudentRow,
     StudentOption,
 } from "@/types/courseEnrollments"
+import {
+    buildProgressStatusByKey,
+    fetchCourseDisciplineIndex,
+    fetchDisciplineProgressRows,
+    resolveEnrollmentProgressPercent,
+} from "./courseProgressIndex"
 import { deriveStudentStatus, normalizeEnrollmentStatus } from "./enrollmentMappers"
 
 function attachAvatarFields<T extends { id: string }>(
@@ -53,6 +59,14 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
         enrMap.set(e.student_profile_id, { created_at: e.created_at, status: e.status }),
     )
 
+    const disciplineIndex = await fetchCourseDisciplineIndex([courseId])
+    const courseDiscIds = disciplineIndex.discByCourse.get(courseId) ?? []
+    const progressRows =
+        enrolledProfileIds.length > 0 && courseDiscIds.length > 0
+            ? await fetchDisciplineProgressRows(enrolledProfileIds, courseDiscIds)
+            : []
+    const progressByKey = buildProgressStatusByKey(progressRows)
+
     const enrolledRowsBase = enrolledProfiles.map((p) => {
         const enrInfo = enrMap.get(p.id)
         return {
@@ -66,7 +80,7 @@ export async function getCourseStudentsAdmin(courseId: string, courseName: strin
                     courseId,
                     courseName,
                     enrollmentDate: enrInfo?.created_at ?? new Date().toISOString(),
-                    progress: 0,
+                    progress: resolveEnrollmentProgressPercent(p.id, courseId, disciplineIndex, progressByKey),
                     status: (enrInfo?.status as CourseEnrollment["status"]) ?? "active",
                 },
             ],
@@ -143,68 +157,18 @@ export async function getAllStudentsAdmin(): Promise<CourseStudentRow[]> {
         for (const c of courses ?? []) courseNameById.set((c as { id: string; name: string }).id, (c as { id: string; name: string }).name)
     }
 
-    const { data: periodsData, error: periodsError } =
-        courseIds.length > 0
-            ? await supabase.from("lxp_course_periods").select("id,course_id").in("course_id", courseIds)
-            : { data: [], error: null }
-    if (periodsError) throw periodsError
-
-    const periodToCourse = new Map<string, string>()
-    const discByCourse = new Map<string, string[]>()
-    const periodRows = (periodsData ?? []) as Array<{ id: string; course_id: string }>
-    for (const p of periodRows) {
-        periodToCourse.set(p.id, p.course_id)
-        if (!discByCourse.has(p.course_id)) discByCourse.set(p.course_id, [])
-    }
-
-    const periodIds = periodRows.map((p) => p.id)
-    let disciplineRows: Array<{ id: string; course_period_id: string }> = []
-    if (periodIds.length > 0) {
-        const { data: dr, error: dErr } = await supabase
-            .from("lxp_course_disciplines")
-            .select("id,course_period_id")
-            .in("course_period_id", periodIds)
-        if (dErr) throw dErr
-        disciplineRows = (dr ?? []) as typeof disciplineRows
-    }
-
-    for (const d of disciplineRows) {
-        const cid = periodToCourse.get(d.course_period_id)
-        if (!cid) continue
-        if (!discByCourse.has(cid)) discByCourse.set(cid, [])
-        discByCourse.get(cid)!.push(d.id)
-    }
-
+    const disciplineIndex = await fetchCourseDisciplineIndex(courseIds)
     const profileIds = (profiles ?? []).map((p: { id: string }) => p.id)
-    const allDiscIds = [...new Set(disciplineRows.map((d) => d.id))]
+    const allDiscIds = [...new Set([...disciplineIndex.discByCourse.values()].flat())]
 
-    type ProgressRow = { student_profile_id: string; course_discipline_id: string; status: string }
-    let progressRows: ProgressRow[] = []
-    if (profileIds.length > 0 && allDiscIds.length > 0) {
-        const { data: pr, error: prErr } = await supabase
-            .from("lxp_student_discipline_progress")
-            .select("student_profile_id,course_discipline_id,status")
-            .in("student_profile_id", profileIds)
-            .in("course_discipline_id", allDiscIds)
-        if (prErr) throw prErr
-        progressRows = (pr ?? []) as ProgressRow[]
-    }
+    const progressRows =
+        profileIds.length > 0 && allDiscIds.length > 0
+            ? await fetchDisciplineProgressRows(profileIds, allDiscIds)
+            : []
+    const progressByKey = buildProgressStatusByKey(progressRows)
 
-    const progressByKey = new Map<string, string>()
-    for (const r of progressRows) {
-        progressByKey.set(`${r.student_profile_id}:${r.course_discipline_id}`, r.status)
-    }
-
-    const progressForEnrollment = (studentId: string, courseId: string): number => {
-        const discs = discByCourse.get(courseId) ?? []
-        if (discs.length === 0) return 0
-        let complete = 0
-        for (const did of discs) {
-            const st = progressByKey.get(`${studentId}:${did}`) ?? "pending"
-            if (st === "approved") complete += 1
-        }
-        return Math.round((complete / discs.length) * 100)
-    }
+    const progressForEnrollment = (studentId: string, courseId: string): number =>
+        resolveEnrollmentProgressPercent(studentId, courseId, disciplineIndex, progressByKey)
 
     const enrByStudent = new Map<string, CourseEnrollment[]>()
     const rawStatusByStudent = new Map<string, string[]>()
