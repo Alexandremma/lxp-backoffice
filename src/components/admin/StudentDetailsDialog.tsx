@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UserAvatar } from "@/components/profile/UserAvatar"
-import { Progress } from "@/components/ui/progress"
+import { ProgressPercentBar } from "@/components/admin/ProgressPercentBar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   User,
@@ -204,12 +204,11 @@ export function StudentDetailsDialog({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <Progress value={enrollment.progress} className="h-3" />
-                        </div>
-                        <span className="text-xl font-bold">{enrollment.progress}%</span>
-                      </div>
+                      <ProgressPercentBar
+                        value={enrollment.progress}
+                        className="min-w-0"
+                        valueClassName="text-xl font-bold w-auto"
+                      />
                       <p className="text-sm text-muted-foreground mt-1.5">
                         Matriculado em{" "}
                         {format(new Date(enrollment.enrollmentDate), "dd/MM/yyyy", { locale: ptBR })}
