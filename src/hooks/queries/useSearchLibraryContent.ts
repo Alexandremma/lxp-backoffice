@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { queryKeys } from "@/consts/queryKeys"
 import { getLibraryContent } from "@/services/libraryAdapter"
 import type { SearchLibraryResponse } from "@/types/library"
 
@@ -19,7 +20,10 @@ export function useSearchLibraryContent(params: {
 }) {
   const { q = "", page = 1, pageSize = 20 } = params
   const debouncedQ = useDebouncedValue(q, 300)
-  const key = useMemo(() => ["library", "search", { q: debouncedQ, page, pageSize }] as const, [debouncedQ, page, pageSize])
+  const key = useMemo(
+    () => queryKeys.library.search({ q: debouncedQ, page, pageSize }),
+    [debouncedQ, page, pageSize],
+  )
 
   const query = useQuery<SearchLibraryResponse>({
     queryKey: key,
