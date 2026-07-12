@@ -7,7 +7,7 @@ import type {
   XPAction,
 } from "@/types/gamification"
 import { XP_ACTION_CATALOG } from "@/lib/gamificationXpCatalog"
-import type { BadgeRow, LevelRow, XpRuleRow } from "@/services/gamificationAdminService"
+import type { BadgeRow, LevelRow, XpRuleRow } from "@/types/gamification"
 
 export function xpRulesToUiActions(rules: XpRuleRow[]): XPAction[] {
   const byKey = new Map(rules.map((r) => [r.action_key, r]))

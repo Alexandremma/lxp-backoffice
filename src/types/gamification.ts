@@ -57,3 +57,49 @@ export interface GamificationLevel {
   name: string
   xpRequired: number
 }
+
+/** Supabase admin rows (mappers → UI types above). */
+
+export type XpRuleRow = {
+  id: string
+  action_key: string
+  label: string
+  category: string
+  xp_value: number
+  sort_order: number
+  is_active: boolean
+}
+
+export type LevelRow = {
+  id: string
+  level_number: number
+  title: string
+  min_total_xp: number
+  is_active: boolean
+}
+
+export type BadgeRuleConfigJson = {
+  rules: Array<{
+    id: string
+    trigger: string
+    operator: string
+    value: number | boolean
+    courseId?: string
+  }>
+  matchMode: "all" | "any"
+}
+
+export type BadgeRow = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  icon_id: string
+  rarity: string
+  rule_type: string
+  rule_threshold: number
+  xp_reward: number
+  sort_order: number
+  is_active: boolean
+  rule_config: BadgeRuleConfigJson | null
+}
