@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { getLibraryContent, type SearchLibraryResponse } from "@/services/libraryAdapter"
+import { getLibraryContent } from "@/services/libraryAdapter"
+import type { SearchLibraryResponse } from "@/types/library"
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)

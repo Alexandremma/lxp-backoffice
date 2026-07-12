@@ -19,7 +19,8 @@ import {
   Tag,
 } from "lucide-react"
 import { useSearchLibraryContent } from "@/hooks/queries/useSearchLibraryContent"
-import { getLibraryCatalogStatus, type LibraryItem } from "@/services/libraryAdapter"
+import { getLibraryCatalogStatus } from "@/services/libraryAdapter"
+import type { LibraryItem } from "@/types/library"
 
 type LinkableDiscipline = {
   id: string
