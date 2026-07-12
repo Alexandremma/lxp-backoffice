@@ -6,7 +6,7 @@ export function useGetCourseRecentActivity(courseId?: string) {
     return useQuery({
         queryKey: courseId
             ? queryKeys.courses.recentActivity(courseId)
-            : (["courses", "recent-activity", "__none__"] as const),
+            : queryKeys.courses.disabled.recentActivity,
         enabled: !!courseId,
         queryFn: () => getCourseRecentActivityAdmin(courseId!),
         retry: 1,

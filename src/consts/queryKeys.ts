@@ -9,6 +9,12 @@ export const queryKeys = {
         students: (courseId: string) => ["courses", "students", courseId] as const,
         grades: (courseId: string) => ["courses", "grades", courseId] as const,
         content: (courseId: string) => ["courses", "content", courseId] as const,
+        disabled: {
+            detail: ["courses", "detail", "__none__"] as const,
+            recentActivity: ["courses", "recent-activity", "__none__"] as const,
+            students: ["courses", "students", "__none__"] as const,
+            content: ["courses", "content", "__none__"] as const,
+        },
     },
     students: {
         list: ["students", "list"] as const,

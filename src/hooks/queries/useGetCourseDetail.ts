@@ -6,7 +6,7 @@ export function useGetCourseDetail(courseId?: string) {
     return useQuery({
         queryKey: courseId
             ? queryKeys.courses.detail(courseId)
-            : (["courses", "detail", "__none__"] as const),
+            : queryKeys.courses.disabled.detail,
         enabled: !!courseId,
         queryFn: () => getCourseDetailAdmin(courseId!),
         retry: 1,
