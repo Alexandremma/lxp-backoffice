@@ -4,12 +4,9 @@
  */
 
 import { resolveAliceBaseUrl } from "@/lib/resolveAliceBaseUrl"
+import type { AliceDisciplineRents } from "@/types/alice"
 
-export type AliceDisciplineRents = {
-  disciplineId: number
-  disciplineName: string
-  rentsCount: number
-}
+export type { AliceDisciplineRents } from "@/types/alice"
 
 type AliceRentRaw = {
   id?: number
