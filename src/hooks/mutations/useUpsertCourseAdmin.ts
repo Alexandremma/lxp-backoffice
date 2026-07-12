@@ -20,6 +20,9 @@ export function useUpsertCourseAdmin() {
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
+            if (variables.mode === "update") {
+                queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(variables.id) })
+            }
             if (variables.mode === "create") {
                 queryClient.invalidateQueries({ queryKey: queryKeys.settings.dashboard })
             }
