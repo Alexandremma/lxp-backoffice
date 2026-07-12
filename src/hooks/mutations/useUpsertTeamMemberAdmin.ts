@@ -4,8 +4,8 @@ import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
 import {
     createTeamMemberAdmin,
     updateTeamMemberAdmin,
-    type TeamMemberAdminRow,
 } from "@/services/teamService"
+import type { TeamMemberAdminRow } from "@/types/team"
 
 type UpsertPayload =
     | {

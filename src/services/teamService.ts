@@ -5,20 +5,9 @@ import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { assertCanCreateTeamMember } from "@/lib/planLimits"
 import { FunctionsHttpError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabaseClient"
+import type { TeamInviteResult, TeamMemberAdminRow } from "@/types/team"
 
-export type TeamMemberAdminRow = {
-    id: string
-    userId: string
-    name: string
-    email: string
-    role: TeamRole
-    department: string | null
-    createdAt: string
-    updatedAt: string
-    updatedBy: string | null
-    avatarPath?: string | null
-    avatarUpdatedAt?: string | null
-}
+export type { TeamInviteResult, TeamMemberAdminRow } from "@/types/team"
 
 type TeamInviteErrorCode =
     | "TEAM_MEMBER_EXISTS"
@@ -28,11 +17,6 @@ type TeamInviteErrorCode =
     | "INVITE_BAD_REQUEST"
     | "PLAN_LIMIT_REACHED"
     | "INVITE_UNKNOWN_ERROR"
-
-export type TeamInviteResult = {
-    member: TeamMemberAdminRow
-    invitationSent: boolean
-}
 
 type InviteFunctionResponse = {
     member?: {

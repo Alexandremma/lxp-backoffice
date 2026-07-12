@@ -53,7 +53,7 @@ import { RequirePermission } from "@/components/auth/RequirePermission"
 import { TEAM_ROLE_LABELS, formatTeamDepartmentLabel, resolveTeamDepartment, type TeamRole } from "@/consts/teamRoles"
 import { toast } from "sonner"
 import { useGetTeamMembersAdmin } from "@/hooks/queries/useGetTeamMembersAdmin"
-import type { TeamMemberAdminRow } from "@/services/teamService"
+import type { TeamMemberAdminRow } from "@/types/team"
 import {
     TeamMemberDialog,
     type TeamMemberDialogMember,
