@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import { BackofficeAccessRoute } from "@/components/auth/BackofficeAccessRoute";
@@ -46,7 +46,6 @@ const App = () => (
               <Route path="/admin/definir-senha" element={<AdminSetPassword />} />
 
               <Route path="/" element={guard(<Dashboard />)} />
-              <Route path="/dashboard-mock" element={<Navigate to="/" replace />} />
 
               <Route path="/admin/alunos" element={guard(<StudentsPage />)} />
               <Route path="/admin/equipe" element={guard(<TeamPage />)} />
@@ -62,10 +61,6 @@ const App = () => (
               <Route path="/admin/perfil" element={guard(<MyProfilePage />)} />
               <Route path="/admin/modelo-dados" element={guard(<DataArchitecturePage />)} />
               <Route path="/admin/roteiro-cliente" element={guard(<ClientIntakePage />)} />
-
-              <Route path="/dashboard-old" element={<Navigate to="/" replace />} />
-              <Route path="/admin/cursos-v1" element={<Navigate to="/" replace />} />
-              <Route path="/admin/matriculas" element={<Navigate to="/" replace />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
