@@ -1,8 +1,9 @@
 import { resolveActorProfileId } from "@/services/actorProfileService"
 import { supabase } from "@/lib/supabaseClient"
+import { STORAGE_BUCKETS } from "@/consts/storageBuckets"
 import type { InstitutionSettingKey } from "@/types/settings"
 
-export const INSTITUTION_BRANDING_BUCKET = "institution-branding"
+export const INSTITUTION_BRANDING_BUCKET = STORAGE_BUCKETS.institutionBranding
 
 export async function getInstitutionSetting<T extends Record<string, unknown>>(
     key: InstitutionSettingKey,
