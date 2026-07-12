@@ -1,11 +1,7 @@
 import { supabase } from "@/lib/supabaseClient"
+import type { AdminDashboardStats } from "@/types/dashboard"
 
-export type AdminDashboardStats = {
-    totalStudents: number
-    activeStudents: number
-    totalCourses: number
-    totalTeamMembers: number
-}
+export type { AdminDashboardStats } from "@/types/dashboard"
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     const [
