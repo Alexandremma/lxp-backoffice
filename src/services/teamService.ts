@@ -33,7 +33,7 @@ type InviteFunctionResponse = {
     invitation_sent: boolean
 }
 
-function toTeamMemberAdminRow(row: InviteFunctionResponse["member"]): TeamMemberAdminRow {
+function toTeamMemberAdminRow(row: NonNullable<InviteFunctionResponse["member"]>): TeamMemberAdminRow {
     return {
         id: row.id,
         userId: row.user_id,

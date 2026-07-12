@@ -160,7 +160,13 @@ const CourseDetailsPage = () => {
 
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (isCourseTab(value)) setActiveTab(value)
+        }}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
           <TabsTrigger value="overview" className="gap-2">
             <GraduationCap className="h-4 w-4" />

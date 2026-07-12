@@ -96,7 +96,8 @@ export function badgeUiToDbPayload(
 
   if (first && typeof first.value === "number") {
     rule_threshold = Math.max(1, Math.floor(first.value))
-    if (first.trigger === "disciplines_approved" || first.trigger === "courses_completed") {
+    const trigger = String(first.trigger)
+    if (trigger === "disciplines_approved" || trigger === "courses_completed") {
       rule_type = "disciplines_approved"
     } else if (first.trigger === "lessons_completed") {
       rule_type = "lessons_completed"

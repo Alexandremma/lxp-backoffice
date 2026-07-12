@@ -23,6 +23,18 @@ import { useGetAdminDashboardStats } from "@/hooks/queries/useGetAdminDashboardS
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import type { PermissionId } from "@/consts/permissions"
 import { usePermission } from "@/hooks/usePermission"
+import type { ComponentType } from "react"
+
+type QuickAccessItem = {
+    title: string
+    description: string
+    icon: ComponentType<{ className?: string }>
+    href: string
+    permission: PermissionId
+    color: string
+    bgColor: string
+    stats: string
+}
 
 const Dashboard = () => {
     const { can } = usePermission()
@@ -34,16 +46,7 @@ const Dashboard = () => {
         alunosAtivos: data?.activeStudents ?? 0,
     }
 
-    const quickAccessItems: {
-        title: string
-        description: string
-        icon: typeof Users
-        href: string
-        permission: PermissionId
-        color: string
-        bgColor: string
-        stats: string
-    }[] = [
+    const allQuickAccessItems: QuickAccessItem[] = [
         {
             title: "Alunos",
             description: "Gerenciar alunos cadastrados",
@@ -104,7 +107,9 @@ const Dashboard = () => {
             bgColor: "bg-gray-500/10",
             stats: "Ajustar",
         },
-    ].filter((item) => can(item.permission))
+    ]
+
+    const quickAccessItems = allQuickAccessItems.filter((item) => can(item.permission))
 
     const commonActions = [
         { label: "Cadastrar Novo Aluno", href: "/admin/alunos", icon: UserCheck, permission: "alunos.criar" as PermissionId },
