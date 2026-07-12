@@ -28,7 +28,7 @@ export function useSearchLibraryContent(params: {
   const query = useQuery<SearchLibraryResponse>({
     queryKey: key,
     queryFn: () => getLibraryContent({ q: debouncedQ, page, pageSize }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   })
 
   return {
