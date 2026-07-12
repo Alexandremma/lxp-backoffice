@@ -2,12 +2,8 @@ import { useMemo, useState } from "react"
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
 import type { GamificationBadge, GamificationLevel, XPAction } from "@/types/gamification"
 import {
   badgeRowToUi,
@@ -31,27 +27,15 @@ import {
   useUpdateXpRuleAdmin,
   useUpsertLevelAdmin,
 } from "@/hooks/mutations/useGamificationMutationsAdmin"
-import {
-  Zap,
-  Award,
-  Star,
-  Trophy,
-  Edit,
-  Save,
-  TrendingUp,
-  Plus,
-  Trash2,
-  RefreshCw,
-} from "lucide-react"
-import { LoadingSpinner } from "@/components/states/LoadingSpinner"
-import { toast } from "sonner"
 import { SkeletonStatCards, SkeletonTable } from "@/components/ui/skeleton"
-import { BadgeDialog } from "@/components/admin/BadgeDialog"
-import { BadgeCard } from "@/components/admin/BadgeCard"
-import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
-import { LevelDialog } from "@/components/admin/LevelDialog"
-import { RequirePermission } from "@/components/auth/RequirePermission"
+import { toast } from "sonner"
 import { usePermission } from "@/hooks/usePermission"
+import { GamificationStatsCards } from "@/components/admin/gamification/GamificationStatsCards"
+import { GamificationXpTab } from "@/components/admin/gamification/GamificationXpTab"
+import { GamificationBadgesTab } from "@/components/admin/gamification/GamificationBadgesTab"
+import { GamificationLevelsTab } from "@/components/admin/gamification/GamificationLevelsTab"
+import { GamificationPageDialogs } from "@/components/admin/gamification/GamificationPageDialogs"
+import { badgeSlugFromName } from "@/components/admin/gamification/gamificationPageHelpers"
 
 const GamificationPage = () => {
   const { can } = usePermission()
@@ -107,21 +91,6 @@ const GamificationPage = () => {
     return m
   }, [rulesQ.data])
 
-  const getCategoryColor = (category: XPAction["category"]) => {
-    switch (category) {
-      case "lesson":
-        return "bg-primary/10 text-primary"
-      case "quiz":
-        return "bg-success/10 text-success"
-      case "engagement":
-        return "bg-info/10 text-info"
-      case "social":
-        return "bg-warning/10 text-warning"
-      default:
-        return "bg-muted"
-    }
-  }
-
   const handleSaveXP = async (action: XPAction, newValue: number) => {
     const resolvedId = ruleIdByKey.get(action.id)
     if (!resolvedId) {
@@ -155,15 +124,7 @@ const GamificationPage = () => {
     badgeData: Omit<GamificationBadge, "id" | "earnedCount"> & { id?: string },
   ) => {
     const existingRow = badgesQ.data?.find((b) => b.id === badgeData.id)
-    const slug =
-      existingRow?.slug ??
-      (badgeData.name
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/\p{M}/gu, "")
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "") || `badge_${Date.now()}`)
+    const slug = existingRow?.slug ?? badgeSlugFromName(badgeData.name)
     const payload = badgeUiToDbPayload(badgeData, slug)
 
     try {
@@ -272,60 +233,12 @@ const GamificationPage = () => {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{xpConfig.length}</p>
-                    <p className="text-sm text-muted-foreground">Ações de XP</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                    <Award className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{badges.length}</p>
-                    <p className="text-sm text-muted-foreground">Badges</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{levels.length}</p>
-                    <p className="text-sm text-muted-foreground">Níveis</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
-                    <Star className="h-5 w-5 text-info" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{totalXPPossible}</p>
-                    <p className="text-sm text-muted-foreground">Soma das ações ativas (1× cada)</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <GamificationStatsCards
+            xpActionsCount={xpConfig.length}
+            badgesCount={badges.length}
+            levelsCount={levels.length}
+            totalXPPossible={totalXPPossible}
+          />
 
           <Tabs defaultValue="xp" className="space-y-4">
             <TabsList>
@@ -335,255 +248,75 @@ const GamificationPage = () => {
             </TabsList>
 
             <TabsContent value="xp" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ações que Concedem XP</CardTitle>
-                  <CardDescription>
-                    Configure quantos pontos de experiência cada ação concede
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {xpConfig.map((action) => {
-                      const canPersist = Boolean(ruleIdByKey.get(action.id))
-                      return (
-                        <div
-                          key={action.id}
-                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div
-                              className={`h-10 w-10 rounded-lg flex items-center justify-center ${getCategoryColor(action.category)}`}
-                            >
-                              <Zap className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{action.name}</p>
-                              <p className="text-sm text-muted-foreground">{action.description}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <Switch
-                              checked={action.enabled}
-                              disabled={!canPersist || updateXp.isPending}
-                              onCheckedChange={() => void handleToggleXP(action)}
-                            />
-                            {editing === action.id ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  defaultValue={action.xpValue}
-                                  className="w-20"
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleSaveXP(
-                                        action,
-                                        Number((e.target as HTMLInputElement).value),
-                                      )
-                                    }
-                                  }}
-                                />
-                                {canEditXp ? (
-                                  <Button
-                                    size="icon-sm"
-                                    onClick={(e) => {
-                                      const input = e.currentTarget.previousSibling as HTMLInputElement
-                                      void handleSaveXP(action, Number(input.value))
-                                    }}
-                                  >
-                                    <Save className="h-4 w-4" />
-                                  </Button>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="font-mono">
-                                  +{action.xpValue} XP
-                                </Badge>
-                                {canEditXp ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    disabled={!canPersist}
-                                    onClick={() => setEditing(action.id)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                ) : null}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+              <GamificationXpTab
+                xpConfig={xpConfig}
+                editing={editing}
+                canEditXp={canEditXp}
+                canPersistAction={(actionId) => Boolean(ruleIdByKey.get(actionId))}
+                isUpdating={updateXp.isPending}
+                onToggle={(action) => void handleToggleXP(action)}
+                onStartEdit={setEditing}
+                onSave={(action, value) => void handleSaveXP(action, value)}
+              />
             </TabsContent>
 
             <TabsContent value="badges" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Badges</CardTitle>
-                      <CardDescription>Conquistas que os alunos podem desbloquear</CardDescription>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <RequirePermission permission="gamificacao.badges_reavaliar">
-                        <Button
-                          variant="outline"
-                          disabled={reevaluateBadges.isPending}
-                          onClick={() => {
-                            void reevaluateBadges.mutateAsync().then((n) => {
-                              toast.success(`Badges reavaliados para ${n} aluno(s).`)
-                            }).catch(() => {
-                              toast.error("Não foi possível reavaliar os badges.")
-                            })
-                          }}
-                        >
-                          {reevaluateBadges.isPending ? (
-                            <LoadingSpinner size="sm" className="mr-2" />
-                          ) : (
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                          )}
-                          Reavaliar todos os alunos
-                        </Button>
-                      </RequirePermission>
-                      <RequirePermission permission="gamificacao.badges_criar">
-                        <Button
-                          onClick={() => {
-                            setSelectedBadge(null)
-                            setBadgeDialogOpen(true)
-                          }}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Novo Badge
-                        </Button>
-                      </RequirePermission>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {badges.map((badge) => (
-                      <BadgeCard
-                        key={badge.id}
-                        badge={badge}
-                        onEdit={canManageBadges ? handleEditBadge : undefined}
-                        onDelete={can("gamificacao.badges_excluir") ? handleDeleteBadge : undefined}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <GamificationBadgesTab
+                badges={badges}
+                canManageBadges={canManageBadges}
+                canDeleteBadges={can("gamificacao.badges_excluir")}
+                isReevaluating={reevaluateBadges.isPending}
+                onReevaluate={() => {
+                  void reevaluateBadges
+                    .mutateAsync()
+                    .then((n) => {
+                      toast.success(`Badges reavaliados para ${n} aluno(s).`)
+                    })
+                    .catch(() => {
+                      toast.error("Não foi possível reavaliar os badges.")
+                    })
+                }}
+                onNewBadge={() => {
+                  setSelectedBadge(null)
+                  setBadgeDialogOpen(true)
+                }}
+                onEditBadge={handleEditBadge}
+                onDeleteBadge={handleDeleteBadge}
+              />
             </TabsContent>
 
             <TabsContent value="levels" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Configuração de Níveis</CardTitle>
-                      <CardDescription>Defina os níveis e XP necessário para cada um</CardDescription>
-                    </div>
-                    <RequirePermission permission="gamificacao.niveis_editar">
-                      <Button
-                        onClick={() => {
-                          setSelectedLevel(null)
-                          setLevelDialogOpen(true)
-                        }}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Novo Nível
-                      </Button>
-                    </RequirePermission>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {levels.map((level, index) => (
-                      <div
-                        key={level.level}
-                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30"
-                      >
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-                          <span className="font-bold text-primary-foreground">{level.level}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold">{level.name}</h4>
-                            <Trophy className="h-4 w-4 text-warning" />
-                          </div>
-                          <Progress
-                            value={
-                              index < levels.length - 1
-                                ? ((level.xpRequired - (levels[index - 1]?.xpRequired || 0)) /
-                                    (levels[levels.length - 1].xpRequired || 1)) *
-                                  100
-                                : 100
-                            }
-                            className="h-2"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono text-lg font-bold">
-                            {level.xpRequired.toLocaleString("pt-BR")}
-                          </p>
-                          <p className="text-xs text-muted-foreground">XP necessário</p>
-                        </div>
-                        {canEditLevels ? (
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEditLevel(level)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => handleDeleteLevel(level)}
-                              disabled={levels.length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <GamificationLevelsTab
+                levels={levels}
+                canEditLevels={canEditLevels}
+                onNewLevel={() => {
+                  setSelectedLevel(null)
+                  setLevelDialogOpen(true)
+                }}
+                onEditLevel={handleEditLevel}
+                onDeleteLevel={handleDeleteLevel}
+              />
             </TabsContent>
           </Tabs>
 
-          <BadgeDialog
-            open={badgeDialogOpen}
-            onOpenChange={setBadgeDialogOpen}
-            badge={selectedBadge}
-            onSave={(data) => void handleSaveBadge(data)}
-          />
-
-          <DeleteConfirmDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            onConfirm={() => void confirmDeleteBadge()}
-            title="Excluir Badge"
-            description={`Tem certeza que deseja excluir o badge "${badgeToDelete?.name}"? Esta ação não pode ser desfeita.`}
-          />
-
-          <LevelDialog
-            open={levelDialogOpen}
-            onOpenChange={setLevelDialogOpen}
-            level={selectedLevel}
-            onSave={(data) => void handleSaveLevel(data)}
-            existingLevels={levels}
-          />
-
-          <DeleteConfirmDialog
-            open={levelDeleteDialogOpen}
-            onOpenChange={setLevelDeleteDialogOpen}
-            onConfirm={() => void confirmDeleteLevel()}
-            title="Excluir Nível"
-            description={`Tem certeza que deseja excluir o nível ${levelToDelete?.level} "${levelToDelete?.name}"? Esta ação não pode ser desfeita.`}
+          <GamificationPageDialogs
+            badgeDialogOpen={badgeDialogOpen}
+            onBadgeDialogOpenChange={setBadgeDialogOpen}
+            selectedBadge={selectedBadge}
+            onSaveBadge={(data) => void handleSaveBadge(data)}
+            deleteDialogOpen={deleteDialogOpen}
+            onDeleteDialogOpenChange={setDeleteDialogOpen}
+            badgeToDelete={badgeToDelete}
+            onConfirmDeleteBadge={() => void confirmDeleteBadge()}
+            levelDialogOpen={levelDialogOpen}
+            onLevelDialogOpenChange={setLevelDialogOpen}
+            selectedLevel={selectedLevel}
+            onSaveLevel={(data) => void handleSaveLevel(data)}
+            levels={levels}
+            levelDeleteDialogOpen={levelDeleteDialogOpen}
+            onLevelDeleteDialogOpenChange={setLevelDeleteDialogOpen}
+            levelToDelete={levelToDelete}
+            onConfirmDeleteLevel={() => void confirmDeleteLevel()}
           />
         </>
       )}
