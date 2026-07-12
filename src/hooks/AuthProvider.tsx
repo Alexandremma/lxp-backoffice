@@ -1,7 +1,8 @@
 import { PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
-import { AuthContext, type LxpProfile } from "@/hooks/auth-context";
+import { AuthContext } from "@/hooks/auth-context";
+import type { LxpProfile } from "@/types/auth";
 import { shouldBlockUiForAuthProfileFetch, shouldRefetchAuthProfile } from "@/hooks/auth-events";
 
 export function AuthProvider({ children }: PropsWithChildren) {
