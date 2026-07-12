@@ -1,10 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/consts/queryKeys";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  updateOwnTeamMemberProfile,
-  type UpdateOwnTeamMemberProfileInput,
-} from "@/services/teamMemberProfileService";
+import { updateOwnTeamMemberProfile } from "@/services/teamMemberProfileService";
+import type { UpdateOwnTeamMemberProfileInput } from "@/types/team";
 
 export function useUpdateOwnTeamMemberProfile() {
   const queryClient = useQueryClient();

@@ -1,9 +1,7 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient"
+import type { UpdateOwnTeamMemberProfileInput } from "@/types/team"
 
-export type UpdateOwnTeamMemberProfileInput = {
-  name: string;
-  department?: string | null;
-};
+export type { UpdateOwnTeamMemberProfileInput } from "@/types/team"
 
 export async function updateOwnTeamMemberProfile(
   userId: string,
