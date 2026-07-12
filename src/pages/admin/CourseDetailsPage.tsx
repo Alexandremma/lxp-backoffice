@@ -20,11 +20,9 @@ import { CourseContentTab } from "@/components/admin/CourseContentTab"
 import { CourseStudentsTab } from "@/components/admin/CourseStudentsTab"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { toast } from "@/hooks/use-toast"
-import { supabase } from "@/lib/supabaseClient"
 import { useGetCourseDetail } from "@/hooks/queries/useGetCourseDetail"
-import { useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/consts/queryKeys"
 import { useGetCourseRecentActivity } from "@/hooks/queries/useGetCourseRecentActivity"
+import { useUpsertCourseAdmin } from "@/hooks/mutations/useUpsertCourseAdmin"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 import { SkeletonCard, SkeletonList } from "@/components/ui/skeleton"
 
@@ -57,7 +55,7 @@ const CourseDetailsPage = () => {
     return saved && isCourseTab(saved) ? saved : "overview"
   })
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const queryClient = useQueryClient()
+  const upsertCourse = useUpsertCourseAdmin()
   const { data: course, isLoading, error } = useGetCourseDetail(courseId)
 
   const { data: recentActivity = [] } = useGetCourseRecentActivity(courseId)
@@ -111,30 +109,27 @@ const CourseDetailsPage = () => {
 
   const handleSaveCourse = async (updatedData: CourseAdminInput) => {
     if (!courseId) return
-    const { error } = await supabase
-      .from("lxp_courses")
-      .update({
+    try {
+      await upsertCourse.mutateAsync({
+        mode: "update",
+        id: courseId,
         name: updatedData.name,
         description: updatedData.description,
         category: updatedData.category,
         status: updatedData.status,
+        externalLibraryId: course.externalLibraryId,
       })
-      .eq("id", courseId)
-
-    if (error) {
+      toast({
+        title: "Curso atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      })
+    } catch (error) {
       toast({
         title: "Erro ao atualizar curso",
         description: getAdminErrorMessage("courses-update", error),
         variant: "destructive",
       })
-      return
     }
-    toast({
-      title: "Curso atualizado",
-      description: "As alterações foram salvas com sucesso.",
-    })
-
-    await queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) })
   }
 
   return (

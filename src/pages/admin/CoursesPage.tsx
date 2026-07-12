@@ -47,14 +47,11 @@ import { toast } from "sonner"
 import { CourseDialog } from "@/components/admin/CourseDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { useGetCourses } from "@/hooks/queries/useGetCourses"
-import { useQueryClient } from "@tanstack/react-query"
-import { queryKeys } from "@/consts/queryKeys"
 import { RequirePermission } from "@/components/auth/RequirePermission"
 import { PlanLimitBanner } from "@/components/admin/settings/PlanLimitBanner"
 import { usePlanLimits } from "@/hooks/queries/usePlanLimits"
-import { deleteCourseAdmin } from "@/services/courses"
 import { useUpsertCourseAdmin } from "@/hooks/mutations/useUpsertCourseAdmin"
-import { invalidateAuditLogs } from "@/lib/invalidateAuditLogs"
+import { useDeleteCourseAdmin } from "@/hooks/mutations/useDeleteCourseAdmin"
 import { isPlanLimitError } from "@/lib/planLimits"
 import { getAdminErrorMessage } from "@/lib/adminErrorMessage"
 
@@ -78,9 +75,9 @@ const COURSE_TABS = {
 
 const CoursesPage = () => {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { data: coursesData, isLoading, error } = useGetCourses()
   const upsertCourse = useUpsertCourseAdmin()
+  const deleteCourse = useDeleteCourseAdmin()
   const { usage: planUsage } = usePlanLimits()
   const coursesAtLimit = planUsage?.courses.atLimit ?? false
   const courses = useMemo(() => coursesData ?? [], [coursesData])
@@ -135,6 +132,7 @@ const CoursesPage = () => {
           description: updated.description,
           category: updated.category,
           status: updated.status,
+          externalLibraryId: editingCourse.externalLibraryId,
         })
         toast.success("Curso atualizado com sucesso")
       } else {
@@ -167,11 +165,9 @@ const CoursesPage = () => {
     if (!deletingCourse) return
     setSubmitting(true)
     try {
-      await deleteCourseAdmin(deletingCourse.id)
+      await deleteCourse.mutateAsync(deletingCourse.id)
 
       toast.success("Curso excluído com sucesso")
-      await queryClient.invalidateQueries({ queryKey: queryKeys.courses.list })
-      invalidateAuditLogs(queryClient)
       setDeleteDialogOpen(false)
       setDeletingCourse(null)
     } catch (e) {
