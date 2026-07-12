@@ -40,8 +40,13 @@ export const queryKeys = {
                 : (["settings", "admin-account"] as const)),
     },
     auditLogs: {
+        all: ["audit-logs"] as const,
         list: (params?: { limit?: number; offset?: number }) =>
             ["audit-logs", "list", params?.limit ?? 50, params?.offset ?? 0] as const,
+    },
+    library: {
+        search: (params: { q: string; page: number; pageSize: number }) =>
+            ["library", "search", params] as const,
     },
     backoffice: {
         member: (userId?: string) => ["backoffice", "member", userId] as const,
