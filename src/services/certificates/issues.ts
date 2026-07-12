@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient"
-import type { CertificateIssueAdminRow } from "@/services/certificates/types"
+import type { CertificateIssueAdminRow } from "@/types/certificates"
 
 export async function listCertificateIssuesAdmin(): Promise<CertificateIssueAdminRow[]> {
   const { data: issues, error } = await supabase

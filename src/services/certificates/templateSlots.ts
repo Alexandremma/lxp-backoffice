@@ -1,7 +1,7 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 import { singleSignatureEmbed } from "@/services/certificates/signatureStorage"
-import type { SignatureEmbed, TemplateSignatureSlot } from "@/services/certificates/types"
+import type { SignatureEmbed, TemplateSignatureSlot } from "@/types/certificates"
 
 export async function listTemplateSignatureSlots(
   templateId: string,

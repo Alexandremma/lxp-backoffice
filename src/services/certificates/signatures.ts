@@ -1,7 +1,7 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 import { SIGNATURES_BUCKET } from "@/services/certificates/constants"
-import type { CertificateSignatureRow } from "@/services/certificates/types"
+import type { CertificateSignatureRow } from "@/types/certificates"
 
 export async function listCertificateSignaturesAdmin(): Promise<CertificateSignatureRow[]> {
   const { data, error } = await supabase

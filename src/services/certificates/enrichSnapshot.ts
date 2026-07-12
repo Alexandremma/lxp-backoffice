@@ -3,7 +3,7 @@ import {
   signatureStoragePublicUrl,
   singleSignatureEmbed,
 } from "@/services/certificates/signatureStorage"
-import type { SignatureEmbed } from "@/services/certificates/types"
+import type { SignatureEmbed } from "@/types/certificates"
 
 /** Preenche logo/instituição no snapshot de emissão quando ausentes (emissões anteriores ao upload do logo). */
 export async function enrichSnapshotRecord(

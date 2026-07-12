@@ -3,7 +3,7 @@ export type {
   CertificateSignatureRow,
   TemplateSignatureSlot,
   CertificateIssueAdminRow,
-} from "@/services/certificates/types"
+} from "@/types/certificates"
 
 export { getSignatureImagePublicUrl } from "@/services/certificates/signatureStorage"
 export { buildCertificateTemplatePreviewPayload } from "@/services/certificates/preview"
