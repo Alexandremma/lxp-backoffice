@@ -26,11 +26,13 @@ import { toast } from "sonner"
 
 import {
   buildCertificateTemplatePreviewPayload,
-  type CertificateSignatureRow,
-  type CertificateTemplateRow,
-  type TemplateSignatureSlot,
   getSignatureImagePublicUrl,
 } from "@/services/certificatesAdminService"
+import type {
+  CertificateSignatureRow,
+  CertificateTemplateRow,
+  TemplateSignatureSlot,
+} from "@/types/certificates"
 import { useUpdateCertificateTemplateAdmin } from "@/hooks/mutations/useCertificateTemplateMutationsAdmin"
 import {
   useRemoveTemplateSignatureSlot,

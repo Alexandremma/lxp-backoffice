@@ -44,6 +44,7 @@ export type CertificateIssueAdminRow = {
   snapshot: Record<string, unknown> | null
 }
 
+/** Relação N:1 tipada pelo PostgREST (objeto ou array). */
 export type SignatureEmbed = {
   signer_name: string
   signer_title: string

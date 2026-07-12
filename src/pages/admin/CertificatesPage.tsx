@@ -38,10 +38,12 @@ import {
 import {
   buildCertificateTemplatePreviewPayload,
   enrichSnapshotRecord,
-  type CertificateIssueAdminRow,
-  type CertificateSignatureRow,
-  type CertificateTemplateRow,
 } from "@/services/certificatesAdminService"
+import type {
+  CertificateIssueAdminRow,
+  CertificateSignatureRow,
+  CertificateTemplateRow,
+} from "@/types/certificates"
 import { downloadCertificatePdfFile } from "@/lib/certificatePdfDownload"
 import { snapshotRecordToPrintPayload } from "@/lib/certificatePrint"
 import { useTemplateSignatureSlots } from "@/hooks/mutations/useTemplateSignatureMutationsAdmin"

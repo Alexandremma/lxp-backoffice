@@ -15,10 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
-import {
-  getSignatureImagePublicUrl,
-  type CertificateSignatureRow,
-} from "@/services/certificatesAdminService"
+import { getSignatureImagePublicUrl } from "@/services/certificatesAdminService"
+import type { CertificateSignatureRow } from "@/types/certificates"
 import {
   useCreateCertificateSignatureAdmin,
   useDeleteCertificateSignatureAdmin,

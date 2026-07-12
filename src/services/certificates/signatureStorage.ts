@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient"
 import { SIGNATURES_BUCKET } from "@/services/certificates/constants"
-import type { SignatureEmbed } from "@/services/certificates/types"
+import type { SignatureEmbed } from "@/types/certificates"
 
 /** Supabase pode tipar relação N:1 como objeto ou array; normaliza para um único registro. */
 export function singleSignatureEmbed(

@@ -4,7 +4,7 @@ import { getSignatureImagePublicUrl } from "@/services/certificates/signatureSto
 import type {
   CertificateTemplateRow,
   TemplateSignatureSlot,
-} from "@/services/certificates/types"
+} from "@/types/certificates"
 
 const CERTIFICATE_PREVIEW_SAMPLE = {
   studentName: "Nome do Aluno",

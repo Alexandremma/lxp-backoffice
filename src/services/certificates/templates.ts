@@ -1,7 +1,7 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
 import { SIGNATURES_BUCKET } from "@/services/certificates/constants"
-import type { CertificateTemplateRow } from "@/services/certificates/types"
+import type { CertificateTemplateRow } from "@/types/certificates"
 
 const TEMPLATE_COLS =
   "id,name,description,is_active,is_default,institution_name,institution_logo_path,layout_kind,background_image_path,created_at,updated_at"

@@ -4,8 +4,8 @@ import {
   createCertificateSignatureAdmin,
   deleteCertificateSignatureAdmin,
   updateCertificateSignatureAdmin,
-  type CertificateSignatureRow,
 } from "@/services/certificatesAdminService"
+import type { CertificateSignatureRow } from "@/types/certificates"
 
 export function useCreateCertificateSignatureAdmin() {
   const qc = useQueryClient()
