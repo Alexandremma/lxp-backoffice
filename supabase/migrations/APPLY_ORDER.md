@@ -1,0 +1,49 @@
+# Migration apply order
+
+Apply files in this order (same as numeric filename prefix).
+
+| # | File | Topic |
+|---|------|--------|
+| 001 | `001_SUPABASE_STEP2_SCHEMA_GRADES_RELACIONAMENTOS.sql` | Academic schema |
+| 002 | `002_SUPABASE_STEP4_RLS_POLICIES.sql` | Base RLS |
+| 003 | `003_SUPABASE_FIX_RLS_ROLE_HELPERS_RECURSION.sql` | `is_admin` / `is_student` helpers |
+| 004 | `004_SUPABASE_STEP5_LESSON_PROGRESS.sql` | Lesson progress |
+| 005 | `005_SUPABASE_FIX_DISCIPLINE_PROGRESS_STUDENT_UPDATE_RLS.sql` | Student progress update RLS |
+| 006 | `006_SUPABASE_STEP6_ADMIN_UPDATE_STUDENT_PROFILE.sql` | Admin student profile RPC |
+| 007 | `007_SUPABASE_STEP7A_STUDENT_PROFILE_PHONE_BIRTHDATE.sql` | Phone + birth date |
+| 008 | `008_SUPABASE_STEP7B_TEAM_MEMBERS_ADMIN_ALL.sql` | Team members admin policy |
+| 009 | `009_SUPABASE_STEP8_COURSE_LINK_ONE_TO_ONE_DISCIPLINE.sql` | Library link per discipline |
+| 010 | `010_SUPABASE_STEP9_LIBRARY_LINKS_DISCIPLINE_ONLY.sql` | Library links table |
+| 011 | `011_SUPABASE_STEP10_TEAM_MEMBERS_UPDATED_BY.sql` | Team `updated_by` |
+| 012 | `012_SUPABASE_STEP11_ENROLLMENTS_UPDATED_AT.sql` | Enrollments `updated_at` |
+| 013 | `013_SUPABASE_STEP12_ENROLLMENTS_STUDENT_SELF_ENROLL_POLICIES.sql` | Self-enroll RLS |
+| 014 | `014_SUPABASE_STEP13_BACKOFFICE_TEAM_MEMBERS_DEPARTMENT.sql` | Department field |
+| 015 | `015_SUPABASE_STEP14_CERTIFICATES_AND_DISCIPLINE_COMPLETED_AT.sql` | Certificates core |
+| 016 | `016_SUPABASE_STEP15_GAMIFICATION.sql` | XP / badges / levels |
+| 017 | `017_SUPABASE_STEP16_STUDENT_DAILY_ACCESS.sql` | Login streak |
+| 018 | `018_SUPABASE_STEP17_GAMIFICATION_RULES_XP.sql` | XP rules catalog |
+| 019 | `019_SUPABASE_STEP17C_XP_LOGIN_TRIGGERS.sql` | Login XP triggers |
+| 020 | `020_SUPABASE_STEP18_BADGE_RULE_CONFIG_ENGINE.sql` | Badge evaluation engine |
+| 021 | `021_SUPABASE_STEP19_LESSON_COMMENTS.sql` | Lesson comments |
+| 022 | `022_SUPABASE_STEP20_GAMIFICATION_COMMENTS_BADGES.sql` | Comment XP / badges |
+| 023 | `023_SUPABASE_STEP21_BADGE_REVOKE_ON_REEVAL.sql` | Badge revoke on reeval |
+| 024 | `024_SUPABASE_STEP22_LESSON_NOTES.sql` | Lesson notes |
+| 025 | `025_SUPABASE_STEP23_BADGE_XP_REWARD_ON_AWARD.sql` | Badge XP bonus |
+| 026 | `026_SUPABASE_STEP25_CERTIFICATE_VALIDATE_AND_DEFAULT.sql` | Public validate + default flag |
+| 027 | `027_SUPABASE_STEP26_CERTIFICATE_TEMPLATE_LIBRARY_AND_SNAPSHOT.sql` | Template library + snapshot |
+| 028 | `028_SUPABASE_STEP27_DISCIPLINE_PRESENTATION.sql` | Discipline cover / description |
+| 029 | `029_SUPABASE_STEP28_ADMIN_UPDATE_STUDENT_PROFILE_CLEAR_FIELDS.sql` | Clear phone/birth RPC |
+| 030 | `030_SUPABASE_STEP29_SETTINGS_DASHBOARD_AND_AUDIT_RPC.sql` | Settings + audit |
+| 031 | `031_SUPABASE_STEP30_INSTITUTION_EMPTY_PLACEHOLDERS.sql` | Empty institution placeholders |
+| 032 | `032_SUPABASE_STEP31_TEAM_ROLES_RBAC_ENTREGA.sql` | Admin / coordinator / professor |
+| 033 | `033_SUPABASE_STEP32_FREE_COURSE_AND_LESSON_ACCESS.sql` | Free course + sequential lessons |
+| 034 | `034_SUPABASE_STEP33_FIX_FREE_COURSE_RLS_RECURSION.sql` | Free-course RLS fix |
+| 035 | `035_SUPABASE_STEP34_FIX_ENROLLED_RLS_RECURSION.sql` | Enrollment RLS fix |
+| 036 | `036_SUPABASE_STEP35_SMTP_SECRET_TABLE.sql` | SMTP secret table |
+| 037 | `037_SUPABASE_STEP36_DISCIPLINE_CREDITS_ENABLED.sql` | Optional credits |
+| 038 | `038_SUPABASE_STEP37_CERTIFICATE_TEMPLATE_BACKGROUND.sql` | Custom certificate background |
+| 039 | `039_SUPABASE_STEP38_LESSON_COMMENT_MODERATION.sql` | Staff comment moderation |
+| 040 | `040_SUPABASE_STEP39_TEAM_MEMBERS_UPDATE_RLS.sql` | Team self-service RLS |
+| 041 | `041_SUPABASE_STEP40_USER_AVATARS.sql` | User avatars |
+| 042 | `042_SUPABASE_STEP41_REVOKE_GAMIFICATION_DEFINER_EXECUTE.sql` | Revoke DEFINER EXECUTE |
+| 043 | `043_SUPABASE_STEP42_RLS_WRITES_ALIGN_MATRIX.sql` | RLS writes aligned to RBAC matrix |
