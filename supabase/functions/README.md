@@ -4,11 +4,11 @@
 
 Fluxo de convite do Backoffice Equipe:
 
-1. Usuùrio admin chama a funùùo via frontend.
-2. A funùùo valida o JWT chamador (admin ou coordenador).
+1. Usu·rio admin chama a funÁ„o via frontend.
+2. A funÁ„o valida o JWT chamador (admin ou coordenador).
 3. Na action `create`: valida limite do plano.
-4. A funùùo cria convite no Auth (`inviteUserByEmail`).
-5. O e-mail de convite ù enviado pelo **Send Email Auth Hook** (`auth-send-email`) quando configurado.
+4. A funÁ„o cria convite no Auth (`inviteUserByEmail`).
+5. O e-mail de convite È enviado pelo **Send Email Auth Hook** (`auth-send-email`) quando configurado.
 
 ```bash
 supabase functions deploy invite-team-member
@@ -24,7 +24,7 @@ supabase functions deploy manage-student-admin
 
 ## update-smtp-settings
 
-Salva configuraùùo SMTP pùblica em `lxp_institution_settings` e senha criptografada em `lxp_institution_smtp_secret`. Somente **admin** (`backoffice_team_members.role = admin`).
+Salva configuraÁ„o SMTP p˙blica em `lxp_institution_settings` e senha criptografada em `lxp_institution_smtp_secret`. Somente **admin**.
 
 ```bash
 supabase functions deploy update-smtp-settings
@@ -40,7 +40,7 @@ supabase functions deploy send-test-email
 
 ## auth-send-email
 
-**Send Email Auth Hook** ù convites, recuperaùùo de senha, magic link, confirmaùùo de cadastro. Registrar no Dashboard (Authentication ? Hooks).
+**Send Email Auth Hook** ? convites, recuperaÁ„o de senha, magic link, confirmaÁ„o de cadastro. Registrar no Dashboard (Authentication ? Hooks).
 
 ```bash
 supabase functions deploy auth-send-email --no-verify-jwt
@@ -48,20 +48,42 @@ supabase functions deploy auth-send-email --no-verify-jwt
 
 > O hook do Auth valida assinatura (`SEND_EMAIL_HOOK_SECRET`), n„o JWT de usu·rio.
 
+## ai-tutor-chat
+
+Proxy do Tutor IA (MAIA) usado pelo `lxp-alunos` na sidebar da aula.
+
+- **POST** `{ question, rent_hash, conversation_id? }` ? SSE para `POST /chat/dev_fellowship/stream`
+- **GET** `?conversation_id=&limit=` ? JSON `GET /conversations/{id}`
+
+Exige JWT autenticado. A `MAIA_API_KEY` fica **sÛ** nos secrets da Edge (nunca no front).
+
+```bash
+supabase secrets set MAIA_API_KEY="<chave>" MAIA_BASE_URL="https://apimaia.eadstock.com.br" MAIA_TENANT_ID="lxp_educacional_tutor_dev_fellowship_global"
+supabase functions deploy ai-tutor-chat
+```
+
+Doc: [`docs-central/tutor-ia/dfl-integration.md`](../../../docs-central/tutor-ia/dfl-integration.md)
+
 ---
 
 ### Secrets SMTP
 
-| Secret | Obrigatùrio | Uso |
+| Secret | ObrigatÛrio | Uso |
 |--------|-------------|-----|
-| `SMTP_CREDENTIALS_ENCRYPTION_KEY` | Sim | AES-256-GCM para senha institucional (`openssl rand -base64 32`) |
-| `B42_SMTP_HOST` ù `B42_SMTP_PASSWORD` | Fallback | SMTP B42 quando instituiùùo inativa |
-| `SEND_EMAIL_HOOK_SECRET` | Auth Hook | Secret gerado no Dashboard ao registrar o hook |
-| `SMTP_TEST_ALLOWLIST` | Opcional | Restringe destinatùrios do teste em homolog |
+| `SMTP_CREDENTIALS_ENCRYPTION_KEY` | Sim | AES-256-GCM para senha institucional |
+| `B42_SMTP_HOST` ? `B42_SMTP_PASSWORD` | Fallback | SMTP B42 quando instituiÁ„o inativa |
+| `SEND_EMAIL_HOOK_SECRET` | Auth Hook | Secret do Dashboard |
+| `SMTP_TEST_ALLOWLIST` | Opcional | Restringe destinat·rios do teste |
 
-Ver [`docs-central/SMTP_FASE6_GUIA_OPERACIONAL.md`](../../../docs-central/SMTP_FASE6_GUIA_OPERACIONAL.md).
+### Secrets Tutor IA (MAIA)
 
-### Secrets runtime (jù existem no Supabase hospedado)
+| Secret | ObrigatÛrio | Uso |
+|--------|-------------|-----|
+| `MAIA_API_KEY` | Sim | Header `X-Api-Key` (consumer `dev_fellowship`) |
+| `MAIA_BASE_URL` | N„o | Default `https://apimaia.eadstock.com.br` |
+| `MAIA_TENANT_ID` | N„o | Default `lxp_educacional_tutor_dev_fellowship_global` |
+
+### Secrets runtime (j· existem no Supabase hospedado)
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
