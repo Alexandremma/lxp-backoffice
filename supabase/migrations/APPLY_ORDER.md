@@ -47,3 +47,4 @@ Apply files in this order (same as numeric filename prefix).
 | 041 | `041_SUPABASE_STEP40_USER_AVATARS.sql` | User avatars |
 | 042 | `042_SUPABASE_STEP41_REVOKE_GAMIFICATION_DEFINER_EXECUTE.sql` | Revoke DEFINER EXECUTE |
 | 043 | `043_SUPABASE_STEP42_RLS_WRITES_ALIGN_MATRIX.sql` | RLS writes aligned to RBAC matrix |
+| 044 | `044_SUPABASE_STEP43_STUDENT_STUDY_TIME.sql` | Study-time heartbeat (M2) |
