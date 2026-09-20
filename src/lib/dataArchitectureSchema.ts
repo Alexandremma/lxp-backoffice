@@ -1,8 +1,9 @@
 /**
  * Documentação visual do modelo de dados — schema `public` no Supabase (homolog/prod).
- * Atualizado com migrations Steps 14–40 (certificados N:M + snapshot, gamificação,
- * configurações/auditoria, RBAC equipe, curso livre, avatares). App jun/2026: auth modular,
- * preview/PDF por slots, `actorProfileService`, avatares self-service, guards bootstrap-only.
+ * Atualizado com migrations Steps 14–43 (certificados N:M + snapshot, gamificação,
+ * configurações/auditoria, RBAC equipe, curso livre, avatares, RLS writes matriz Step 42,
+ * tempo de estudo heartbeat Step 43). App: auth modular, preview/PDF por slots,
+ * `actorProfileService`, avatares self-service, guards bootstrap-only.
  * A divisão por app reflete o uso principal; várias tabelas são compartilhadas.
  */
 
@@ -42,7 +43,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Backoffice",
     schemaHighlight: "admin.*",
     intro:
-      "Cadastro acadêmico, equipe (`backoffice_team_members` — papéis **admin / coordenador / professor**; RLS granular Step 39), certificados (templates + biblioteca N:M + snapshot imutável; layout custom Step 37), gamificação, cursos (`free_course` Step 32) e **configurações** (`lxp_institution_settings`, `lxp_institution_smtp_secret` Step 35, `lxp_audit_logs`). UI: `/admin/gamificacao`, `/admin/certificados`, `/admin/configuracoes`, `/admin/perfil`. RPCs: `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`, `lxp_get_profile_display()`. **App (jun/2026):** auth em `AuthProvider` + `use-auth` + `auth-events`; avatares self-service (`avatarService` + bucket `user-avatars`); listagens admin com `UserAvatar`; preview/PDF via slots N:M; `updated_by` via `actorProfileService`. **24 tabelas** · migrations até **Step 40** + seeds homolog.",
+      "Cadastro acadêmico, equipe (`backoffice_team_members` — papéis **admin / coordenador / professor**; RLS granular Step 39), certificados (templates + biblioteca N:M + snapshot imutável; layout custom Step 37), gamificação, cursos (`free_course` Step 32) e **configurações** (`lxp_institution_settings`, `lxp_institution_smtp_secret` Step 35, `lxp_audit_logs`). UI: `/admin/gamificacao`, `/admin/certificados`, `/admin/configuracoes`, `/admin/perfil`. **RLS writes (Step 42):** SELECT staff via `is_admin()`; INSERT/UPDATE/DELETE por helpers de matriz (`can_edit_courses`, `can_manage`, `can_write_gamification`, `is_admin_role`). **Step 41:** `lxp_award_xp_if_active` / `lxp_evaluate_student_badges` sem EXECUTE para client (só triggers DEFINER); `lxp_reevaluate_all_student_badges` só `authenticated` + check admin. RPCs UI: `lxp_reevaluate_all_student_badges`, `lxp_get_default_certificate_template_id()`, `lxp_write_audit_log`, `lxp_get_settings_dashboard()`, `lxp_get_profile_display()`. **25 tabelas** · migrations até **Step 43** + seeds homolog.",
     tables: [
       {
         name: "backoffice_team_members",
@@ -109,7 +110,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_certificate_templates",
-        purpose: "Modelos visuais/legais de certificado disponíveis para emissão; carregam identidade institucional do template.",
+        purpose:
+          "Modelos visuais/legais de certificado disponíveis para emissão; identidade institucional no template. RLS Step 42: SELECT staff; WRITE só `backoffice_team_is_admin_role()`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Template." },
           { name: "name", kind: "column", sqlType: "text", description: "Nome interno do modelo." },
@@ -151,7 +153,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_certificate_signatures",
-        purpose: "Biblioteca de assinaturas reutilizáveis (Step 26). Cargo + arte PNG no Storage; vinculadas a templates via `lxp_certificate_template_signatures`.",
+        purpose:
+          "Biblioteca de assinaturas reutilizáveis (Step 26). Cargo + arte PNG no Storage; vinculadas a templates via `lxp_certificate_template_signatures`. RLS Step 42: WRITE só admin role.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Assinatura." },
           {
@@ -205,7 +208,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       {
         name: "lxp_gamification_xp_rules",
         purpose:
-          "Catálogo de ações de XP. Triggers leem `xp_value` na hora do evento; o app aluno exibe `lesson_complete` na UI (sincronizado).",
+          "Catálogo de ações de XP. Triggers leem `xp_value` na hora do evento; o app aluno exibe `lesson_complete` na UI. RLS Step 42: WRITE via `can_write_gamification` (admin+coord).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Regra." },
           {
@@ -226,7 +229,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_gamification_levels",
-        purpose: "Degraus de nível do aluno por XP acumulado total.",
+        purpose:
+          "Degraus de nível do aluno por XP acumulado total. RLS Step 42: WRITE só `backoffice_team_is_admin_role()`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Nível." },
           { name: "level_number", kind: "column", sqlType: "integer", description: "Número exibido (1, 2, …)." },
@@ -240,7 +244,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       {
         name: "lxp_gamification_badges",
         purpose:
-          "Conquistas com `rule_config` (várias métricas, modo E/OU). Motor `lxp_evaluate_student_badges` concede ou **revoga** awards (Step 21).",
+          "Conquistas com `rule_config` (várias métricas, modo E/OU). Motor `lxp_evaluate_student_badges` (Step 21) via triggers DEFINER — Step 41: sem EXECUTE client. RLS Step 42: WRITE `can_write_gamification`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Badge." },
           { name: "slug", kind: "column", sqlType: "text", description: "Identificador estável único." },
@@ -271,7 +275,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       {
         name: "lxp_institution_settings",
         purpose:
-          "Configurações JSON por chave (`institution`, `subscription`, `smtp`); admin via RLS `is_admin()`; logo em bucket `institution-branding`.",
+          "Configurações JSON por chave (`institution`, `subscription`, `smtp`); RLS Step 42: WRITE só `backoffice_team_is_admin_role()` (não `is_admin()` amplo); logo em bucket `institution-branding`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Registro." },
           { name: "key", kind: "column", sqlType: "text", description: "Chave única do bloco de configuração." },
@@ -343,7 +347,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_courses",
-        purpose: "Cursos/trilhas ofertados pela instituição.",
+        purpose:
+          "Cursos/trilhas ofertados pela instituição. RLS Step 42: SELECT staff; INSERT/UPDATE `can_edit_courses` (admin+coord+prof); DELETE `can_delete_courses` (admin+coord).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Curso." },
           { name: "name", kind: "column", sqlType: "text", description: "Nome público." },
@@ -368,7 +373,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_course_periods",
-        purpose: "Períodos ou fases dentro de um curso (organização da grade).",
+        purpose:
+          "Períodos ou fases dentro de um curso (organização da grade). RLS Step 42: mesmo padrão de cursos (edit/delete por matriz).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Período." },
           {
@@ -387,7 +393,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_course_disciplines",
-        purpose: "Disciplinas vinculadas a um período (ponte para conteúdo externo / biblioteca).",
+        purpose:
+          "Disciplinas vinculadas a um período (ponte para conteúdo externo / biblioteca). RLS Step 42: edit/delete por matriz de cursos; capas Storage via `can_edit_courses`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Disciplina no curso." },
           {
@@ -433,7 +440,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_course_library_links",
-        purpose: "Associação 1:1 entre disciplina do curso e item da biblioteca externa (somente tipo `discipline`).",
+        purpose:
+          "Associação 1:1 entre disciplina do curso e item da biblioteca externa (somente tipo `discipline`). RLS Step 42: writes alinhados à matriz de cursos.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Vínculo." },
           {
@@ -469,7 +477,7 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
     label: "LXP Alunos",
     schemaHighlight: "student.*",
     intro:
-      "Perfil (self-service + avatar Step 40), matrículas (`free_course` auto-matrícula Step 32–34), progresso, gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio (download via snapshot imutável). Conteúdo via **Alice**; validação pública `lxp_validate_certificate_public(code)`. Autores de comentários: RPC `lxp_get_profile_display` (foto + nome, sem PII). **App (jun/2026):** auth modular; guards bootstrap-only + refetch silencioso; skeletons contextuais; `/perfil` + `TopBar` com `UserAvatar`; equipe modera comentários (Step 38).",
+      "Perfil (self-service + avatar Step 40), matrículas (`free_course` auto-matrícula Step 32–34), progresso, **horas estudadas** (`lxp_student_study_time` + RPC `lxp_increment_study_seconds` Step 43 / M2), gamificação (XP, nível, streak de **login**, badges), discussão e anotações na aula, certificados no portfólio. Conteúdo via **Alice**; validação pública `lxp_validate_certificate_public(code)`. Autores de comentários: RPC `lxp_get_profile_display`. **RLS staff (Step 42):** progresso / XP / badges / daily_access / notes — SELECT staff; WRITE `can_manage` (admin+coord). Equipe modera comentários (Step 38).",
     tables: [
       {
         name: "lxp_profiles",
@@ -508,7 +516,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_enrollments",
-        purpose: "Matrícula do aluno em um curso. Auto-matrícula pelo aluno: somente cursos `free_course` ativos (RLS Steps 32–34).",
+        purpose:
+          "Matrícula do aluno em um curso. Auto-matrícula pelo aluno: somente cursos `free_course` ativos (Steps 32–34). Staff Step 42: INSERT equipe; UPDATE/DELETE `can_manage` (admin+coord).",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Matrícula." },
           {
@@ -532,7 +541,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_student_lesson_progress",
-        purpose: "Status por aula/unidade externa; dispara XP de aula ao concluir.",
+        purpose:
+          "Status por aula/unidade externa; dispara XP de aula ao concluir. Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Linha de progresso (quando aplicável)." },
           {
@@ -553,7 +563,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_student_discipline_progress",
-        purpose: "Progresso agregado por disciplina do curso; aprovação dispara XP e certificado.",
+        purpose:
+          "Progresso agregado por disciplina do curso; aprovação dispara XP e certificado. Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Registro de progresso." },
           {
@@ -580,7 +591,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_student_xp_events",
-        purpose: "Histórico imutável de ganho de XP (idempotente por chave de negócio).",
+        purpose:
+          "Histórico imutável de ganho de XP (idempotente por chave de negócio). Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Evento." },
           {
@@ -604,7 +616,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_student_badge_awards",
-        purpose: "Conquistas já liberadas para o aluno (join com lxp_gamification_badges na UI).",
+        purpose:
+          "Conquistas já liberadas para o aluno (join com lxp_gamification_badges na UI). Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Concessão." },
           {
@@ -626,7 +639,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_student_daily_access",
-        purpose: "Um registro por (aluno, dia) para streak de login e XP de acesso diário / marco de 7 dias.",
+        purpose:
+          "Um registro por (aluno, dia) para streak de login e XP de acesso diário / marco de 7 dias. Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Registro de acesso." },
           {
@@ -638,6 +652,41 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
           },
           { name: "access_date", kind: "column", sqlType: "date", description: "Dia (America/Sao_Paulo); unique com student." },
           { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Inserção (trigger de XP no INSERT)." },
+        ],
+      },
+      {
+        name: "lxp_student_study_time",
+        purpose:
+          "STEP 43 / M2: segundos com a aula aberta e aba visível (heartbeat LXP). Dashboard: SUM(seconds)/3600 = Horas Estudadas. Incremento via RPC `lxp_increment_study_seconds` (SECURITY INVOKER, teto 45s/chamada). RLS: staff SELECT; aluno SELECT/INSERT/UPDATE do próprio perfil (sem WRITE staff).",
+        columns: [
+          { name: "id", kind: "pk", sqlType: "uuid", description: "Registro de tempo por aula." },
+          {
+            name: "student_profile_id",
+            kind: "fk",
+            sqlType: "uuid",
+            fkRef: "public.lxp_profiles",
+            description: "Aluno.",
+          },
+          {
+            name: "external_discipline_id",
+            kind: "column",
+            sqlType: "text",
+            description: "Disciplina no catálogo externo (Alice).",
+          },
+          {
+            name: "external_unit_id",
+            kind: "column",
+            sqlType: "text",
+            description: "Aula/unidade externa.",
+          },
+          {
+            name: "seconds",
+            kind: "column",
+            sqlType: "integer",
+            description: "Segundos acumulados (≥ 0). UNIQUE com aluno + disciplina + unidade.",
+          },
+          { name: "created_at", kind: "column", sqlType: "timestamptz", description: "Criação." },
+          { name: "updated_at", kind: "column", sqlType: "timestamptz", description: "Último incremento." },
         ],
       },
       {
@@ -675,7 +724,8 @@ export const DATA_ARCHITECTURE_SECTIONS: DataArchitectureSection[] = [
       },
       {
         name: "lxp_lesson_notes",
-        purpose: "Anotações privadas do aluno por aula (somente o autor vê via RLS).",
+        purpose:
+          "Anotações privadas do aluno por aula (autor via RLS). Staff Step 42: SELECT; WRITE `can_manage`.",
         columns: [
           { name: "id", kind: "pk", sqlType: "uuid", description: "Nota." },
           {
