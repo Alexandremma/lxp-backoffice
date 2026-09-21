@@ -97,7 +97,9 @@ interface BadgeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   badge?: GamificationBadge | null
-  onSave: (badge: Omit<GamificationBadge, "id" | "earnedCount"> & { id?: string }) => void
+  onSave: (
+    badge: Omit<GamificationBadge, "id" | "earnedCount"> & { id?: string },
+  ) => Promise<void> | void
 }
 
 export const BadgeDialog = ({
@@ -106,6 +108,7 @@ export const BadgeDialog = ({
   badge,
   onSave,
 }: BadgeDialogProps) => {
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -117,6 +120,7 @@ export const BadgeDialog = ({
   })
 
   useEffect(() => {
+    if (open) setIsSaving(false)
     if (badge) {
       setFormData({
         name: badge.name,
@@ -140,7 +144,7 @@ export const BadgeDialog = ({
     }
   }, [badge, open])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.name.trim()) {
@@ -160,22 +164,28 @@ export const BadgeDialog = ({
 
     const conditionText = generateConditionText(formData.rules, formData.matchMode)
 
-    onSave({
-      ...(badge?.id && { id: badge.id }),
-      name: formData.name,
-      description: formData.description,
-      icon: formData.icon,
-      condition: conditionText,
-      rarity: formData.rarity,
-      xpReward: formData.xpReward,
-      ruleConfig: {
-        rules: formData.rules,
-        matchMode: formData.matchMode,
-      },
-    })
-
-    onOpenChange(false)
-    toast.success(badge ? "Badge atualizado!" : "Badge criado!")
+    setIsSaving(true)
+    try {
+      await onSave({
+        ...(badge?.id && { id: badge.id }),
+        name: formData.name,
+        description: formData.description,
+        icon: formData.icon,
+        condition: conditionText,
+        rarity: formData.rarity,
+        xpReward: formData.xpReward,
+        ruleConfig: {
+          rules: formData.rules,
+          matchMode: formData.matchMode,
+        },
+      })
+      toast.success(badge ? "Badge atualizado!" : "Badge criado!")
+      onOpenChange(false)
+    } catch {
+      // Erro tratado no handler pai; mantém modal aberto.
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const SelectedIcon = getBadgeIcon(formData.icon)
@@ -193,7 +203,7 @@ export const BadgeDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+        <form onSubmit={(e) => void handleSubmit(e)} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           {/* Preview */}
           <div className="flex justify-center">
@@ -336,10 +346,13 @@ export const BadgeDialog = ({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSaving}
             >
               Cancelar
             </Button>
-            <Button type="submit">{badge ? "Salvar" : "Criar Badge"}</Button>
+            <Button type="submit" loading={isSaving}>
+              {badge ? "Salvar" : "Criar Badge"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

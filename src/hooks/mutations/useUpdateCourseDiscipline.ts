@@ -40,6 +40,8 @@ export function useUpdateCourseDiscipline(courseId?: string) {
     onSuccess: () => {
       if (!courseId) return
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.grades(courseId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.content(courseId) })
     },
   })
 }

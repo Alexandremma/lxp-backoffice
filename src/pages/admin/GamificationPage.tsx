@@ -146,8 +146,9 @@ const GamificationPage = () => {
         await createBadge.mutateAsync(payload)
       }
       setSelectedBadge(null)
-    } catch {
+    } catch (e) {
       toast.error("Não foi possível salvar o badge.")
+      throw e
     }
   }
 
@@ -303,7 +304,7 @@ const GamificationPage = () => {
             badgeDialogOpen={badgeDialogOpen}
             onBadgeDialogOpenChange={setBadgeDialogOpen}
             selectedBadge={selectedBadge}
-            onSaveBadge={(data) => void handleSaveBadge(data)}
+            onSaveBadge={handleSaveBadge}
             deleteDialogOpen={deleteDialogOpen}
             onDeleteDialogOpenChange={setDeleteDialogOpen}
             badgeToDelete={badgeToDelete}

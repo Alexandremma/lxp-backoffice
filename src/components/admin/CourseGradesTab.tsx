@@ -105,6 +105,7 @@ export function CourseGradesTab({ courseId }: CourseGradesTabProps) {
       toast.success("Grade criada com sucesso!")
     } catch (e) {
       toast.error(getAdminErrorMessage("courses-grades", e))
+      throw e
     }
   }
 
