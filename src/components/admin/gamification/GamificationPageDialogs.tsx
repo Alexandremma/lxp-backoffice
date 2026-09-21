@@ -9,7 +9,7 @@ type GamificationPageDialogsProps = {
   selectedBadge: GamificationBadge | null
   onSaveBadge: (
     data: Omit<GamificationBadge, "id" | "earnedCount"> & { id?: string },
-  ) => void
+  ) => Promise<void> | void
   deleteDialogOpen: boolean
   onDeleteDialogOpenChange: (open: boolean) => void
   badgeToDelete: GamificationBadge | null

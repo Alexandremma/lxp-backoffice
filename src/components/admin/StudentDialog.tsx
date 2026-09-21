@@ -34,15 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import type { StudentAdmin } from "@/types/studentAdmin"
 import { ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-function formatPhoneBr(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11)
-  if (!digits) return ""
-  if (digits.length <= 2) return `(${digits}`
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
-}
+import { formatPhoneBr } from "@/lib/inputMasks"
 
 const studentSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),

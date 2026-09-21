@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -37,7 +37,7 @@ interface GradeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   grade?: Pick<CoursePeriodAdmin, "name" | "status"> | null
-  onSave: (data: PeriodGradeForm) => void
+  onSave: (data: PeriodGradeForm) => Promise<void> | void
 }
 
 const statusOptions = [
@@ -48,6 +48,7 @@ const statusOptions = [
 
 export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogProps) {
   const isEditing = !!grade
+  const [isSaving, setIsSaving] = useState(false)
 
   const {
     register,
@@ -68,6 +69,7 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
 
   useEffect(() => {
     if (open) {
+      setIsSaving(false)
       if (grade) {
         reset({
           name: grade.name,
@@ -82,9 +84,16 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
     }
   }, [open, grade, reset])
 
-  const onSubmit = handleSubmit((data: GradeFormData) => {
-    onSave({ name: data.name, status: data.status })
-    onOpenChange(false)
+  const onSubmit = handleSubmit(async (data: GradeFormData) => {
+    setIsSaving(true)
+    try {
+      await onSave({ name: data.name, status: data.status })
+      onOpenChange(false)
+    } catch {
+      // Erro tratado no handler pai; mantém modal aberto.
+    } finally {
+      setIsSaving(false)
+    }
   })
 
   return (
@@ -94,7 +103,7 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
           <DialogTitle>{isEditing ? "Editar Grade" : "Nova Grade"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nome da Grade</Label>
             <Input
@@ -102,6 +111,7 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
               placeholder="Ex: 1ª Grade"
               {...register("name")}
               error={!!errors.name}
+              disabled={isSaving}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -113,6 +123,7 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
             <Select
               value={statusValue}
               onValueChange={(value: "current" | "completed" | "upcoming") => setValue("status", value)}
+              disabled={isSaving}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o status" />
@@ -128,10 +139,12 @@ export function GradeDialog({ open, onOpenChange, grade, onSave }: GradeDialogPr
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" loading={isSaving}>
+              Salvar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

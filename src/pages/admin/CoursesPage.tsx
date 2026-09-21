@@ -148,9 +148,10 @@ const CoursesPage = () => {
     } catch (e) {
       if (isPlanLimitError(e)) {
         toast.error(e.message)
-        return
+        throw e
       }
       toast.error(getAdminErrorMessage("courses-save", e))
+      throw e
     } finally {
       setSubmitting(false)
     }
