@@ -1,7 +1,4 @@
-/**
- * API Alice (EaDStock) — catálogo via GET /api/rents (backoffice).
- * @see INTEGRACAO_ALICE_EADSTOCK.md
- */
+/** API Alice — catálogo via GET /api/rents. */
 
 import { resolveAliceBaseUrl } from "@/lib/resolveAliceBaseUrl"
 import type { AliceDisciplineRents } from "@/types/alice"

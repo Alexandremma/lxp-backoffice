@@ -4,8 +4,11 @@
  * POST  — stream SSE: { question, rent_hash, conversation_id? }
  * GET   — histórico:  ?conversation_id=&limit=
  *
- * Secrets: MAIA_API_KEY, MAIA_BASE_URL?, MAIA_TENANT_ID?
- * @see docs-central/tutor-ia/dfl-integration.md
+ * Secrets: MAIA_API_KEY, MAIA_BASE_URL?, MAIA_TENANT_ID?, MAIA_TENANT_NAME?
+ *
+ * O path `/chat/dev_fellowship/stream` e o tenant padrão são o contrato da MAIA
+ * para este consumidor. Não são rótulo de tela: trocar o path ou o id sem
+ * um tenant novo na MAIA interrompe o tutor.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8"
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
@@ -71,13 +74,15 @@ function maiaConfig():
 }
 
 function maiaHeaders(apiKey: string, tenantId: string, accept: string) {
-  return {
+  const headers: Record<string, string> = {
     "X-Api-Key": apiKey,
     "X-Tenant-Id": tenantId,
-    "X-Tenant-Name": "Dev Fellowship LXP",
     Accept: accept,
     "Content-Type": "application/json",
   }
+  const tenantName = Deno.env.get("MAIA_TENANT_NAME")?.trim()
+  if (tenantName) headers["X-Tenant-Name"] = tenantName
+  return headers
 }
 
 Deno.serve(async (req) => {

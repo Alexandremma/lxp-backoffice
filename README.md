@@ -32,4 +32,4 @@ Ver `supabase/functions/README.md` e `supabase/migrations/APPLY_ORDER.md`.
 
 ## Deploy
 
-Homolog/produção via **Vercel** (branch `main`). Variáveis: ver `.env.example` e `docs-central/spec-kit/08_AMBIENTE_DEPLOY.md`.
+Homolog/produção via **Vercel** (branch `main`). Variáveis: ver `.env.example` e `docs/entrega/03-secrets-e-edges.md`.
