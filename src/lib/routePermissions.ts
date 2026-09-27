@@ -11,8 +11,6 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionId> = {
   "/admin/certificados": "certificados.visualizar",
   "/admin/configuracoes": "configuracoes.visualizar",
   "/admin/perfil": "acesso.login",
-  "/admin/modelo-dados": "dev.modelo_dados",
-  "/admin/roteiro-cliente": "dev.roteiro_cliente",
 }
 
 export function permissionForPath(pathname: string): PermissionId | null {
