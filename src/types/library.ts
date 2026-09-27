@@ -11,7 +11,7 @@ export type LibraryItem = {
   modulesCount?: number
   lessonsCount?: number
   /** Origem do catálogo exibido no modal de vínculo */
-  catalogSource?: "alice" | "eadstock"
+  catalogSource?: "alice"
 }
 
 export type TrailDetail = {
@@ -49,5 +49,5 @@ export type SearchLibraryParams = {
 export type SearchLibraryResponse = {
   items: LibraryItem[]
   total: number
-  catalogSource?: "alice" | "eadstock" | "none"
+  catalogSource?: "alice" | "none"
 }
