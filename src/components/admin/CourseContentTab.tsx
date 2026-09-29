@@ -22,7 +22,6 @@ import {
   Plus,
   Search,
   MoreHorizontal,
-  ExternalLink,
   Unlink,
   BookOpen,
   Calendar,
@@ -92,14 +91,6 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
     } catch (e) {
       toast.error(getAdminErrorMessage("courses-content", e))
     }
-  }
-
-  const handleOpenInLibrary = (url?: string) => {
-    if (!url) {
-      toast.error("URL da biblioteca não configurada para esta disciplina.")
-      return
-    }
-    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   return (
@@ -243,10 +234,6 @@ export function CourseContentTab({ courseId }: CourseContentTabProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenInLibrary(content.externalUrl)}>
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Ver na Biblioteca
-                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => handleUnlink(content.id)}
