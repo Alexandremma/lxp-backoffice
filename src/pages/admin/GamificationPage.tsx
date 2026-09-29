@@ -94,7 +94,7 @@ const GamificationPage = () => {
   const handleSaveXP = async (action: XPAction, newValue: number) => {
     const resolvedId = ruleIdByKey.get(action.id)
     if (!resolvedId) {
-      toast.error("Regra ainda não existe no banco. Aplique a migration de XP (Step 17b).")
+      toast.error("Esta regra de XP ainda não está cadastrada.")
       return
     }
     try {

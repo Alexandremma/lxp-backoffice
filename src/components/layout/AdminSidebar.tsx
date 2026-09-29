@@ -8,7 +8,6 @@ import {
   Award,
   Settings,
   LogOut,
-  Database,
   User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -31,7 +30,6 @@ const navigationItems: NavItem[] = [
   { title: "Cursos", url: "/admin/cursos", icon: BookOpen, permission: "cursos.visualizar" },
   { title: "Gamificação", url: "/admin/gamificacao", icon: Gamepad2, permission: "gamificacao.visualizar" },
   { title: "Certificados", url: "/admin/certificados", icon: Award, permission: "certificados.visualizar" },
-  { title: "Modelo de dados", url: "/admin/modelo-dados", icon: Database, permission: "dev.modelo_dados" },
   { title: "Geral", url: "/admin/configuracoes", icon: Settings, permission: "configuracoes.visualizar" },
   { title: "Perfil", url: "/admin/perfil", icon: User },
 ]

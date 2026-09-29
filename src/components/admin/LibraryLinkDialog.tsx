@@ -87,16 +87,15 @@ export function LibraryLinkDialog({
             />
           </div>
 
-          {!catalogStatus.alice && !catalogStatus.eadstock && (
+          {!catalogStatus.alice && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Configure <code>VITE_ALICE_API_KEY</code> e <code>VITE_ALICE_API_SECRET</code> (par
-              backoffice) no Vercel, ou <code>VITE_EADSTOCK_BASE_URL</code> para o catálogo Scout.
+              backoffice) no ambiente de deploy.
             </p>
           )}
           {catalogSource === "alice" && (
             <p className="text-xs text-muted-foreground">
-              Catálogo: Alice <code>/api/rents</code>
-              {catalogStatus.eadstock ? " (fallback Eadstock se Alice falhar)" : ""}.
+              Catálogo: Alice <code>/api/rents</code>.
             </p>
           )}
         </div>
@@ -179,7 +178,7 @@ export function LibraryLinkDialog({
                   <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <p className="font-medium mb-1">Nenhum conteúdo encontrado</p>
                   <p className="text-sm text-muted-foreground">
-                    {catalogStatus.alice || catalogStatus.eadstock
+                    {catalogStatus.alice
                       ? "Tente outro termo (Alice: mín. 2 letras na API) ou limpe a busca."
                       : "Variáveis de integração não configuradas neste deploy."}
                   </p>

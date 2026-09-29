@@ -23,9 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
-# Documentation
+# Documentation (ship client handover under docs/entrega)
 docs/*
+!docs/entrega/
+!docs/entrega/**
+
+# Supabase CLI temp
+supabase/.temp/
 
 # Environment
 .env
 .env.*
+!.env.example

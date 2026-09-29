@@ -1,6 +1,6 @@
 import type { TeamRole } from "@/consts/teamRoles"
 
-/** IDs alinhados à matriz do cliente + extensões dev (B42). */
+/** IDs da matriz de permissões do backoffice. */
 export const PERMISSION_IDS = [
   "acesso.login",
   "dashboard.visualizar",
@@ -34,8 +34,6 @@ export const PERMISSION_IDS = [
   "certificados.emitir",
   "configuracoes.visualizar",
   "configuracoes.editar",
-  "dev.modelo_dados",
-  "dev.roteiro_cliente",
 ] as const
 
 export type PermissionId = (typeof PERMISSION_IDS)[number]
