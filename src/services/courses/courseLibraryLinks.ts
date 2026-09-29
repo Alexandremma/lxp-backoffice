@@ -1,6 +1,5 @@
 import { fireAuditLog } from "@/lib/auditLogHelpers"
 import { supabase } from "@/lib/supabaseClient"
-import { getLibraryDisciplineUrl } from "@/services/libraryAdapter"
 import type { CourseLinkedContentAdmin } from "@/types/courseLibrary"
 
 export async function unlinkCourseContentByDisciplineAdmin(disciplineId: string): Promise<void> {
@@ -77,7 +76,7 @@ export async function getCourseLinkedContentAdmin(courseId: string): Promise<Cou
             courseId: periodRaw?.course_id ?? courseId,
             libraryContentId: row.library_content_id,
             libraryContentName: row.library_content_name ?? row.library_content_id,
-            externalUrl: getLibraryDisciplineUrl(row.library_content_id),
+            externalUrl: undefined,
             type: row.library_content_type,
             linkedAt: row.linked_at,
             linkedBy: row.linked_by ? linkedByMap.get(row.linked_by) ?? row.linked_by : "Sistema",
